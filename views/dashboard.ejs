@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title || 'Pastoral Dashboard | Pastors LMS' %></title>
+  <link rel="stylesheet" href="/css/global.css">
+  <link rel="stylesheet" href="/css/dashboard.css">
+  <link rel="stylesheet" href="/css/course.css">
+</head>
+<body class="app-container">
+
+  <%- include('partials/header') %>
+
+  <main class="main-content">
+    <!-- Hero Banner -->
+    <section class="dashboard-hero">
+      <div class="hero-welcome-badge">
+        <span>🇰🇪 Nairobi Pastoral Cohort • AY2027</span>
+      </div>
+      <h1 class="hero-title">Karibu, <%= locals.user ? user.full_name : 'Pastor' %>! 🙏</h1>
+      <p class="hero-verse">
+        “Do your best to present yourself to God as one approved, a worker who does not need to be ashamed and who correctly handles the word of truth.”
+        <span class="hero-verse-ref">— 2 Timothy 2:15</span>
+      </p>
+    </section>
+
+    <!-- Stats Bar -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon-box purple">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"/>
+            <path d="M6 6h10"/>
+            <path d="M6 10h10"/>
+          </svg>
+        </div>
+        <div class="stat-content">
+          <div class="stat-number"><%= stats.totalEnrolled %></div>
+          <div class="stat-label">Enrolled Courses</div>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon-box gold">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <circle cx="12" cy="12" r="10"/>
+            <polyline points="12 6 12 12 16 14"/>
+          </svg>
+        </div>
+        <div class="stat-content">
+          <div class="stat-number"><%= stats.currentCount %> Active</div>
+          <div class="stat-label">Term AY2027-T1</div>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon-box green">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+        </div>
+        <div class="stat-content">
+          <div class="stat-number"><%= stats.completedTopics %> / <%= stats.totalTopics %></div>
+          <div class="stat-label">Topics Completed</div>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon-box blue">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <line x1="19" y1="8" x2="19" y2="14"/>
+            <line x1="22" y1="11" x2="16" y2="11"/>
+          </svg>
+        </div>
+        <div class="stat-content">
+          <div class="stat-number"><%= stats.overallPercent %>%</div>
+          <div class="stat-label">Program Progress</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Dashboard Grid Layout (Courses + Work To Do Sidebar) -->
+    <div class="dashboard-layout">
+      <!-- Left Column: Courses -->
+      <section class="dashboard-main-col">
+
+        <!-- Featured Announcement (Sound Doctrine Course) -->
+        <% const annCourse = courses.find(c => c.announcement); %>
+        <% if (annCourse && annCourse.announcement) { %>
+          <div class="announcement-box">
+            <div class="announcement-header">
+              <span class="announcement-title">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                  <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                </svg>
+                <%= annCourse.announcement.title %> — <span style="font-weight: 500;"><%= annCourse.code %></span>
+              </span>
+              <span class="announcement-date"><%= annCourse.announcement.date %></span>
+            </div>
+            <p class="announcement-text"><%= annCourse.announcement.content %></p>
+          </div>
+        <% } %>
+
+        <!-- Courses Section Header & Tabs -->
+        <div class="section-header-row">
+          <h2 class="section-title">My Pastoral Training Courses</h2>
+          <div class="course-tabs">
+            <button class="course-tab-btn active" data-filter="all">All (<%= courses.length %>)</button>
+            <button class="course-tab-btn" data-filter="current">Current Term (<%= stats.currentCount %>)</button>
+            <button class="course-tab-btn" data-filter="past">Completed Term (<%= stats.pastCount %>)</button>
+          </div>
+        </div>
+
+        <!-- Course Cards -->
+        <div class="course-grid">
+          <% courses.forEach(course => { %>
+            <article class="course-card" data-status="<%= course.status %>">
+              <div class="course-card-thumb">
+                <img src="<%= course.cover_image %>" alt="<%= course.title %>" loading="lazy">
+              </div>
+
+              <div class="course-card-body">
+                <div class="course-meta-tags">
+                  <span class="badge badge-purple"><%= course.code %></span>
+                  <span class="badge <%= course.status === 'current' ? 'badge-gold' : 'badge-success' %>">
+                    <%= course.term %>
+                  </span>
+                </div>
+
+                <h3 class="course-card-title"><%= course.title %></h3>
+                <p class="course-card-desc"><%= course.description %></p>
+
+                <div class="course-card-footer">
+                  <div class="course-progress-header">
+                    <span>Progress (<%= course.completedTopics %>/<%= course.totalTopics %> topics)</span>
+                    <span class="course-progress-pct"><%= course.percent %>%</span>
+                  </div>
+                  <div class="progress-container">
+                    <div class="progress-bar" style="width: <%= course.percent %>%;"></div>
+                  </div>
+
+                  <div class="course-action-row">
+                    <span class="course-module-count">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="12 2 2 7 12 12 22 7 12 2"/>
+                        <polyline points="2 17 12 22 22 17"/>
+                        <polyline points="2 12 12 17 22 12"/>
+                      </svg>
+                      <%= course.modules ? course.modules.length : 0 %> Units
+                    </span>
+                    <a href="/courses/<%= course.id %>" class="btn btn-primary btn-sm">
+                      Enter Course
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <polyline points="9 18 15 12 9 6"/>
+                      </svg>
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </article>
+          <% }); %>
+        </div>
+
+      </section>
+
+      <!-- Right Column: Brightspace Work To Do Sidebar -->
+      <%- include('partials/sidebar', { tasks: tasks }) %>
+    </div>
+  </main>
+
+  <script src="/js/app.js"></script>
+</body>
+</html>

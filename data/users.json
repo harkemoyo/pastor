@@ -1,0 +1,14 @@
+[
+  {
+    "email": "pastor.james@church.org",
+    "password": "demo1234",
+    "full_name": "Pastor James Okonkwo",
+    "role": "student"
+  },
+  {
+    "email": "admin@pastorslms.com",
+    "password": "admin1234",
+    "full_name": "Admin User",
+    "role": "admin"
+  }
+]

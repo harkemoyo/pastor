@@ -1,0 +1,230 @@
+/* ==========================================================================
+   PASTORS LMS — LOGIN PORTAL STYLING
+   Prestigious Academic & Liturgical Theme (Clean SVG & Geometry)
+   ========================================================================== */
+
+.login-viewport {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  background: radial-gradient(circle at 50% 20%, #3B0E3C 0%, #200521 55%, #110212 100%);
+  padding: 32px 16px;
+  overflow: hidden;
+}
+
+/* Subtle Sacred Pattern Backdrop */
+.login-bg-pattern {
+  position: absolute;
+  inset: 0;
+  background-image: url('/images/pattern-bg.svg');
+  background-repeat: repeat;
+  background-size: 80px 80px;
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* Atmospheric Ambient Glowing Orbs */
+.login-glow-1 {
+  position: absolute;
+  width: 550px;
+  height: 550px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(212, 168, 67, 0.18) 0%, rgba(74, 21, 75, 0) 70%);
+  top: -150px;
+  right: -100px;
+  filter: blur(50px);
+  pointer-events: none;
+}
+
+.login-glow-2 {
+  position: absolute;
+  width: 500px;
+  height: 500px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(107, 45, 110, 0.25) 0%, rgba(20, 5, 22, 0) 70%);
+  bottom: -120px;
+  left: -80px;
+  filter: blur(60px);
+  pointer-events: none;
+}
+
+/* Central Login Card */
+.login-card {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  max-width: 480px;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-radius: var(--radius-xl);
+  border: 1px solid rgba(212, 168, 67, 0.35);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.15);
+  padding: 42px 40px;
+  animation: cardFadeIn 0.5s ease-out forwards;
+}
+
+@keyframes cardFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Header & Logo */
+.login-header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.login-logo {
+  height: 58px;
+  width: auto;
+  margin-bottom: 14px;
+}
+
+.login-title {
+  font-size: 1.65rem;
+  font-weight: 800;
+  color: var(--primary-dark);
+  letter-spacing: -0.5px;
+  margin-bottom: 6px;
+}
+
+.login-subtitle {
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+/* Form Controls */
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--font-heading);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-title);
+  margin-bottom: 8px;
+}
+
+.form-label a {
+  font-size: 0.8rem;
+  color: var(--gold-dark);
+  font-weight: 500;
+}
+
+.input-wrapper {
+  position: relative;
+}
+
+.input-icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.form-input {
+  width: 100%;
+  height: 48px;
+  padding: 10px 14px 10px 42px;
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  color: var(--text-main);
+  background-color: #FAFAFC;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-md);
+  transition: var(--transition);
+}
+
+.form-input:focus {
+  outline: none;
+  background-color: #FFFFFF;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3.5px rgba(74, 21, 75, 0.12);
+}
+
+.btn-submit {
+  width: 100%;
+  height: 48px;
+  font-size: 1rem;
+  margin-top: 10px;
+}
+
+/* Demo Credentials Box */
+.demo-box {
+  margin-top: 28px;
+  padding-top: 22px;
+  border-top: 1px solid var(--border-light);
+  text-align: center;
+}
+
+.demo-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 12px;
+}
+
+.demo-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.btn-demo-pill {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 10px 8px;
+  background: var(--bg-app);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: var(--transition);
+  text-align: center;
+}
+
+.btn-demo-pill:hover {
+  background: var(--gold-light);
+  border-color: var(--gold);
+  transform: translateY(-1px);
+}
+
+.btn-demo-pill strong {
+  font-family: var(--font-heading);
+  font-size: 0.84rem;
+  color: var(--primary-dark);
+}
+
+.btn-demo-pill span {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* Footer note */
+.login-footer-note {
+  margin-top: 22px;
+  text-align: center;
+  font-size: 0.76rem;
+  color: var(--text-muted);
+}

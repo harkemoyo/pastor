@@ -1,0 +1,465 @@
+/* ==========================================================================
+   PASTORS LMS — COURSE DETAIL & SIDEBAR STYLING
+   ========================================================================== */
+
+/* Breadcrumb Navigation */
+.breadcrumb-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 18px;
+  font-size: 0.84rem;
+  color: var(--text-muted);
+}
+
+.breadcrumb-nav a {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.breadcrumb-nav a:hover {
+  text-decoration: underline;
+}
+
+.breadcrumb-separator {
+  color: var(--text-light);
+}
+
+.breadcrumb-current {
+  color: var(--text-title);
+  font-weight: 600;
+}
+
+/* Course Hero Banner */
+.course-hero {
+  background: var(--surface);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  margin-bottom: 24px;
+  box-shadow: var(--shadow-sm);
+}
+
+.course-hero-banner-img {
+  position: relative;
+  width: 100%;
+  height: 240px;
+  overflow: hidden;
+  background: #250727;
+}
+
+.course-hero-banner-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.course-hero-content {
+  padding: 24px 30px;
+}
+
+.course-header-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.course-code-tag {
+  font-family: var(--font-heading);
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--gold-dark);
+  background: var(--gold-light);
+  border: 1px solid rgba(212, 168, 67, 0.3);
+  padding: 3px 10px;
+  border-radius: 6px;
+}
+
+.course-dates-info {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.course-detail-title {
+  font-size: 1.85rem;
+  font-weight: 800;
+  color: var(--text-title);
+  margin-bottom: 12px;
+}
+
+.course-detail-desc {
+  font-size: 0.95rem;
+  color: var(--text-body);
+  line-height: 1.6;
+  max-width: 920px;
+  margin-bottom: 20px;
+}
+
+.course-stats-strip {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 14px 20px;
+  background: var(--bg-app);
+  border-radius: var(--radius-md);
+  flex-wrap: wrap;
+}
+
+.course-stat-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.course-stat-item .val {
+  font-family: var(--font-heading);
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--primary-dark);
+}
+
+.course-stat-item .lbl {
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Secondary Course Navigation Tabs (Brightspace style) */
+.course-nav-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 2px solid var(--border);
+  margin-bottom: 24px;
+  overflow-x: auto;
+  padding-bottom: 1px;
+}
+
+.c-tab-btn {
+  padding: 12px 20px;
+  font-family: var(--font-heading);
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  transition: var(--transition);
+  white-space: nowrap;
+}
+
+.c-tab-btn:hover {
+  color: var(--primary);
+}
+
+.c-tab-btn.active {
+  color: var(--primary);
+  font-weight: 700;
+  border-bottom-color: var(--primary);
+}
+
+/* Modules / Units Accordion List */
+.modules-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.module-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  transition: var(--transition);
+}
+
+.module-card:hover {
+  border-color: rgba(74, 21, 75, 0.25);
+}
+
+.module-header {
+  padding: 18px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  background: #FFFFFF;
+  user-select: none;
+}
+
+.module-title-col {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.module-badge {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--primary-subtle);
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-heading);
+  font-weight: 800;
+  font-size: 0.88rem;
+  flex-shrink: 0;
+}
+
+.module-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-title);
+}
+
+.module-progress-col {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.module-progress-text {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.module-progress-text strong {
+  color: var(--primary);
+}
+
+.module-toggle-arrow {
+  color: var(--text-light);
+  transition: transform 0.2s ease;
+}
+
+.module-card.expanded .module-toggle-arrow {
+  transform: rotate(180deg);
+}
+
+/* Module Topics / Lessons Inside Accordion */
+.module-topics {
+  padding: 0 24px 20px 24px;
+  border-top: 1px solid var(--border-light);
+  background: var(--surface-alt);
+}
+
+.topics-list {
+  list-style: none;
+  padding-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.topic-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: #FFFFFF;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  transition: var(--transition);
+}
+
+.topic-item:hover {
+  border-color: var(--primary-light);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.topic-item.completed {
+  background: #F8FCF9;
+  border-color: #C8E6D3;
+}
+
+.topic-title-area {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.topic-type-icon {
+  color: var(--text-muted);
+}
+
+.topic-name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-title);
+}
+
+.topic-duration {
+  font-size: 0.78rem;
+  color: var(--text-light);
+  margin-left: 6px;
+}
+
+.btn-topic-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  border: 1.5px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.btn-topic-check:hover {
+  border-color: var(--success);
+  color: var(--success);
+  background: var(--success-bg);
+}
+
+.topic-item.completed .btn-topic-check {
+  background: var(--success);
+  color: #FFFFFF;
+  border-color: var(--success);
+}
+
+/* ==========================================================================
+   SIDEBAR ("WORK TO DO" & ACTIVITY LIST)
+   ========================================================================== */
+
+.sidebar-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 22px;
+  box-shadow: var(--shadow-sm);
+}
+
+.sidebar-title {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--text-title);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.sidebar-count-badge {
+  background: var(--gold-light);
+  color: var(--gold-dark);
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 12px;
+}
+
+.task-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.task-card {
+  padding: 14px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  background: #FFFFFF;
+  transition: var(--transition);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.task-card:hover {
+  border-color: var(--gold);
+  transform: translateX(2px);
+  box-shadow: var(--shadow-sm);
+}
+
+.task-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.task-type-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 4px;
+  letter-spacing: 0.4px;
+}
+
+.task-type-badge.forum {
+  background: #EAF2FB;
+  color: #1D5DA3;
+}
+
+.task-type-badge.quiz {
+  background: #FEF4E8;
+  color: #B76510;
+}
+
+.task-type-badge.assignment {
+  background: #F3E8FB;
+  color: #6C1DB7;
+}
+
+.task-due {
+  font-size: 0.76rem;
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.task-title {
+  font-family: var(--font-heading);
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text-title);
+  line-height: 1.3;
+}
+
+.task-course-code {
+  font-size: 0.76rem;
+  color: var(--text-muted);
+}
+
+/* Ministry Resource Help Box in Sidebar */
+.ministry-help-box {
+  margin-top: 20px;
+  background: linear-gradient(135deg, #F8F3F9 0%, #F5ECF7 100%);
+  border: 1px solid #DFCCE4;
+  border-radius: var(--radius-md);
+  padding: 16px;
+}
+
+.help-box-title {
+  font-family: var(--font-heading);
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--primary-dark);
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.help-box-text {
+  font-size: 0.8rem;
+  color: #553958;
+  line-height: 1.45;
+  margin-bottom: 10px;
+}

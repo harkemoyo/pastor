@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 60" fill="none">
+  <!-- Crest Icon -->
+  <g transform="translate(4, 4)">
+    <!-- Shield / Crest Background -->
+    <path d="M26 2C39 2 48 9 50 24C50 40 26 50 26 50C26 50 2 40 2 24C4 9 13 2 26 2Z" fill="#360C38" stroke="#E5BA5A" stroke-width="2.5" stroke-linejoin="round"/>
+    
+    <!-- Open Book / Bible Pages -->
+    <path d="M14 26C18 24 23 24 26 27C29 24 34 24 38 26V39C34 37 29 37 26 40C23 37 18 37 14 39V26Z" fill="#FAF6EE" stroke="#E5BA5A" stroke-width="1.2"/>
+    <path d="M26 27V40" stroke="#E5BA5A" stroke-width="1.2"/>
+    
+    <!-- Central Latin Cross -->
+    <path d="M26 10V24M21 15H31" stroke="#E5BA5A" stroke-width="2.5" stroke-linecap="round"/>
+    
+    <!-- Radiant Star / Light -->
+    <circle cx="26" cy="7" r="1.5" fill="#FFEAA7"/>
+  </g>
+  
+  <!-- Typography -->
+  <text x="68" y="27" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Inter', sans-serif" font-size="20" font-weight="800" fill="#FFFFFF" letter-spacing="0.5">PASTORS<tspan fill="#E5BA5A"> LMS</tspan></text>
+  <text x="68" y="44" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Inter', sans-serif" font-size="10.5" font-weight="600" fill="#D6B8E0" letter-spacing="1.2">EQUIPPING FAITHFUL SHEPHERDS</text>
+</svg>

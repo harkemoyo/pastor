@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 80 80">
+  <path d="M40 0 L40 80 M0 40 L80 40" stroke="rgba(212,168,67,0.06)" stroke-width="1"/>
+  <circle cx="40" cy="40" r="16" fill="none" stroke="rgba(212,168,67,0.08)" stroke-width="1"/>
+  <circle cx="40" cy="40" r="28" fill="none" stroke="rgba(255,255,255,0.03)" stroke-width="1"/>
+  <path d="M40 32 V48 M32 40 H48" stroke="rgba(212,168,67,0.12)" stroke-width="1.5" stroke-linecap="round"/>
+  <!-- Corner crosses -->
+  <path d="M0 0 L0 6 M-3 3 H3" stroke="rgba(212,168,67,0.06)" stroke-width="1"/>
+  <path d="M80 0 L80 6 M77 3 H83" stroke="rgba(212,168,67,0.06)" stroke-width="1"/>
+  <path d="M0 80 L0 74 M-3 77 H3" stroke="rgba(212,168,67,0.06)" stroke-width="1"/>
+  <path d="M80 80 L80 74 M77 77 H83" stroke="rgba(212,168,67,0.06)" stroke-width="1"/>
+</svg>

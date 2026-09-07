@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" width="100%" height="100%">
+  <defs>
+    <linearGradient id="theoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#240727" />
+      <stop offset="50%" stop-color="#431446" />
+      <stop offset="100%" stop-color="#5E1B63" />
+    </linearGradient>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFEAA7" />
+      <stop offset="50%" stop-color="#D4A843" />
+      <stop offset="100%" stop-color="#996E14" />
+    </linearGradient>
+    <linearGradient id="lightBeam" x1="50%" y1="0%" x2="50%" y2="100%">
+      <stop offset="0%" stop-color="#FFF4D0" stop-opacity="0.3" />
+      <stop offset="100%" stop-color="#FFF4D0" stop-opacity="0" />
+    </linearGradient>
+    <pattern id="subtleGrid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
+      <circle cx="20" cy="20" r="1" fill="rgba(212,168,67,0.15)"/>
+    </pattern>
+  </defs>
+
+  <!-- Background -->
+  <rect width="800" height="450" fill="url(#theoGrad)"/>
+  <rect width="800" height="450" fill="url(#subtleGrid)"/>
+
+  <!-- Divine Radiance Rays -->
+  <polygon points="400,20 220,450 580,450" fill="url(#lightBeam)"/>
+  <polygon points="400,20 310,450 490,450" fill="url(#lightBeam)"/>
+
+  <!-- Sacred Geometry / Celestial Rings -->
+  <circle cx="400" cy="185" r="140" fill="none" stroke="rgba(212,168,67,0.18)" stroke-width="1.5" stroke-dasharray="6,6"/>
+  <circle cx="400" cy="185" r="110" fill="none" stroke="rgba(212,168,67,0.25)" stroke-width="1"/>
+  <circle cx="400" cy="185" r="85" fill="none" stroke="rgba(212,168,67,0.35)" stroke-width="1"/>
+
+  <!-- Latin Cross at Top -->
+  <path d="M400 55 V115 M380 75 H420" stroke="url(#goldGrad)" stroke-width="4.5" stroke-linecap="round"/>
+  <circle cx="400" cy="50" r="3" fill="#FFEAA7"/>
+
+  <!-- Open Bible Illustration -->
+  <g transform="translate(400, 205)">
+    <!-- Book Shadow -->
+    <ellipse cx="0" cy="85" rx="140" ry="18" fill="rgba(0,0,0,0.35)"/>
+    
+    <!-- Left Page Base -->
+    <path d="M0 65 C -45 50 -110 52 -135 68 L -135 -15 C -110 -30 -45 -28 0 -10 Z" fill="#FAF6EE"/>
+    <!-- Right Page Base -->
+    <path d="M0 65 C 45 50 110 52 135 68 L 135 -15 C 110 -30 45 -28 0 -10 Z" fill="#F4EEDF"/>
+    
+    <!-- Spine Gold Accent -->
+    <path d="M-2 -12 L2 -12 L2 66 L-2 66 Z" fill="url(#goldGrad)"/>
+    
+    <!-- Page Turn Depth Lines -->
+    <path d="M-135 68 C-105 56 -50 54 0 68" fill="none" stroke="#D8CAAF" stroke-width="1.5"/>
+    <path d="M135 68 C105 56 50 54 0 68" fill="none" stroke="#D8CAAF" stroke-width="1.5"/>
+    
+    <!-- Scripture Text Mock Lines (Left) -->
+    <line x1="-115" y1="2" x2="-20" y2="2" stroke="#4A154B" stroke-width="2.5" stroke-linecap="round" opacity="0.75"/>
+    <line x1="-115" y1="14" x2="-25" y2="14" stroke="#85648A" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
+    <line x1="-115" y1="24" x2="-20" y2="24" stroke="#85648A" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
+    <line x1="-115" y1="34" x2="-35" y2="34" stroke="#85648A" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
+    <line x1="-115" y1="44" x2="-20" y2="44" stroke="#85648A" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
+
+    <!-- Scripture Text Mock Lines (Right) -->
+    <line x1="20" y1="2" x2="115" y2="2" stroke="#4A154B" stroke-width="2.5" stroke-linecap="round" opacity="0.75"/>
+    <line x1="25" y1="14" x2="115" y2="14" stroke="#85648A" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
+    <line x1="20" y1="24" x2="115" y2="24" stroke="#85648A" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
+    <line x1="20" y1="34" x2="100" y2="34" stroke="#85648A" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
+    <line x1="20" y1="44" x2="115" y2="44" stroke="#85648A" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
+
+    <!-- Bookmark Ribbon -->
+    <path d="M0 65 L 12 110 L 22 96 L 32 110 L 25 65 Z" fill="url(#goldGrad)"/>
+  </g>
+
+  <!-- Bottom Dark Banner Overlay with Clean Badge -->
+  <rect y="365" width="800" height="85" fill="rgba(18, 4, 20, 0.88)"/>
+  <line x1="0" y1="365" x2="800" y2="365" stroke="url(#goldGrad)" stroke-width="2"/>
+  
+  <text x="35" y="402" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="20" font-weight="800" fill="#FFFFFF" letter-spacing="0.8">SOUND DOCTRINE &amp; BIBLICAL THEOLOGY</text>
+  <text x="35" y="426" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="600" fill="#D4A843" letter-spacing="1.5">THEO 101 • HERMENEUTICS &amp; EXEGESIS • AY2027-T1</text>
+  
+  <g transform="translate(710, 390)">
+    <rect x="-15" y="-14" width="75" height="30" rx="15" fill="rgba(212,168,67,0.2)" stroke="#D4A843" stroke-width="1"/>
+    <text x="22" y="5" font-family="sans-serif" font-size="11" font-weight="700" fill="#FFEAA7" text-anchor="middle">ACTIVE</text>
+  </g>
+</svg>
