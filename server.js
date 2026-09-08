@@ -5,6 +5,7 @@ const path = require('path');
 const { attachUser } = require('./middleware/auth');
 const authRoutes = require('./routes/auth');
 const coursesRoutes = require('./routes/courses');
+const adminRoutes = require('./routes/admin');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -28,7 +29,8 @@ app.use(session({
   cookie: {
     maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
     httpOnly: true,
-    sameSite: 'lax'
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production' // Use secure cookies in production
   }
 }));
 
@@ -38,13 +40,14 @@ app.use(attachUser);
 // Routes
 app.use('/', authRoutes);
 app.use('/', coursesRoutes);
+app.use('/admin', adminRoutes);
 
 // 404 handler
 app.use((req, res) => {
   res.status(404).render('login', {
     error: 'The requested page was not found (404).',
     title: 'Page Not Found | Pastors LMS',
-    email: ''
+    username: ''
   });
 });
 
@@ -54,11 +57,18 @@ app.use((err, req, res, next) => {
   res.status(500).send('Internal Server Error. Please refresh or try again.');
 });
 
-app.listen(PORT, () => {
-  console.log(`\n======================================================`);
-  console.log(`  ✝ PASTORS LMS — Theological Training Portal`);
-  console.log(`  🚀 Server running at: http://localhost:${PORT}`);
-  console.log(`  🔑 Demo student: pastor.james@church.org (pass: demo1234)`);
-  console.log(`  🛡️ Demo admin:   admin@pastorslms.com (pass: admin1234)`);
-  console.log(`======================================================\n`);
-});
+// Only start the server if not running in Vercel environment
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`\n======================================================`);
+    console.log(`  ✝ PASTORS LMS — Theological Training Portal`);
+    console.log(`  🚀 Server running at: http://localhost:${PORT}`);
+    console.log(`  🔑 Demo student: p1001234 (pass: demo1234)`);
+    console.log(`  🛡️ Demo admin:   a1000001 (pass: admin1234)`);
+    console.log(`  👥 Admin panel:   http://localhost:${PORT}/admin/users`);
+    console.log(`======================================================\n`);
+  });
+}
+
+// Export app for Vercel
+module.exports = app;

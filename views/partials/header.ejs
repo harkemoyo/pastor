@@ -58,6 +58,9 @@
             <div class="user-role"><%= user.role === 'admin' ? 'Curriculum Admin' : 'Pastor / Scholar' %></div>
           </div>
         </div>
+        <% if (user.role === 'admin') { %>
+          <a href="/admin/users" class="btn-admin-link" title="Manage Users">Admin</a>
+        <% } %>
         <a href="/logout" class="btn-logout-link" title="Sign out of Pastors LMS">Logout</a>
       <% } else { %>
         <a href="/login" class="btn btn-gold btn-sm">Sign In</a>

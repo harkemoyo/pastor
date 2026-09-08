@@ -51,8 +51,33 @@ npm run seed       # Seed database with initial data
 
 ## Demo Credentials
 
-- **Student**: pastor.james@church.org / demo1234
-- **Admin**: admin@pastorslms.com / admin1234
+- **Student**: p1001234 / demo1234
+- **Admin**: a1000001 / admin1234
+
+## Deployment
+
+### Vercel Deployment
+
+1. Push your code to GitHub
+2. Import the project in Vercel
+3. Configure environment variables:
+   - `SUPABASE_URL`: Your Supabase project URL
+   - `SUPABASE_ANON_KEY`: Your Supabase anon key
+   - `SESSION_SECRET`: Generate a secure random string
+   - `PORT`: Leave empty (Vercel sets this automatically)
+4. Deploy
+
+### Environment Variables for Vercel
+
+The following environment variables should be configured in Vercel:
+
+```
+SUPABASE_URL=your-supabase-project-url
+SUPABASE_ANON_KEY=your-supabase-anon-key
+SESSION_SECRET=generate-a-secure-random-string
+```
+
+**Note**: The `.env` file is in `.gitignore` and should not be committed to GitHub. Configure these variables directly in Vercel's dashboard.
 
 ## Project Structure
 

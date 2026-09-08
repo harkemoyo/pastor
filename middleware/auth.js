@@ -10,6 +10,9 @@ function requireAuth(req, res, next) {
 }
 
 function requireAdmin(req, res, next) {
+  console.log('Admin check - Session user:', req.session?.user);
+  console.log('Admin check - User role:', req.session?.user?.role);
+  
   if (req.session && req.session.user && req.session.user.role === 'admin') {
     return next();
   }
