@@ -137,6 +137,30 @@
                     </div>
                     <small class="form-hint">Username cannot be changed</small>
                   </div>
+
+                  <div class="form-group">
+                    <label class="form-label">Account Status</label>
+                    <div class="login-details">
+                      <div class="detail-item">
+                        <span class="detail-label">Status:</span>
+                        <span class="detail-value status-badge <%= userData.approval_status %>">
+                          <%= userData.approval_status.charAt(0).toUpperCase() + userData.approval_status.slice(1) %>
+                        </span>
+                      </div>
+                      <div class="detail-item">
+                        <span class="detail-label">Created:</span>
+                        <span class="detail-value">
+                          <%= new Date(userData.created_at).toLocaleDateString() %>
+                        </span>
+                      </div>
+                      <div class="detail-item">
+                        <span class="detail-label">Role:</span>
+                        <span class="detail-value">
+                          <%= userData.role.charAt(0).toUpperCase() + userData.role.slice(1) %>
+                        </span>
+                      </div>
+                    </div>
+                  </div>
                   <% } %>
 
                     <div class="form-actions">
@@ -178,6 +202,58 @@
       .btn-secondary {
         background: #6b7280;
         color: white;
+      }
+
+      .login-details {
+        background: var(--bg-app);
+        border: 1px solid var(--border-light);
+        border-radius: var(--radius-md);
+        padding: 16px;
+      }
+
+      .detail-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 8px 0;
+        border-bottom: 1px solid var(--border-light);
+      }
+
+      .detail-item:last-child {
+        border-bottom: none;
+      }
+
+      .detail-label {
+        font-weight: 500;
+        color: var(--text-muted);
+      }
+
+      .detail-value {
+        font-weight: 600;
+        color: var(--text-title);
+      }
+
+      .status-badge {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+      }
+
+      .status-badge.approved {
+        background: var(--success-bg);
+        color: var(--success);
+      }
+
+      .status-badge.pending {
+        background: rgba(212, 168, 67, 0.2);
+        color: var(--gold-dark);
+      }
+
+      .status-badge.rejected {
+        background: rgba(235, 60, 80, 0.2);
+        color: #EB3C50;
       }
     </style>
 </body>

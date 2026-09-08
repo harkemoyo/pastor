@@ -16,7 +16,9 @@ function requireAdmin(req, res, next) {
   if (req.session && req.session.user && req.session.user.role === 'admin') {
     return next();
   }
-  return res.status(403).send('Access denied. Administrator privileges required.');
+  
+  // If not admin, redirect to login with error message
+  return res.redirect('/login?error=admin_required');
 }
 
 function attachUser(req, res, next) {

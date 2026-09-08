@@ -20,8 +20,14 @@ router.get('/login', (req, res) => {
   if (req.session && req.session.user) {
     return res.redirect('/');
   }
+  
+  let error = null;
+  if (req.query.error === 'admin_required') {
+    error = 'Administrator access required. Please sign in with an admin account.';
+  }
+  
   res.render('login', {
-    error: null,
+    error: error,
     title: 'Sign In | Pastors LMS',
     username: req.query.username || ''
   });
@@ -141,6 +147,8 @@ router.post('/login', async (req, res) => {
     });
   }
 
+  console.log('Login attempt for username:', cleanUsername);
+
   // 1. Try Supabase Auth if configured
   if (supabase) {
     try {
@@ -162,6 +170,7 @@ router.post('/login', async (req, res) => {
           role: data.user.user_metadata?.role || 'student',
           initials: (data.user.user_metadata?.full_name || 'Pastor').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
         };
+        console.log('Supabase login successful for:', cleanUsername);
         return req.session.save(() => res.redirect('/'));
       }
     } catch (err) {
@@ -174,9 +183,12 @@ router.post('/login', async (req, res) => {
   const users = getUsers();
   const matchedUser = users.find(u => u.username === cleanUsername && u.password === cleanPass);
 
+  console.log('Matched user:', matchedUser ? matchedUser.username : 'none');
+
   if (matchedUser) {
     // Check approval status
     if (matchedUser.approval_status !== 'approved') {
+      console.log('User not approved:', matchedUser.approval_status);
       return res.render('login', {
         error: `Your application is currently ${matchedUser.approval_status}. Please contact your administrator for approval.`,
         title: 'Sign In | Pastors LMS',
@@ -200,12 +212,15 @@ router.post('/login', async (req, res) => {
       initials: initials || 'P'
     };
 
+    console.log('Local login successful for:', cleanUsername, 'with role:', matchedUser.role);
+
     return req.session.save(() => {
       res.redirect('/');
     });
   }
 
   // Failed login
+  console.log('Login failed for:', cleanUsername);
   return res.render('login', {
     error: 'Invalid username or password. Please contact your administrator if you need account access.',
     title: 'Sign In | Pastors LMS',
@@ -326,130 +341,6 @@ router.get('/auth/google/callback', async (req, res) => {
   } catch (err) {
     console.error('Google OAuth callback error:', err);
     res.redirect('/login');
-  }
-});
-
-// GET /register
-router.get('/register', (req, res) => {
-  if (req.session && req.session.user) {
-    return res.redirect('/');
-  }
-  res.render('login', {
-    error: null,
-    title: 'Create Account | Pastors LMS',
-    email: '',
-    isRegister: true
-  });
-});
-
-// POST /register
-router.post('/register', async (req, res) => {
-  const { email, password, full_name } = req.body;
-  const cleanEmail = (email || '').trim().toLowerCase();
-  const cleanPass = (password || '').trim();
-  const cleanName = (full_name || '').trim();
-
-  if (!cleanEmail || !cleanPass || !cleanName) {
-    return res.render('login', {
-      error: 'Please fill in all fields.',
-      title: 'Create Account | Pastors LMS',
-      email: cleanEmail,
-      isRegister: true
-    });
-  }
-
-  if (cleanPass.length < 6) {
-    return res.render('login', {
-      error: 'Password must be at least 6 characters.',
-      title: 'Create Account | Pastors LMS',
-      email: cleanEmail,
-      isRegister: true
-    });
-  }
-
-  // 1. Try Supabase Auth registration
-  if (supabase) {
-    try {
-      const { data, error } = await supabase.auth.signUp({
-        email: cleanEmail,
-        password: cleanPass,
-        options: {
-          data: {
-            full_name: cleanName,
-            role: 'student'
-          }
-        }
-      });
-
-      if (error) {
-        throw error;
-      }
-
-      if (data.user) {
-        req.session.user = {
-          id: data.user.id,
-          email: data.user.email,
-          full_name: cleanName,
-          role: 'student',
-          initials: cleanName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
-        };
-        return req.session.save(() => res.redirect('/'));
-      }
-    } catch (err) {
-      console.warn('Supabase registration failed:', err.message);
-      return res.render('login', {
-        error: err.message || 'Registration failed. Please try again.',
-        title: 'Create Account | Pastors LMS',
-        email: cleanEmail,
-        isRegister: true
-      });
-    }
-  }
-
-  // 2. Local Fallback Registration
-  const users = getUsers();
-  const existingUser = users.find(u => u.email.toLowerCase() === cleanEmail);
-
-  if (existingUser) {
-    return res.render('login', {
-      error: 'An account with this email already exists.',
-      title: 'Create Account | Pastors LMS',
-      email: cleanEmail,
-      isRegister: true
-    });
-  }
-
-  const newUser = {
-    email: cleanEmail,
-    password: cleanPass,
-    full_name: cleanName,
-    role: 'student'
-  };
-
-  users.push(newUser);
-
-  try {
-    fs.writeFileSync(path.join(__dirname, '../data/users.json'), JSON.stringify(users, null, 2));
-    
-    const initials = cleanName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
-    
-    req.session.user = {
-      id: cleanEmail,
-      email: cleanEmail,
-      full_name: cleanName,
-      role: 'student',
-      initials: initials || 'P'
-    };
-
-    return req.session.save(() => res.redirect('/'));
-  } catch (err) {
-    console.error('Error saving user:', err);
-    return res.render('login', {
-      error: 'Failed to create account. Please try again.',
-      title: 'Create Account | Pastors LMS',
-      email: cleanEmail,
-      isRegister: true
-    });
   }
 });
 

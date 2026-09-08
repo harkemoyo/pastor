@@ -30,7 +30,7 @@ app.use(session({
     maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
     httpOnly: true,
     sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production' // Use secure cookies in production
+    secure: false // Set to false for local development
   }
 }));
 

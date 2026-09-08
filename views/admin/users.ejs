@@ -18,7 +18,10 @@
     <main class="main-content">
       <div class="dashboard-header">
         <h1>User Management</h1>
-        <p>Create and manage user accounts for pastors and administrators</p>
+        <div class="header-actions">
+          <a href="/admin/courses" class="btn btn-outline">Manage Courses</a>
+          <a href="/admin/users/new" class="btn btn-primary">Create New User</a>
+        </div>
       </div>
 
       <% if (typeof error !=='undefined' && error) { %>
