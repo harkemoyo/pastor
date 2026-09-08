@@ -156,9 +156,11 @@ function initDemoLoginButtons() {
     btn.addEventListener('click', () => {
       const email = btn.getAttribute('data-email');
       const pass = btn.getAttribute('data-pass');
-      emailInput.value = email;
-      passInput.value = pass;
-      loginForm.submit();
+      if (email && pass) {
+        emailInput.value = email;
+        passInput.value = pass;
+        loginForm.submit();
+      }
     });
   });
 }
