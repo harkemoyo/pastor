@@ -1,193 +1,185 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title><%= title || 'User Form | Pastors LMS' %></title>
+  <title>
+    <%= title || 'User Form | Pastors LMS' %>
+  </title>
   <link rel="stylesheet" href="/css/global.css">
   <link rel="stylesheet" href="/css/dashboard.css">
+  <link rel="icon" type="image/x-icon" href="/images/favicon.ico">
 </head>
+
 <body class="app-container">
   <%- include('../partials/header') %>
 
-  <main class="main-content">
-    <div class="dashboard-header">
-      <h1><%= mode === 'create' ? 'Create New User' : 'Edit User' %></h1>
-      <p><%= mode === 'create' ? 'Create a new user account for pastors or administrators' : 'Update user account information' %></p>
-    </div>
-
-    <% if (typeof error !== 'undefined' && error) { %>
-      <div class="alert alert-danger" role="alert">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-          <circle cx="12" cy="12" r="10"/>
-          <line x1="12" y1="8" x2="12" y2="12"/>
-          <line x1="12" y1="16" x2="12.01" y2="16"/>
-        </svg>
-        <div><%= error %></div>
+    <main class="main-content">
+      <div class="dashboard-header">
+        <h1>
+          <%= mode==='create' ? 'Create New User' : 'Edit User' %>
+        </h1>
+        <p>
+          <%= mode==='create' ? 'Create a new user account for pastors or administrators'
+            : 'Update user account information' %>
+        </p>
       </div>
-    <% } %>
 
-    <div class="form-container">
-      <form action="<%= mode === 'create' ? '/admin/users/new' : '/admin/users/' + userData.username + '/edit' %>" method="POST">
-        <div class="form-group">
-          <label class="form-label" for="full_name">Full Name</label>
-          <div class="input-wrapper">
-            <span class="input-icon">
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                <circle cx="12" cy="7" r="4"/>
-              </svg>
-            </span>
-            <input 
-              type="text" 
-              id="full_name" 
-              name="full_name" 
-              class="form-input" 
-              placeholder="Enter full name" 
-              value="<%= mode === 'edit' && userData ? userData.full_name : '' %>" 
-              required
-            >
+      <% if (typeof error !=='undefined' && error) { %>
+        <div class="alert alert-danger" role="alert">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
+          <div>
+            <%= error %>
           </div>
         </div>
-
-        <div class="form-group">
-          <label class="form-label" for="email">Email Address</label>
-          <div class="input-wrapper">
-            <span class="input-icon">
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect width="20" height="16" x="2" y="4" rx="2"/>
-                <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
-              </svg>
-            </span>
-            <input 
-              type="email" 
-              id="email" 
-              name="email" 
-              class="form-input" 
-              placeholder="user@example.com" 
-              value="<%= mode === 'edit' && userData ? userData.email : '' %>" 
-              required
-            >
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label class="form-label" for="role">Role</label>
-          <div class="input-wrapper">
-            <span class="input-icon">
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-              </svg>
-            </span>
-            <select id="role" name="role" class="form-input" required>
-              <option value="">Select role</option>
-              <option value="student" <%= mode === 'edit' && userData && userData.role === 'student' ? 'selected' : '' %>>Student</option>
-              <option value="admin" <%= mode === 'edit' && userData && userData.role === 'admin' ? 'selected' : '' %>>Administrator</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label class="form-label" for="password">
-            <%= mode === 'create' ? 'Password' : 'Password (leave blank to keep current)' %>
-          </label>
-          <div class="input-wrapper">
-            <span class="input-icon">
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>
-                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-              </svg>
-            </span>
-            <input 
-              type="password" 
-              id="password" 
-              name="password" 
-              class="form-input" 
-              placeholder="<%= mode === 'create' ? 'Enter password' : 'Leave blank to keep current password' %>" 
-              <%= mode === 'create' ? 'required' : '' %>
-            >
-          </div>
-        </div>
-
-        <% if (mode === 'create') { %>
-          <div class="form-group">
-            <label class="form-label">Username (Auto-generated)</label>
-            <div class="input-wrapper">
-              <span class="input-icon">
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                  <circle cx="12" cy="7" r="4"/>
-                </svg>
-              </span>
-              <input 
-                type="text" 
-                class="form-input" 
-                placeholder="Auto-generated based on role" 
-                disabled
-              >
-            </div>
-            <small class="form-hint">Username will be automatically generated (e.g., p1001234 for students, a1000001 for admins)</small>
-          </div>
-        <% } else { %>
-          <div class="form-group">
-            <label class="form-label">Username</label>
-            <div class="input-wrapper">
-              <span class="input-icon">
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                  <circle cx="12" cy="7" r="4"/>
-                </svg>
-              </span>
-              <input 
-                type="text" 
-                class="form-input" 
-                value="<%= userData.username %>" 
-                disabled
-              >
-            </div>
-            <small class="form-hint">Username cannot be changed</small>
-          </div>
         <% } %>
 
-        <div class="form-actions">
-          <button type="submit" class="btn btn-primary">
-            <%= mode === 'create' ? 'Create User' : 'Update User' %>
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-              <polyline points="9 18 15 12 9 6"/>
-            </svg>
-          </button>
-          <a href="/admin/users" class="btn btn-secondary">Cancel</a>
-        </div>
-      </form>
-    </div>
-  </main>
+          <div class="form-container">
+            <form action="<%= mode === 'create' ? '/admin/users/new' : '/admin/users/' + userData.username + '/edit' %>"
+              method="POST">
+              <div class="form-group">
+                <label class="form-label" for="full_name">Full Name</label>
+                <div class="input-wrapper">
+                  <span class="input-icon">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                      <circle cx="12" cy="7" r="4" />
+                    </svg>
+                  </span>
+                  <input type="text" id="full_name" name="full_name" class="form-input" placeholder="Enter full name"
+                    value="<%= mode === 'edit' && userData ? userData.full_name : '' %>" required>
+                </div>
+              </div>
 
-  <style>
-    .form-container {
-      max-width: 600px;
-      background: white;
-      padding: 2rem;
-      border-radius: 8px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    }
-    
-    .form-hint {
-      display: block;
-      margin-top: 0.5rem;
-      color: #6b7280;
-      font-size: 0.875rem;
-    }
-    
-    .form-actions {
-      display: flex;
-      gap: 1rem;
-      margin-top: 2rem;
-    }
-    
-    .btn-secondary {
-      background: #6b7280;
-      color: white;
-    }
-  </style>
+              <div class="form-group">
+                <label class="form-label" for="email">Email Address</label>
+                <div class="input-wrapper">
+                  <span class="input-icon">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <rect width="20" height="16" x="2" y="4" rx="2" />
+                      <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+                    </svg>
+                  </span>
+                  <input type="email" id="email" name="email" class="form-input" placeholder="user@example.com"
+                    value="<%= mode === 'edit' && userData ? userData.email : '' %>" required>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="role">Role</label>
+                <div class="input-wrapper">
+                  <span class="input-icon">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                    </svg>
+                  </span>
+                  <select id="role" name="role" class="form-input" required>
+                    <option value="">Select role</option>
+                    <option value="student" <%=mode==='edit' && userData && userData.role==='student' ? 'selected' : ''
+                      %>>Student</option>
+                    <option value="admin" <%=mode==='edit' && userData && userData.role==='admin' ? 'selected' : '' %>
+                      >Administrator</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="password">
+                  <%= mode==='create' ? 'Password' : 'Password (leave blank to keep current)' %>
+                </label>
+                <div class="input-wrapper">
+                  <span class="input-icon">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
+                      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                    </svg>
+                  </span>
+                  <input type="password" id="password" name="password" class="form-input"
+                    placeholder="<%= mode === 'create' ? 'Enter password' : 'Leave blank to keep current password' %>"
+                    <%=mode==='create' ? 'required' : '' %>
+                  >
+                </div>
+              </div>
+
+              <% if (mode==='create' ) { %>
+                <div class="form-group">
+                  <label class="form-label">Username (Auto-generated)</label>
+                  <div class="input-wrapper">
+                    <span class="input-icon">
+                      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                        <circle cx="12" cy="7" r="4" />
+                      </svg>
+                    </span>
+                    <input type="text" class="form-input" placeholder="Auto-generated based on role" disabled>
+                  </div>
+                  <small class="form-hint">Username will be automatically generated (e.g., p1001234 for students,
+                    a1000001 for admins)</small>
+                </div>
+                <% } else { %>
+                  <div class="form-group">
+                    <label class="form-label">Username</label>
+                    <div class="input-wrapper">
+                      <span class="input-icon">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                          stroke-width="2">
+                          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                          <circle cx="12" cy="7" r="4" />
+                        </svg>
+                      </span>
+                      <input type="text" class="form-input" value="<%= userData.username %>" disabled>
+                    </div>
+                    <small class="form-hint">Username cannot be changed</small>
+                  </div>
+                  <% } %>
+
+                    <div class="form-actions">
+                      <button type="submit" class="btn btn-primary">
+                        <%= mode==='create' ? 'Create User' : 'Update User' %>
+                          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2.5">
+                            <polyline points="9 18 15 12 9 6" />
+                          </svg>
+                      </button>
+                      <a href="/admin/users" class="btn btn-secondary">Cancel</a>
+                    </div>
+            </form>
+          </div>
+    </main>
+
+    <style>
+      .form-container {
+        max-width: 600px;
+        background: white;
+        padding: 2rem;
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      }
+
+      .form-hint {
+        display: block;
+        margin-top: 0.5rem;
+        color: #6b7280;
+        font-size: 0.875rem;
+      }
+
+      .form-actions {
+        display: flex;
+        gap: 1rem;
+        margin-top: 2rem;
+      }
+
+      .btn-secondary {
+        background: #6b7280;
+        color: white;
+      }
+    </style>
 </body>
+
 </html>

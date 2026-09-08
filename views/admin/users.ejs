@@ -1,296 +1,339 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title><%= title || 'User Management | Pastors LMS' %></title>
+  <title>
+    <%= title || 'User Management | Pastors LMS' %>
+  </title>
   <link rel="stylesheet" href="/css/global.css">
   <link rel="stylesheet" href="/css/dashboard.css">
+  <link rel="icon" type="image/x-icon" href="/images/favicon.ico">
 </head>
+
 <body class="app-container">
   <%- include('../partials/header') %>
 
-  <main class="main-content">
-    <div class="dashboard-header">
-      <h1>User Management</h1>
-      <p>Create and manage user accounts for pastors and administrators</p>
-    </div>
-
-    <% if (typeof error !== 'undefined' && error) { %>
-      <div class="alert alert-danger" role="alert">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-          <circle cx="12" cy="12" r="10"/>
-          <line x1="12" y1="8" x2="12" y2="12"/>
-          <line x1="12" y1="16" x2="12.01" y2="16"/>
-        </svg>
-        <div><%= error %></div>
+    <main class="main-content">
+      <div class="dashboard-header">
+        <h1>User Management</h1>
+        <p>Create and manage user accounts for pastors and administrators</p>
       </div>
-    <% } %>
 
-    <div class="admin-toolbar">
-      <a href="/admin/users/new" class="btn btn-primary">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-          <line x1="12" y1="5" x2="12" y2="19"/>
-          <line x1="5" y1="12" x2="19" y2="12"/>
-        </svg>
-        Create New User
-      </a>
-    </div>
+      <% if (typeof error !=='undefined' && error) { %>
+        <div class="alert alert-danger" role="alert">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
+          <div>
+            <%= error %>
+          </div>
+        </div>
+        <% } %>
 
-    <!-- Pending Applications Section -->
-    <% if (pendingUsers && pendingUsers.length > 0) { %>
-      <div class="section-header">
-        <h2>Pending Applications (<%= pendingUsers.length %>)</h2>
-      </div>
-      <div class="user-list">
-        <table class="admin-table">
-          <thead>
-            <tr>
-              <th>Username</th>
-              <th>Full Name</th>
-              <th>Email</th>
-              <th>Applied Date</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <% pendingUsers.forEach(function(user) { %>
-              <tr class="pending-row">
-                <td>
-                  <span class="username-badge"><%= user.username %></span>
-                </td>
-                <td><%= user.full_name %></td>
-                <td><%= user.email %></td>
-                <td><%= user.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A' %></td>
-                <td>
-                  <div class="action-buttons">
-                    <form action="/admin/users/<%= user.username %>/approve" method="POST" class="approve-form">
-                      <button type="submit" class="btn btn-sm btn-success" onclick="return confirm('Approve this application?')">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                          <polyline points="20 6 9 17 4 12"/>
-                        </svg>
-                        Approve
-                      </button>
-                    </form>
-                    <form action="/admin/users/<%= user.username %>/reject" method="POST" class="reject-form">
-                      <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Reject this application?')">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                          <line x1="18" y1="6" x2="6" y2="18"/>
-                          <line x1="6" y1="6" x2="18" y2="18"/>
-                        </svg>
-                        Reject
-                      </button>
-                    </form>
-                  </div>
-                </td>
-              </tr>
-            <% }); %>
-          </tbody>
-        </table>
-      </div>
-    <% } %>
+          <div class="admin-toolbar">
+            <a href="/admin/users/new" class="btn btn-primary">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+              Create New User
+            </a>
+          </div>
 
-    <!-- Approved Users Section -->
-    <div class="section-header">
-      <h2>Approved Users (<%= approvedUsers.length %>)</h2>
-    </div>
-    <div class="user-list">
-      <table class="admin-table">
-        <thead>
-          <tr>
-            <th>Username</th>
-            <th>Full Name</th>
-            <th>Email</th>
-            <th>Role</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          <% approvedUsers.forEach(function(user) { %>
-            <tr>
-              <td>
-                <span class="username-badge"><%= user.username %></span>
-              </td>
-              <td><%= user.full_name %></td>
-              <td><%= user.email %></td>
-              <td>
-                <span class="badge <%= user.role === 'admin' ? 'badge-purple' : 'badge-gold' %>">
-                  <%= user.role.charAt(0).toUpperCase() + user.role.slice(1) %>
-                </span>
-              </td>
-              <td>
-                <div class="action-buttons">
-                  <a href="/admin/users/<%= user.username %>/edit" class="btn btn-sm btn-secondary">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                    </svg>
-                    Edit
-                  </a>
-                  <form action="/admin/users/<%= user.username %>/delete" method="POST" class="delete-form">
-                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to delete this user?')">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polyline points="3 6 5 6 21 6"/>
-                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-                      </svg>
-                      Delete
-                    </button>
-                  </form>
+          <!-- Pending Applications Section -->
+          <% if (pendingUsers && pendingUsers.length> 0) { %>
+            <div class="section-header">
+              <h2>Pending Applications (<%= pendingUsers.length %>)</h2>
+            </div>
+            <div class="user-list">
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th>Username</th>
+                    <th>Full Name</th>
+                    <th>Email</th>
+                    <th>Applied Date</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% pendingUsers.forEach(function(user) { %>
+                    <tr class="pending-row">
+                      <td>
+                        <span class="username-badge">
+                          <%= user.username %>
+                        </span>
+                      </td>
+                      <td>
+                        <%= user.full_name %>
+                      </td>
+                      <td>
+                        <%= user.email %>
+                      </td>
+                      <td>
+                        <%= user.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A' %>
+                      </td>
+                      <td>
+                        <div class="action-buttons">
+                          <form action="/admin/users/<%= user.username %>/approve" method="POST" class="approve-form">
+                            <button type="submit" class="btn btn-sm btn-success"
+                              onclick="return confirm('Approve this application?')">
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <polyline points="20 6 9 17 4 12" />
+                              </svg>
+                              Approve
+                            </button>
+                          </form>
+                          <form action="/admin/users/<%= user.username %>/reject" method="POST" class="reject-form">
+                            <button type="submit" class="btn btn-sm btn-danger"
+                              onclick="return confirm('Reject this application?')">
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <line x1="18" y1="6" x2="6" y2="18" />
+                                <line x1="6" y1="6" x2="18" y2="18" />
+                              </svg>
+                              Reject
+                            </button>
+                          </form>
+                        </div>
+                      </td>
+                    </tr>
+                    <% }); %>
+                </tbody>
+              </table>
+            </div>
+            <% } %>
+
+              <!-- Approved Users Section -->
+              <div class="section-header">
+                <h2>Approved Users (<%= approvedUsers.length %>)</h2>
+              </div>
+              <div class="user-list">
+                <table class="admin-table">
+                  <thead>
+                    <tr>
+                      <th>Username</th>
+                      <th>Full Name</th>
+                      <th>Email</th>
+                      <th>Role</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <% approvedUsers.forEach(function(user) { %>
+                      <tr>
+                        <td>
+                          <span class="username-badge">
+                            <%= user.username %>
+                          </span>
+                        </td>
+                        <td>
+                          <%= user.full_name %>
+                        </td>
+                        <td>
+                          <%= user.email %>
+                        </td>
+                        <td>
+                          <span class="badge <%= user.role === 'admin' ? 'badge-purple' : 'badge-gold' %>">
+                            <%= user.role.charAt(0).toUpperCase() + user.role.slice(1) %>
+                          </span>
+                        </td>
+                        <td>
+                          <div class="action-buttons">
+                            <a href="/admin/users/<%= user.username %>/edit" class="btn btn-sm btn-secondary">
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                              </svg>
+                              Edit
+                            </a>
+                            <form action="/admin/users/<%= user.username %>/delete" method="POST" class="delete-form">
+                              <button type="submit" class="btn btn-sm btn-danger"
+                                onclick="return confirm('Are you sure you want to delete this user?')">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                  stroke-width="2">
+                                  <polyline points="3 6 5 6 21 6" />
+                                  <path
+                                    d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                                </svg>
+                                Delete
+                              </button>
+                            </form>
+                          </div>
+                        </td>
+                      </tr>
+                      <% }); %>
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- Rejected Users Section -->
+              <% if (rejectedUsers && rejectedUsers.length> 0) { %>
+                <div class="section-header">
+                  <h2>Rejected Applications (<%= rejectedUsers.length %>)</h2>
                 </div>
-              </td>
-            </tr>
-          <% }); %>
-        </tbody>
-      </table>
-    </div>
+                <div class="user-list">
+                  <table class="admin-table">
+                    <thead>
+                      <tr>
+                        <th>Username</th>
+                        <th>Full Name</th>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <% rejectedUsers.forEach(function(user) { %>
+                        <tr class="rejected-row">
+                          <td>
+                            <span class="username-badge">
+                              <%= user.username %>
+                            </span>
+                          </td>
+                          <td>
+                            <%= user.full_name %>
+                          </td>
+                          <td>
+                            <%= user.email %>
+                          </td>
+                          <td>
+                            <span class="badge <%= user.role === 'admin' ? 'badge-purple' : 'badge-gold' %>">
+                              <%= user.role.charAt(0).toUpperCase() + user.role.slice(1) %>
+                            </span>
+                          </td>
+                          <td>
+                            <div class="action-buttons">
+                              <form action="/admin/users/<%= user.username %>/approve" method="POST"
+                                class="approve-form">
+                                <button type="submit" class="btn btn-sm btn-success"
+                                  onclick="return confirm('Approve this application?')">
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <polyline points="20 6 9 17 4 12" />
+                                  </svg>
+                                  Approve
+                                </button>
+                              </form>
+                              <form action="/admin/users/<%= user.username %>/delete" method="POST" class="delete-form">
+                                <button type="submit" class="btn btn-sm btn-danger"
+                                  onclick="return confirm('Delete this application?')">
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <polyline points="3 6 5 6 21 6" />
+                                    <path
+                                      d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                                  </svg>
+                                  Delete
+                                </button>
+                              </form>
+                            </div>
+                          </td>
+                        </tr>
+                        <% }); %>
+                    </tbody>
+                  </table>
+                </div>
+                <% } %>
+    </main>
 
-    <!-- Rejected Users Section -->
-    <% if (rejectedUsers && rejectedUsers.length > 0) { %>
-      <div class="section-header">
-        <h2>Rejected Applications (<%= rejectedUsers.length %>)</h2>
-      </div>
-      <div class="user-list">
-        <table class="admin-table">
-          <thead>
-            <tr>
-              <th>Username</th>
-              <th>Full Name</th>
-              <th>Email</th>
-              <th>Role</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <% rejectedUsers.forEach(function(user) { %>
-              <tr class="rejected-row">
-                <td>
-                  <span class="username-badge"><%= user.username %></span>
-                </td>
-                <td><%= user.full_name %></td>
-                <td><%= user.email %></td>
-                <td>
-                  <span class="badge <%= user.role === 'admin' ? 'badge-purple' : 'badge-gold' %>">
-                    <%= user.role.charAt(0).toUpperCase() + user.role.slice(1) %>
-                  </span>
-                </td>
-                <td>
-                  <div class="action-buttons">
-                    <form action="/admin/users/<%= user.username %>/approve" method="POST" class="approve-form">
-                      <button type="submit" class="btn btn-sm btn-success" onclick="return confirm('Approve this application?')">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                          <polyline points="20 6 9 17 4 12"/>
-                        </svg>
-                        Approve
-                      </button>
-                    </form>
-                    <form action="/admin/users/<%= user.username %>/delete" method="POST" class="delete-form">
-                      <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Delete this application?')">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                          <polyline points="3 6 5 6 21 6"/>
-                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-                        </svg>
-                        Delete
-                      </button>
-                    </form>
-                  </div>
-                </td>
-              </tr>
-            <% }); %>
-          </tbody>
-        </table>
-      </div>
-    <% } %>
-  </main>
+    <style>
+      .admin-toolbar {
+        margin-bottom: 2rem;
+      }
 
-  <style>
-    .admin-toolbar {
-      margin-bottom: 2rem;
-    }
-    
-    .admin-table {
-      width: 100%;
-      border-collapse: collapse;
-      background: white;
-      border-radius: 8px;
-      overflow: hidden;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    }
-    
-    .admin-table th,
-    .admin-table td {
-      padding: 1rem;
-      text-align: left;
-      border-bottom: 1px solid #e5e7eb;
-    }
-    
-    .admin-table th {
-      background: #f9fafb;
-      font-weight: 600;
-      color: #374151;
-    }
-    
-    .admin-table tr:hover {
-      background: #f9fafb;
-    }
-    
-    .username-badge {
-      font-family: 'Courier New', monospace;
-      background: #f3f4f6;
-      padding: 0.25rem 0.5rem;
-      border-radius: 4px;
-      font-weight: 600;
-    }
-    
-    .action-buttons {
-      display: flex;
-      gap: 0.5rem;
-    }
-    
-    .delete-form {
-      display: inline;
-    }
-    
-    .btn-sm {
-      padding: 0.375rem 0.75rem;
-      font-size: 0.875rem;
-    }
-    
-    .btn-secondary {
-      background: #6b7280;
-      color: white;
-    }
-    
-    .btn-danger {
-      background: #ef4444;
-      color: white;
-    }
-    
-    .btn-success {
-      background: #1B7A4B;
-      color: white;
-    }
-    
-    .section-header {
-      margin: 2rem 0 1rem 0;
-    }
-    
-    .section-header h2 {
-      margin: 0;
-      color: #4A154B;
-      font-size: 1.25rem;
-    }
-    
-    .pending-row {
-      background: #FEF4E8;
-    }
-    
-    .rejected-row {
-      background: #FDE8EB;
-    }
-    
-    .approve-form, .reject-form {
-      display: inline;
-    }
-  </style>
+      .admin-table {
+        width: 100%;
+        border-collapse: collapse;
+        background: white;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      }
+
+      .admin-table th,
+      .admin-table td {
+        padding: 1rem;
+        text-align: left;
+        border-bottom: 1px solid #e5e7eb;
+      }
+
+      .admin-table th {
+        background: #f9fafb;
+        font-weight: 600;
+        color: #374151;
+      }
+
+      .admin-table tr:hover {
+        background: #f9fafb;
+      }
+
+      .username-badge {
+        font-family: 'Courier New', monospace;
+        background: #f3f4f6;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-weight: 600;
+      }
+
+      .action-buttons {
+        display: flex;
+        gap: 0.5rem;
+      }
+
+      .delete-form {
+        display: inline;
+      }
+
+      .btn-sm {
+        padding: 0.375rem 0.75rem;
+        font-size: 0.875rem;
+      }
+
+      .btn-secondary {
+        background: #6b7280;
+        color: white;
+      }
+
+      .btn-danger {
+        background: #ef4444;
+        color: white;
+      }
+
+      .btn-success {
+        background: #1B7A4B;
+        color: white;
+      }
+
+      .section-header {
+        margin: 2rem 0 1rem 0;
+      }
+
+      .section-header h2 {
+        margin: 0;
+        color: #4A154B;
+        font-size: 1.25rem;
+      }
+
+      .pending-row {
+        background: #FEF4E8;
+      }
+
+      .rejected-row {
+        background: #FDE8EB;
+      }
+
+      .approve-form,
+      .reject-form {
+        display: inline;
+      }
+    </style>
 </body>
+
 </html>

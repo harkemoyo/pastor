@@ -1,12 +1,17 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title><%= title || 'Application Submitted | Pastors LMS' %></title>
+  <title>
+    <%= title || 'Application Submitted | Pastors LMS' %>
+  </title>
   <link rel="stylesheet" href="/css/global.css">
   <link rel="stylesheet" href="/css/login.css">
+  <link rel="icon" type="image/x-icon" href="/images/favicon.ico">
 </head>
+
 <body>
   <div class="login-viewport">
     <div class="login-bg-pattern"></div>
@@ -15,10 +20,17 @@
 
     <div class="login-card">
       <div class="login-header">
+        <div class="login-brand">
+          <img src="/images/ida-logo.jpg" alt="Intentional Discipleship Africa" class="login-logo">
+          <div class="login-brand-text">
+            <div class="login-brand-title">PASTORS <span class="login-brand-accent">LMS</span></div>
+            <div class="login-brand-tagline">EQUIPPING FAITHFUL SHEPHERDS</div>
+          </div>
+        </div>
         <div class="success-icon">
           <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-            <polyline points="22 4 12 14.01 9 11.01"/>
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+            <polyline points="22 4 12 14.01 9 11.01" />
           </svg>
         </div>
         <h1 class="login-title">Application Submitted!</h1>
@@ -30,11 +42,15 @@
           <h3>Your Application Details</h3>
           <div class="info-row">
             <span class="info-label">Name:</span>
-            <span class="info-value"><%= full_name %></span>
+            <span class="info-value">
+              <%= full_name %>
+            </span>
           </div>
           <div class="info-row">
             <span class="info-label">Username:</span>
-            <span class="info-value"><%= username %></span>
+            <span class="info-value">
+              <%= username %>
+            </span>
           </div>
         </div>
 
@@ -43,7 +59,9 @@
           <ol>
             <li>Your application will be reviewed by our admissions team</li>
             <li>You will receive an email notification once your application is approved</li>
-            <li>Use your username <strong><%= username %></strong> to log in after approval</li>
+            <li>Use your username <strong>
+                <%= username %>
+              </strong> to log in after approval</li>
             <li>Begin your theological training journey</li>
           </ol>
         </div>
@@ -52,7 +70,7 @@
           <a href="/login" class="btn btn-primary">
             Go to Login Page
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-              <polyline points="9 18 15 12 9 6"/>
+              <polyline points="9 18 15 12 9 6" />
             </svg>
           </a>
         </div>
@@ -65,15 +83,82 @@
   </div>
 
   <style>
+    .login-brand {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .login-logo {
+      height: 80px;
+      width: auto;
+      flex-shrink: 0;
+    }
+
+    .login-brand-text {
+      display: flex;
+      flex-direction: column;
+      line-height: 1.1;
+      text-align: left;
+    }
+
+    .login-brand-title {
+      font-family: var(--font-heading);
+      font-size: 1.8rem;
+      font-weight: 800;
+      color: var(--primary-dark);
+      letter-spacing: 0.5px;
+      white-space: nowrap;
+    }
+
+    .login-brand-accent {
+      color: var(--gold);
+    }
+
+    .login-brand-tagline {
+      font-family: var(--font-heading);
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    @media (max-width: 480px) {
+      .login-brand {
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .login-brand-text {
+        text-align: center;
+      }
+
+      .login-logo {
+        height: 60px;
+      }
+
+      .login-brand-title {
+        font-size: 1.4rem;
+      }
+
+      .login-brand-tagline {
+        font-size: 0.65rem;
+      }
+    }
+
     .success-icon {
       color: #1B7A4B;
       margin-bottom: 1rem;
     }
-    
+
     .success-content {
       margin-top: 2rem;
     }
-    
+
     .info-box {
       background: #FDFCFA;
       border: 1px solid #E5DFD5;
@@ -81,58 +166,59 @@
       padding: 1.5rem;
       margin-bottom: 2rem;
     }
-    
+
     .info-box h3 {
       margin: 0 0 1rem 0;
       color: #4A154B;
       font-size: 1.1rem;
     }
-    
+
     .info-row {
       display: flex;
       justify-content: space-between;
       padding: 0.5rem 0;
       border-bottom: 1px solid #E5DFD5;
     }
-    
+
     .info-row:last-child {
       border-bottom: none;
     }
-    
+
     .info-label {
       color: #6B677C;
       font-weight: 500;
     }
-    
+
     .info-value {
       color: #181522;
       font-weight: 600;
     }
-    
+
     .next-steps {
       margin-bottom: 2rem;
     }
-    
+
     .next-steps h3 {
       margin: 0 0 1rem 0;
       color: #4A154B;
       font-size: 1.1rem;
     }
-    
+
     .next-steps ol {
       margin: 0;
       padding-left: 1.5rem;
       color: #373347;
     }
-    
+
     .next-steps li {
       margin-bottom: 0.5rem;
     }
-    
+
     .action-buttons {
       display: flex;
       gap: 1rem;
     }
   </style>
 </body>
+
 </html>

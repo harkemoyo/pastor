@@ -1,12 +1,17 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title><%= title || 'Sign In | Pastors LMS' %></title>
+  <title>
+    <%= title || 'Sign In | Pastors LMS' %>
+  </title>
   <link rel="stylesheet" href="/css/global.css">
   <link rel="stylesheet" href="/css/login.css">
+  <link rel="icon" type="image/x-icon" href="/images/favicon.ico">
 </head>
+
 <body>
   <div class="login-viewport">
     <div class="login-bg-pattern"></div>
@@ -15,87 +20,85 @@
 
     <div class="login-card">
       <div class="login-header">
-        <img src="/images/logo.svg" alt="Pastors LMS" class="login-logo">
+        <div class="login-brand">
+          <img src="/images/ida-logo.jpg" alt="Intentional Discipleship Africa" class="login-logo">
+          <div class="login-brand-text">
+            <div class="login-brand-title">PASTORS <span class="login-brand-accent">LMS</span></div>
+            <div class="login-brand-tagline">EQUIPPING FAITHFUL SHEPHERDS</div>
+          </div>
+        </div>
         <h1 class="login-title">Shepherd Portal</h1>
-        <p class="login-subtitle">Equipping pastors with sound doctrine &amp; faithful biblical leadership for East Africa.</p>
+        <p class="login-subtitle">Equipping pastors with sound doctrine &amp; faithful biblical leadership for East
+          Africa.</p>
       </div>
 
-      <% if (typeof error !== 'undefined' && error) { %>
+      <% if (typeof error !=='undefined' && error) { %>
         <div class="alert alert-danger" role="alert">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="flex-shrink: 0;">
-            <circle cx="12" cy="12" r="10"/>
-            <line x1="12" y1="8" x2="12" y2="12"/>
-            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+            style="flex-shrink: 0;">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
           </svg>
-          <div><%= error %></div>
+          <div>
+            <%= error %>
+          </div>
         </div>
-      <% } %>
+        <% } %>
 
-      <form action="/login" method="POST" id="loginForm">
-        <div class="form-group">
-          <label class="form-label" for="loginUsername">Username</label>
-          <div class="input-wrapper">
-            <span class="input-icon">
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                <circle cx="12" cy="7" r="4"/>
+          <form action="/login" method="POST" id="loginForm">
+            <div class="form-group">
+              <label class="form-label" for="loginUsername">Username</label>
+              <div class="input-wrapper">
+                <span class="input-icon">
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                    <circle cx="12" cy="7" r="4" />
+                  </svg>
+                </span>
+                <input type="text" id="loginUsername" name="username" class="form-input"
+                  placeholder="Enter your username" value="<%= typeof username !== 'undefined' ? username : '' %>"
+                  required autocomplete="username">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <div class="form-label">
+                <label for="loginPass">Password</label>
+                <a href="#" onclick="alert('Please contact your administrator to reset your password.')">Forgot
+                  password?</a>
+              </div>
+              <div class="input-wrapper">
+                <span class="input-icon">
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                  </svg>
+                </span>
+                <input type="password" id="loginPass" name="password" class="form-input"
+                  placeholder="Enter your password" required autocomplete="current-password">
+              </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-submit">
+              Sign In to Learning Portal
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <polyline points="9 18 15 12 9 6" />
               </svg>
-            </span>
-            <input 
-              type="text" 
-              id="loginUsername" 
-              name="username" 
-              class="form-input" 
-              placeholder="Enter your username" 
-              value="<%= typeof username !== 'undefined' ? username : '' %>" 
-              required
-              autocomplete="username"
-            >
+            </button>
+          </form>
+
+          <div class="login-footer">
+            <p>New to Pastors LMS? <a href="/register">Register</a></p>
           </div>
-        </div>
 
-        <div class="form-group">
-          <div class="form-label">
-            <label for="loginPass">Password</label>
-            <a href="#" onclick="alert('Please contact your administrator to reset your password.')">Forgot password?</a>
-          </div>
-          <div class="input-wrapper">
-            <span class="input-icon">
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>
-                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-              </svg>
-            </span>
-            <input 
-              type="password" 
-              id="loginPass" 
-              name="password" 
-              class="form-input" 
-              placeholder="Enter your password" 
-              required
-              autocomplete="current-password"
-            >
-          </div>
-        </div>
-
-        <button type="submit" class="btn btn-primary btn-submit">
-          Sign In to Learning Portal
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <polyline points="9 18 15 12 9 6"/>
-          </svg>
-        </button>
-      </form>
-
-      <div class="login-footer">
-        <p>New to Pastors LMS? <a href="/register">Register</a></p>
-      </div>
-
-      <p class="login-footer-note">
-        “Holding fast the faithful word as taught, that he may be able by sound doctrine to exhort.” — Titus 1:9
-      </p>
+          <p class="login-footer-note">
+            “Holding fast the faithful word as taught, that he may be able by sound doctrine to exhort.” — Titus 1:9
+          </p>
     </div>
   </div>
 
   <script src="/js/app.js"></script>
 </body>
+
 </html>
