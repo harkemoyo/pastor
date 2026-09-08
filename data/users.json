@@ -16,5 +16,14 @@
     "role": "admin",
     "approval_status": "approved",
     "created_at": "2024-01-01T00:00:00Z"
+  },
+  {
+    "username": "p1000001",
+    "email": "markndeche91@gmail.com",
+    "password": "Harkndeche",
+    "full_name": "Hark ndeche",
+    "role": "student",
+    "approval_status": "approved",
+    "created_at": "2026-09-08T16:52:15.831Z"
   }
 ]
