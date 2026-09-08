@@ -146,6 +146,20 @@
   color: #FFB3BA;
 }
 
+.btn-admin-link {
+  color: #D6B8E0;
+  font-size: 0.82rem;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  background: rgba(212, 168, 67, 0.15);
+  margin-right: 8px;
+}
+
+.btn-admin-link:hover {
+  background: rgba(212, 168, 67, 0.3);
+  color: #F5D78E;
+}
+
 /* Dashboard Hero Greeting */
 .dashboard-hero {
   background: linear-gradient(135deg, #4A154B 0%, #320B34 100%);

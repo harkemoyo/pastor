@@ -5,6 +5,7 @@ const path = require('path');
 const { attachUser } = require('./middleware/auth');
 const authRoutes = require('./routes/auth');
 const coursesRoutes = require('./routes/courses');
+const adminRoutes = require('./routes/admin');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -38,6 +39,7 @@ app.use(attachUser);
 // Routes
 app.use('/', authRoutes);
 app.use('/', coursesRoutes);
+app.use('/admin', adminRoutes);
 
 // 404 handler
 app.use((req, res) => {
@@ -58,7 +60,8 @@ app.listen(PORT, () => {
   console.log(`\n======================================================`);
   console.log(`  ✝ PASTORS LMS — Theological Training Portal`);
   console.log(`  🚀 Server running at: http://localhost:${PORT}`);
-  console.log(`  🔑 Demo student: pastor.james@church.org (pass: demo1234)`);
-  console.log(`  🛡️ Demo admin:   admin@pastorslms.com (pass: admin1234)`);
+  console.log(`  🔑 Demo student: p1001234 (pass: demo1234)`);
+  console.log(`  🛡️ Demo admin:   a1000001 (pass: admin1234)`);
+  console.log(`  👥 Admin panel:   http://localhost:${PORT}/admin/users`);
   console.log(`======================================================\n`);
 });

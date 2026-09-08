@@ -33,23 +33,23 @@
 
       <form action="/login" method="POST" id="loginForm">
         <div class="form-group">
-          <label class="form-label" for="loginEmail">Email Address</label>
+          <label class="form-label" for="loginUsername">Username</label>
           <div class="input-wrapper">
             <span class="input-icon">
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect width="20" height="16" x="2" y="4" rx="2"/>
-                <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                <circle cx="12" cy="7" r="4"/>
               </svg>
             </span>
             <input 
-              type="email" 
-              id="loginEmail" 
-              name="email" 
+              type="text" 
+              id="loginUsername" 
+              name="username" 
               class="form-input" 
-              placeholder="pastor.name@church.org" 
-              value="<%= typeof email !== 'undefined' ? email : '' %>" 
+              placeholder="Enter your username" 
+              value="<%= typeof username !== 'undefined' ? username : '' %>" 
               required
-              autocomplete="email"
+              autocomplete="username"
             >
           </div>
         </div>
@@ -57,7 +57,7 @@
         <div class="form-group">
           <div class="form-label">
             <label for="loginPass">Password</label>
-            <a href="#" onclick="alert('Demo Mode: Use demo1234 or click the 1-click button below.')">Forgot password?</a>
+            <a href="#" onclick="alert('Please contact your administrator to reset your password.')">Forgot password?</a>
           </div>
           <div class="input-wrapper">
             <span class="input-icon">
@@ -86,32 +86,8 @@
         </button>
       </form>
 
-      <!-- 1-Click Demo Login Shortcuts -->
-      <div class="demo-box">
-        <div class="demo-title">Quick Demo Logins (1-Click)</div>
-        <div class="demo-actions">
-          <button 
-            type="button" 
-            class="btn-demo-pill" 
-            data-email="pastor.james@church.org" 
-            data-pass="demo1234"
-            title="Log in as Pastor James"
-          >
-            <strong>Pastor James</strong>
-            <span>Student • Kenya Cohort</span>
-          </button>
-          
-          <button 
-            type="button" 
-            class="btn-demo-pill" 
-            data-email="admin@pastorslms.com" 
-            data-pass="admin1234"
-            title="Log in as Administrator"
-          >
-            <strong>Curriculum Admin</strong>
-            <span>Faculty &amp; LMS Admin</span>
-          </button>
-        </div>
+      <div class="login-footer">
+        <p>New to Pastors LMS? <a href="/register">Register</a></p>
       </div>
 
       <p class="login-footer-note">

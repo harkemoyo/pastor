@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title || 'Apply for Pastoral Training | Pastors LMS' %></title>
+  <link rel="stylesheet" href="/css/global.css">
+  <link rel="stylesheet" href="/css/login.css">
+</head>
+<body>
+  <div class="login-viewport">
+    <div class="login-bg-pattern"></div>
+    <div class="login-glow-1"></div>
+    <div class="login-glow-2"></div>
+
+    <div class="login-card">
+      <div class="login-header">
+        <img src="/images/logo.svg" alt="Pastors LMS" class="login-logo">
+        <h1 class="login-title">Apply for Pastoral Training</h1>
+        <p class="login-subtitle">Join our theological training program for pastors and church leaders in East Africa.</p>
+      </div>
+
+      <% if (typeof error !== 'undefined' && error) { %>
+        <div class="alert alert-danger" role="alert">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="flex-shrink: 0;">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          <div><%= error %></div>
+        </div>
+      <% } %>
+
+      <form action="/register" method="POST" id="registerForm">
+        <div class="form-group">
+          <label class="form-label" for="fullName">Full Name</label>
+          <div class="input-wrapper">
+            <span class="input-icon">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                <circle cx="12" cy="7" r="4"/>
+              </svg>
+            </span>
+            <input 
+              type="text" 
+              id="fullName" 
+              name="full_name" 
+              class="form-input" 
+              placeholder="Pastor John Doe" 
+              value="<%= typeof formData !== 'undefined' && formData ? formData.full_name : '' %>" 
+              required
+            >
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="email">Email Address</label>
+          <div class="input-wrapper">
+            <span class="input-icon">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect width="20" height="16" x="2" y="4" rx="2"/>
+                <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
+              </svg>
+            </span>
+            <input 
+              type="email" 
+              id="email" 
+              name="email" 
+              class="form-input" 
+              placeholder="pastor@church.org" 
+              value="<%= typeof formData !== 'undefined' && formData ? formData.email : '' %>" 
+              required
+              autocomplete="email"
+            >
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="password">Password</label>
+          <div class="input-wrapper">
+            <span class="input-icon">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              </svg>
+            </span>
+            <input 
+              type="password" 
+              id="password" 
+              name="password" 
+              class="form-input" 
+              placeholder="Create a password (min 6 characters)" 
+              required
+              autocomplete="new-password"
+            >
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="confirmPassword">Confirm Password</label>
+          <div class="input-wrapper">
+            <span class="input-icon">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              </svg>
+            </span>
+            <input 
+              type="password" 
+              id="confirmPassword" 
+              name="confirm_password" 
+              class="form-input" 
+              placeholder="Confirm your password" 
+              required
+              autocomplete="new-password"
+            >
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-submit">
+          Submit Application
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="9 18 15 12 9 6"/>
+          </svg>
+        </button>
+      </form>
+
+      <div class="login-footer">
+        <p>Already have an account? <a href="/login">Sign in here</a></p>
+      </div>
+
+      <p class="login-footer-note">
+        Your application will be reviewed by our admissions team. You will receive your username and access details once approved.
+      </p>
+    </div>
+  </div>
+
+  <script>
+    // Simple client-side validation
+    document.getElementById('registerForm').addEventListener('submit', function(e) {
+      const password = document.getElementById('password').value;
+      const confirmPassword = document.getElementById('confirmPassword').value;
+      
+      if (password !== confirmPassword) {
+        e.preventDefault();
+        alert('Passwords do not match!');
+      }
+      
+      if (password.length < 6) {
+        e.preventDefault();
+        alert('Password must be at least 6 characters!');
+      }
+    });
+  </script>
+</body>
+</html>
