@@ -356,12 +356,16 @@ router.post('/register', async (req, res) => {
   };
 
   try {
-    const { error: studentInsertError } = await (supabaseAdmin || supabase).from('students').insert([profile]);
+    console.log('Attempting student profile insert with:', { auth_user_id: profile.auth_user_id, username: profile.username, email: profile.email });
+    console.log('Using supabaseAdmin:', !!supabaseAdmin, 'Using supabase:', !!supabase);
+    
+    const { error: studentInsertError, data: studentInsertData } = await (supabaseAdmin || supabase).from('students').insert([profile]).select();
 
     if (studentInsertError) {
       console.error('Student profile insert failed:', studentInsertError.message);
+      console.error('Full error details:', JSON.stringify(studentInsertError, null, 2));
       return res.render('register', {
-        error: 'Student account was created but profile storage failed. Please contact support.',
+        error: `Student account was created but profile storage failed: ${studentInsertError.message}`,
         title: 'Apply for Pastoral Training | Pastors LMS',
         formData: {
           full_name: cleanFullName,
