@@ -10,14 +10,16 @@ function requireAuth(req, res, next) {
 }
 
 function requireAdmin(req, res, next) {
+  const allowedRoles = ['admin', 'super_admin'];
+  const userRole = req.session?.user?.role;
+
   console.log('Admin check - Session user:', req.session?.user);
-  console.log('Admin check - User role:', req.session?.user?.role);
-  
-  if (req.session && req.session.user && req.session.user.role === 'admin') {
+  console.log('Admin check - User role:', userRole);
+
+  if (req.session && req.session.user && allowedRoles.includes(userRole)) {
     return next();
   }
-  
-  // If not admin, redirect to login with error message
+
   return res.redirect('/login?error=admin_required');
 }
 

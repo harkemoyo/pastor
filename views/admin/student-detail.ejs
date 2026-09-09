@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/css/global.css">
+  <link rel="stylesheet" href="/css/dashboard.css">
+  <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body class="app-container">
+  <%- include('../partials/header') %>
+  <main class="admin-page">
+    <div class="admin-topbar">
+      <div>
+        <h1 class="admin-title">Student Details</h1>
+        <div class="admin-subtitle"><%= student.full_name || [student.first_name, student.last_name].filter(Boolean).join(' ') %></div>
+      </div>
+      <div class="admin-actions">
+        <a href="/admin/students" class="btn btn-secondary">Back to Students</a>
+      </div>
+    </div>
+
+    <% if (success) { %><div class="alert alert-success"><%= success %></div><% } %>
+    <% if (error) { %><div class="alert alert-danger"><%= error %></div><% } %>
+
+    <section class="admin-surface">
+      <div class="detail-grid">
+        <div class="info-card">
+          <h3>Personal Information</h3>
+          <div class="meta-list">
+            <div class="meta-row"><strong>Student ID</strong><span><%= student.student_id || 'N/A' %></span></div>
+            <div class="meta-row"><strong>Name</strong><span><%= student.full_name || [student.first_name, student.last_name].filter(Boolean).join(' ') %></span></div>
+            <div class="meta-row"><strong>Email</strong><span><%= student.email %></span></div>
+            <div class="meta-row"><strong>Phone</strong><span><%= student.phone || 'N/A' %></span></div>
+            <div class="meta-row"><strong>Status</strong><span><span class="badge status-<%= student.status || 'active' %>"><%= (student.status || 'active').charAt(0).toUpperCase() + (student.status || 'active').slice(1) %></span></span></div>
+            <div class="meta-row"><strong>Address</strong><span><%= student.physical_address || student.address || 'N/A' %></span></div>
+            <div class="meta-row"><strong>Church / Ministry</strong><span><%= student.church_name || 'N/A' %></span></div>
+            <div class="meta-row"><strong>Ministry Role</strong><span><%= student.ministry_role || 'N/A' %></span></div>
+          </div>
+
+          <div class="action-stack">
+            <form method="POST" action="/admin/students/<%= student.student_id %>/status" style="display:inline;">
+              <select name="status" style="padding:0.6rem; border-radius:8px; border:1px solid #d1d5db; margin-right:0.5rem;">
+                <option value="active" <%= student.status === 'active' ? 'selected' : '' %>>Active</option>
+                <option value="inactive" <%= student.status === 'inactive' ? 'selected' : '' %>>Inactive</option>
+                <option value="suspended" <%= student.status === 'suspended' ? 'selected' : '' %>>Suspended</option>
+                <option value="graduated" <%= student.status === 'graduated' ? 'selected' : '' %>>Graduated</option>
+              </select>
+              <button type="submit" class="btn btn-primary btn-sm">Update Status</button>
+            </form>
+            <form method="POST" action="/admin/students/<%= student.student_id %>/reset-password" style="display:inline;">
+              <input type="hidden" name="new_password" value="Pastor@2026">
+              <button type="submit" class="btn btn-warning btn-sm">Reset Password</button>
+            </form>
+            <form method="POST" action="/admin/students/<%= student.student_id %>/archive" style="display:inline;">
+              <button type="submit" class="btn btn-danger btn-sm">Archive Student</button>
+            </form>
+          </div>
+        </div>
+
+        <div class="info-card">
+          <h3>Student Enrolments</h3>
+          <% if (enrolments.length) { %>
+            <div class="admin-table-wrap">
+              <table class="admin-table">
+                <thead><tr><th>Course</th><th>Code</th><th>Action</th></tr></thead>
+                <tbody>
+                  <% enrolments.forEach(item => { %>
+                    <tr>
+                      <td><%= item.course_name %></td>
+                      <td><span class="badge course-badge"><%= item.course_code %></span></td>
+                      <td>
+                        <form method="POST" action="/admin/students/<%= student.student_id %>/courses/<%= item.course_id %>/remove">
+                          <button type="submit" class="btn btn-danger btn-sm">Remove</button>
+                        </form>
+                      </td>
+                    </tr>
+                  <% }) %>
+                </tbody>
+              </table>
+            </div>
+          <% } else { %>
+            <div class="empty-state">No courses enrolled yet.</div>
+          <% } %>
+
+          <form method="POST" action="/admin/students/<%= student.student_id %>/courses" class="filters-bar" style="margin-top:1rem;">
+            <div class="filter-group" style="flex:1; min-width:220px;">
+              <label>Add Course</label>
+              <select name="course_id" required>
+                <option value="">Select course</option>
+                <% courses.forEach(course => { %>
+                  <option value="<%= course.id %>"><%= course.title %> (<%= course.code %>)</option>
+                <% }) %>
+              </select>
+            </div>
+            <div class="filter-group">
+              <button type="submit" class="btn btn-primary">Add Course</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

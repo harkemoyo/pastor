@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/css/global.css">
+  <link rel="stylesheet" href="/css/dashboard.css">
+  <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body class="app-container">
+  <%- include('../partials/header') %>
+  <main class="admin-page">
+    <div class="admin-topbar">
+      <div>
+        <h1 class="admin-title">My Profile</h1>
+        <div class="admin-subtitle">Administrative account overview</div>
+      </div>
+    </div>
+
+    <section class="admin-surface">
+      <div class="detail-grid">
+        <div class="info-card">
+          <h3>Profile Details</h3>
+          <div class="meta-list">
+            <div class="meta-row"><strong>Name</strong><span><%= user.full_name %></span></div>
+            <div class="meta-row"><strong>Email</strong><span><%= user.email %></span></div>
+            <div class="meta-row"><strong>Role</strong><span><%= user.role === 'super_admin' ? 'Super Admin' : 'Admin' %></span></div>
+            <div class="meta-row"><strong>Access</strong><span>Students, Courses, Enrolments, Activity Log</span></div>
+          </div>
+        </div>
+        <div class="info-card">
+          <h3>Administrative Access</h3>
+          <p>This account is protected server-side and is authorized to manage ministry students, courses, registrations, and enrolments.</p>
+          <div class="action-stack">
+            <a href="/admin/dashboard" class="btn btn-primary btn-sm">Dashboard</a>
+            <a href="/admin/students" class="btn btn-secondary btn-sm">Students</a>
+            <a href="/admin/courses" class="btn btn-secondary btn-sm">Courses</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

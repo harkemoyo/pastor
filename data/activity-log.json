@@ -1,0 +1,20 @@
+[
+  {
+    "id": 1788934830615.6326,
+    "admin_username": "a1000001",
+    "admin_name": "Admin User",
+    "action": "Approved application for Pastor John Doe",
+    "target_type": "student",
+    "target_id": "STU-791133",
+    "created_at": "2026-09-09T06:20:30.615Z"
+  },
+  {
+    "id": 1788934804265.0347,
+    "admin_username": "a1000001",
+    "admin_name": "Admin User",
+    "action": "Approved application for Pastor John Doe",
+    "target_type": "student",
+    "target_id": "STU-791133",
+    "created_at": "2026-09-09T06:20:04.265Z"
+  }
+]

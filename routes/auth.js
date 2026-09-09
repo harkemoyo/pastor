@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const fs = require('fs');
 const path = require('path');
+const bcrypt = require('bcrypt');
 const { supabase } = require('../config/supabase');
 
 // Load fallback users from JSON
@@ -12,6 +13,61 @@ function getUsers() {
   } catch (err) {
     console.error('Error reading users.json:', err);
     return [];
+  }
+}
+
+function generateStudentUsername(users) {
+  const prefix = 'p';
+  let counter = 1000000;
+  while (true) {
+    const username = `${prefix}${counter}`;
+    if (!users.some((user) => user.username === username)) return username;
+    counter += 1;
+  }
+}
+
+function normalizePhone(phone) {
+  return (phone || '').replace(/\D/g, '');
+}
+
+async function syncStudentToSupabase(studentData) {
+  if (!supabase) return null;
+
+  try {
+    const payload = {
+      auth_user_id: studentData.auth_user_id || null,
+      username: studentData.username,
+      email: studentData.email,
+      full_name: studentData.full_name,
+      first_name: studentData.first_name || '',
+      last_name: studentData.last_name || '',
+      phone: studentData.phone || '',
+      county: studentData.county || '',
+      town: studentData.town || '',
+      physical_address: studentData.physical_address || '',
+      church_name: studentData.church_name || '',
+      ministry_role: studentData.ministry_role || '',
+      years_in_ministry: studentData.years_in_ministry || 0,
+      emergency_contact_name: studentData.emergency_contact_name || '',
+      emergency_contact_phone: studentData.emergency_contact_phone || '',
+      relationship: studentData.relationship || '',
+      student_id: studentData.student_id || '',
+      approval_status: studentData.approval_status || 'approved',
+      status: studentData.status || 'active',
+      role: 'student',
+      created_at: studentData.created_at || new Date().toISOString()
+    };
+
+    const { data, error } = await supabase.from('students').upsert(payload, { onConflict: 'email' });
+    if (error) {
+      console.warn('Supabase student sync failed:', error.message);
+      return null;
+    }
+
+    return data;
+  } catch (error) {
+    console.warn('Supabase student sync error:', error.message);
+    return null;
   }
 }
 
@@ -46,18 +102,62 @@ router.get('/register', (req, res) => {
 
 // POST /register
 router.post('/register', async (req, res) => {
-  const { full_name, email, password, confirm_password } = req.body;
-  const cleanName = (full_name || '').trim();
+  const {
+    full_name,
+    first_name,
+    middle_name,
+    last_name,
+    email,
+    phone,
+    county,
+    town,
+    physical_address,
+    church_name,
+    ministry_role,
+    years_in_ministry,
+    emergency_contact_name,
+    emergency_contact_phone,
+    relationship,
+    password,
+    confirm_password
+  } = req.body;
+
+  const cleanFirstName = (first_name || full_name || '').trim();
+  const cleanMiddleName = (middle_name || '').trim();
+  const cleanLastName = (last_name || '').trim();
+  const cleanFullName = (full_name || [cleanFirstName, cleanMiddleName, cleanLastName].filter(Boolean).join(' ')).trim();
   const cleanEmail = (email || '').trim().toLowerCase();
+  const cleanPhone = (phone || '').trim();
+  const cleanCounty = (county || '').trim();
+  const cleanTown = (town || '').trim();
+  const cleanPhysicalAddress = (physical_address || '').trim();
+  const cleanChurchName = (church_name || '').trim();
+  const cleanMinistryRole = (ministry_role || '').trim();
+  const cleanYearsInMinistry = Number(years_in_ministry || 0);
+  const cleanEmergencyContactName = (emergency_contact_name || '').trim();
+  const cleanEmergencyContactPhone = (emergency_contact_phone || '').trim();
+  const cleanRelationship = (relationship || '').trim();
   const cleanPass = (password || '').trim();
   const cleanConfirmPass = (confirm_password || '').trim();
 
-  // Validation
-  if (!cleanName || !cleanEmail || !cleanPass || !cleanConfirmPass) {
+  if (!cleanFullName || !cleanEmail || !cleanPhone || !cleanPass || !cleanConfirmPass) {
     return res.render('register', {
-      error: 'All fields are required.',
+      error: 'Full name, email, phone number, and password are required.',
       title: 'Apply for Pastoral Training | Pastors LMS',
-      formData: { full_name: cleanName, email: cleanEmail }
+      formData: {
+        full_name: cleanFullName,
+        email: cleanEmail,
+        phone: cleanPhone,
+        county: cleanCounty,
+        town: cleanTown,
+        physical_address: cleanPhysicalAddress,
+        church_name: cleanChurchName,
+        ministry_role: cleanMinistryRole,
+        years_in_ministry: cleanYearsInMinistry,
+        emergency_contact_name: cleanEmergencyContactName,
+        emergency_contact_phone: cleanEmergencyContactPhone,
+        relationship: cleanRelationship
+      }
     });
   }
 
@@ -65,7 +165,20 @@ router.post('/register', async (req, res) => {
     return res.render('register', {
       error: 'Passwords do not match.',
       title: 'Apply for Pastoral Training | Pastors LMS',
-      formData: { full_name: cleanName, email: cleanEmail }
+      formData: {
+        full_name: cleanFullName,
+        email: cleanEmail,
+        phone: cleanPhone,
+        county: cleanCounty,
+        town: cleanTown,
+        physical_address: cleanPhysicalAddress,
+        church_name: cleanChurchName,
+        ministry_role: cleanMinistryRole,
+        years_in_ministry: cleanYearsInMinistry,
+        emergency_contact_name: cleanEmergencyContactName,
+        emergency_contact_phone: cleanEmergencyContactPhone,
+        relationship: cleanRelationship
+      }
     });
   }
 
@@ -73,62 +186,249 @@ router.post('/register', async (req, res) => {
     return res.render('register', {
       error: 'Password must be at least 6 characters.',
       title: 'Apply for Pastoral Training | Pastors LMS',
-      formData: { full_name: cleanName, email: cleanEmail }
+      formData: {
+        full_name: cleanFullName,
+        email: cleanEmail,
+        phone: cleanPhone,
+        county: cleanCounty,
+        town: cleanTown,
+        physical_address: cleanPhysicalAddress,
+        church_name: cleanChurchName,
+        ministry_role: cleanMinistryRole,
+        years_in_ministry: cleanYearsInMinistry,
+        emergency_contact_name: cleanEmergencyContactName,
+        emergency_contact_phone: cleanEmergencyContactPhone,
+        relationship: cleanRelationship
+      }
     });
   }
 
-  // Check if email already exists
+  if (supabase) {
+    try {
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: cleanEmail,
+        password: cleanPass,
+        options: {
+          data: {
+            full_name: cleanFullName,
+            role: 'student'
+          }
+        }
+      });
+
+      if (authError) {
+        const msg = authError.message || 'Unable to create account.';
+        const friendlyMessage = /already|duplicate|exists/i.test(msg)
+          ? 'An account with this email already exists.'
+          : msg;
+
+        return res.render('register', {
+          error: friendlyMessage,
+          title: 'Apply for Pastoral Training | Pastors LMS',
+          formData: {
+            full_name: cleanFullName,
+            email: cleanEmail,
+            phone: cleanPhone,
+            county: cleanCounty,
+            town: cleanTown,
+            physical_address: cleanPhysicalAddress,
+            church_name: cleanChurchName,
+            ministry_role: cleanMinistryRole,
+            years_in_ministry: cleanYearsInMinistry,
+            emergency_contact_name: cleanEmergencyContactName,
+            emergency_contact_phone: cleanEmergencyContactPhone,
+            relationship: cleanRelationship
+          }
+        });
+      }
+
+      const authUser = authData?.user;
+      if (authUser?.id) {
+        const users = getUsers();
+        const username = generateStudentUsername(users);
+        const studentId = `STU-${Date.now().toString().slice(-6)}`;
+
+        const profile = {
+          auth_user_id: authUser.id,
+          username,
+          email: cleanEmail,
+          full_name: cleanFullName,
+          first_name: cleanFirstName,
+          middle_name: cleanMiddleName,
+          last_name: cleanLastName,
+          phone: cleanPhone,
+          county: cleanCounty,
+          town: cleanTown,
+          physical_address: cleanPhysicalAddress,
+          church_name: cleanChurchName,
+          ministry_role: cleanMinistryRole,
+          years_in_ministry: cleanYearsInMinistry,
+          emergency_contact_name: cleanEmergencyContactName,
+          emergency_contact_phone: cleanEmergencyContactPhone,
+          relationship: cleanRelationship,
+          student_id: studentId,
+          role: 'student',
+          status: 'active',
+          approval_status: 'approved',
+          created_at: new Date().toISOString()
+        };
+
+        const { error: profileError } = await supabase.from('students').insert([profile]);
+        if (profileError) {
+          console.warn('Supabase profile insert failed:', profileError.message);
+        }
+
+        users.push({ ...profile, password: '' });
+        try {
+          fs.writeFileSync(path.join(__dirname, '../data/users.json'), JSON.stringify(users, null, 2));
+        } catch (fileError) {
+          console.warn('Local JSON sync failed for student self-registration:', fileError.message);
+        }
+      }
+
+      const successUsername = (() => {
+        const users = getUsers();
+        return users.find(u => u.email && u.email.toLowerCase() === cleanEmail)?.username || generateStudentUsername(users);
+      })();
+
+      return res.render('register-success', {
+        title: 'Account Created | Pastors LMS',
+        username: successUsername,
+        full_name: cleanFullName,
+        approval_status: 'approved'
+      });
+    } catch (err) {
+      console.error('Supabase self-registration error:', err);
+      return res.render('register', {
+        error: 'Unable to create your account right now. Please try again later.',
+        title: 'Apply for Pastoral Training | Pastors LMS',
+        formData: {
+          full_name: cleanFullName,
+          email: cleanEmail,
+          phone: cleanPhone,
+          county: cleanCounty,
+          town: cleanTown,
+          physical_address: cleanPhysicalAddress,
+          church_name: cleanChurchName,
+          ministry_role: cleanMinistryRole,
+          years_in_ministry: cleanYearsInMinistry,
+          emergency_contact_name: cleanEmergencyContactName,
+          emergency_contact_phone: cleanEmergencyContactPhone,
+          relationship: cleanRelationship
+        }
+      });
+    }
+  }
+
+  const hashedPassword = bcrypt.hashSync(cleanPass, 10);
   const users = getUsers();
-  const existingUser = users.find(u => u.email === cleanEmail);
-  
-  if (existingUser) {
+  const duplicateEmail = users.some(u => u.email && u.email.toLowerCase() === cleanEmail);
+  const duplicatePhone = users.some(u => u.phone && normalizePhone(u.phone) === normalizePhone(cleanPhone));
+
+  if (duplicateEmail) {
     return res.render('register', {
       error: 'An account with this email already exists.',
       title: 'Apply for Pastoral Training | Pastors LMS',
-      formData: { full_name: cleanName, email: cleanEmail }
+      formData: {
+        full_name: cleanFullName,
+        email: cleanEmail,
+        phone: cleanPhone,
+        county: cleanCounty,
+        town: cleanTown,
+        physical_address: cleanPhysicalAddress,
+        church_name: cleanChurchName,
+        ministry_role: cleanMinistryRole,
+        years_in_ministry: cleanYearsInMinistry,
+        emergency_contact_name: cleanEmergencyContactName,
+        emergency_contact_phone: cleanEmergencyContactPhone,
+        relationship: cleanRelationship
+      }
     });
   }
 
-  // Generate username for new applicant
-  const prefix = 'p'; // All new registrations start as students
-  const existingUsernames = users.map(u => u.username);
-  let counter = 1;
-  let username;
-  
-  do {
-    username = `${prefix}${1000000 + counter}`;
-    counter++;
-  } while (existingUsernames.includes(username));
+  if (duplicatePhone) {
+    return res.render('register', {
+      error: 'A student with this phone number already exists.',
+      title: 'Apply for Pastoral Training | Pastors LMS',
+      formData: {
+        full_name: cleanFullName,
+        email: cleanEmail,
+        phone: cleanPhone,
+        county: cleanCounty,
+        town: cleanTown,
+        physical_address: cleanPhysicalAddress,
+        church_name: cleanChurchName,
+        ministry_role: cleanMinistryRole,
+        years_in_ministry: cleanYearsInMinistry,
+        emergency_contact_name: cleanEmergencyContactName,
+        emergency_contact_phone: cleanEmergencyContactPhone,
+        relationship: cleanRelationship
+      }
+    });
+  }
 
-  // Create new user with pending status
-  const newUser = {
+  const username = generateStudentUsername(users);
+  const studentId = `STU-${Date.now().toString().slice(-6)}`;
+  const profile = {
     username,
     email: cleanEmail,
-    password: cleanPass,
-    full_name: cleanName,
+    password: hashedPassword,
+    full_name: cleanFullName,
+    first_name: cleanFirstName,
+    middle_name: cleanMiddleName,
+    last_name: cleanLastName,
+    phone: cleanPhone,
+    county: cleanCounty,
+    town: cleanTown,
+    physical_address: cleanPhysicalAddress,
+    church_name: cleanChurchName,
+    ministry_role: cleanMinistryRole,
+    years_in_ministry: cleanYearsInMinistry,
+    emergency_contact_name: cleanEmergencyContactName,
+    emergency_contact_phone: cleanEmergencyContactPhone,
+    relationship: cleanRelationship,
+    student_id: studentId,
     role: 'student',
-    approval_status: 'pending',
+    status: 'active',
+    approval_status: 'approved',
     created_at: new Date().toISOString()
   };
 
-  users.push(newUser);
+  users.push(profile);
 
-  // Save to file
   try {
     fs.writeFileSync(path.join(__dirname, '../data/users.json'), JSON.stringify(users, null, 2));
-    
-    // Render success page
+
+    await syncStudentToSupabase({
+      ...profile,
+      auth_user_id: null
+    });
+
     res.render('register-success', {
-      title: 'Application Submitted | Pastors LMS',
+      title: 'Account Created | Pastors LMS',
       username: username,
-      full_name: cleanName
+      full_name: cleanFullName,
+      approval_status: 'approved'
     });
   } catch (err) {
     console.error('Error saving user:', err);
     return res.render('register', {
       error: 'Failed to submit application. Please try again.',
       title: 'Apply for Pastoral Training | Pastors LMS',
-      formData: { full_name: cleanName, email: cleanEmail }
+      formData: {
+        full_name: cleanFullName,
+        email: cleanEmail,
+        phone: cleanPhone,
+        county: cleanCounty,
+        town: cleanTown,
+        physical_address: cleanPhysicalAddress,
+        church_name: cleanChurchName,
+        ministry_role: cleanMinistryRole,
+        years_in_ministry: cleanYearsInMinistry,
+        emergency_contact_name: cleanEmergencyContactName,
+        emergency_contact_phone: cleanEmergencyContactPhone,
+        relationship: cleanRelationship
+      }
     });
   }
 });
@@ -153,7 +453,7 @@ router.post('/login', async (req, res) => {
   if (supabase) {
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: cleanUsername, // For now using username as email for Supabase
+        email: cleanUsername,
         password: cleanPass
       });
 
@@ -162,15 +462,28 @@ router.post('/login', async (req, res) => {
       }
 
       if (data && data.user) {
+        const { data: profileRow, error: profileError } = await supabase
+          .from('students')
+          .select('*')
+          .eq('auth_user_id', data.user.id)
+          .maybeSingle();
+
+        const role = profileRow?.role || data.user.user_metadata?.role || 'student';
+        const fullName = profileRow?.full_name || data.user.user_metadata?.full_name || cleanUsername;
+
         req.session.user = {
           id: data.user.id,
-          username: data.user.user_metadata?.username || cleanUsername,
+          username: profileRow?.username || data.user.user_metadata?.username || cleanUsername,
           email: data.user.email,
-          full_name: data.user.user_metadata?.full_name || cleanUsername,
-          role: data.user.user_metadata?.role || 'student',
-          initials: (data.user.user_metadata?.full_name || 'Pastor').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
+          full_name: fullName,
+          role,
+          initials: (fullName || 'Pastor').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
         };
+
         console.log('Supabase login successful for:', cleanUsername);
+        if (profileError && profileError.code !== 'PGRST116') {
+          console.warn('Student profile lookup warning:', profileError.message);
+        }
         return req.session.save(() => res.redirect('/'));
       }
     } catch (err) {
@@ -181,22 +494,22 @@ router.post('/login', async (req, res) => {
 
   // 2. Local Fallback Auth
   const users = getUsers();
-  const matchedUser = users.find(u => u.username === cleanUsername && u.password === cleanPass);
+  const matchedUser = users.find(u => {
+    const usernameMatches = u.username === cleanUsername || u.email === cleanUsername;
+    if (!usernameMatches) return false;
+    if (!u.password) return false;
+    if (u.password === cleanPass) return true;
+    try {
+      return bcrypt.compareSync(cleanPass, u.password);
+    } catch (err) {
+      return false;
+    }
+  });
 
   console.log('Matched user:', matchedUser ? matchedUser.username : 'none');
 
   if (matchedUser) {
-    // Check approval status
-    if (matchedUser.approval_status !== 'approved') {
-      console.log('User not approved:', matchedUser.approval_status);
-      return res.render('login', {
-        error: `Your application is currently ${matchedUser.approval_status}. Please contact your administrator for approval.`,
-        title: 'Sign In | Pastors LMS',
-        username: cleanUsername
-      });
-    }
-
-    const initials = matchedUser.full_name
+    const initials = (matchedUser.full_name || matchedUser.email || 'Pastor')
       .split(' ')
       .map(part => part[0])
       .join('')

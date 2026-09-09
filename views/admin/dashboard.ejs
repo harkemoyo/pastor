@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/css/global.css">
+  <link rel="stylesheet" href="/css/dashboard.css">
+  <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body class="app-container">
+  <%- include('../partials/header') %>
+  <main class="admin-page">
+    <div class="admin-topbar">
+      <div>
+        <h1 class="admin-title">Admin Dashboard</h1>
+        <div class="admin-subtitle">Overview of ministry operations and learner activity</div>
+      </div>
+      <div class="admin-actions">
+        <a href="/admin/students/new" class="btn btn-primary">Add Student</a>
+        <a href="/admin/courses/new" class="btn btn-secondary">Add Course</a>
+        <a href="/admin/enrolments" class="btn btn-success">Create Enrolment</a>
+      </div>
+    </div>
+
+    <div class="admin-grid">
+      <div class="admin-stat">
+        <div class="icon">👥</div>
+        <div><div class="number"><%= stats.totalStudents %></div><div class="label">Total Students</div></div>
+      </div>
+      <div class="admin-stat">
+        <div class="icon">✅</div>
+        <div><div class="number"><%= stats.activeStudents %></div><div class="label">Active Students</div></div>
+      </div>
+      <div class="admin-stat">
+        <div class="icon">🟡</div>
+        <div><div class="number"><%= stats.inactiveStudents %></div><div class="label">Inactive Students</div></div>
+      </div>
+      <div class="admin-stat">
+        <div class="icon">🎓</div>
+        <div><div class="number"><%= stats.graduatedStudents %></div><div class="label">Graduated Students</div></div>
+      </div>
+      <div class="admin-stat">
+        <div class="icon">📚</div>
+        <div><div class="number"><%= stats.totalCourses %></div><div class="label">Total Courses</div></div>
+      </div>
+      <div class="admin-stat">
+        <div class="icon">📖</div>
+        <div><div class="number"><%= stats.activeCourses %></div><div class="label">Active Courses</div></div>
+      </div>
+      <div class="admin-stat">
+        <div class="icon">🧾</div>
+        <div><div class="number"><%= stats.totalEnrolments %></div><div class="label">Total Enrolments</div></div>
+      </div>
+    </div>
+
+    <div class="detail-grid">
+      <section class="admin-surface">
+        <h2>Recent Student Registrations</h2>
+        <% if (recentRegistrations.length) { %>
+          <div class="admin-table-wrap">
+            <table class="admin-table">
+              <thead>
+                <tr><th>Name</th><th>Student ID</th><th>Email</th><th>Registered</th></tr>
+              </thead>
+              <tbody>
+                <% recentRegistrations.forEach(student => { %>
+                  <tr>
+                    <td><%= student.full_name || student.first_name + ' ' + student.last_name %></td>
+                    <td><%= student.student_id || 'N/A' %></td>
+                    <td><%= student.email %></td>
+                    <td><%= new Date(student.created_at || Date.now()).toLocaleDateString() %></td>
+                  </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+        <% } else { %>
+          <div class="empty-state">No student registrations yet.</div>
+        <% } %>
+      </section>
+
+      <section class="admin-surface">
+        <h2>Recent Admin Activity</h2>
+        <% if (recentActivity.length) { %>
+          <div class="admin-table-wrap">
+            <table class="admin-table">
+              <thead>
+                <tr><th>Action</th><th>Actor</th><th>Date</th></tr>
+              </thead>
+              <tbody>
+                <% recentActivity.forEach(item => { %>
+                  <tr>
+                    <td><%= item.action %></td>
+                    <td><%= item.admin_name %></td>
+                    <td><%= new Date(item.created_at).toLocaleString() %></td>
+                  </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+        <% } else { %>
+          <div class="empty-state">No admin activity recorded yet.</div>
+        <% } %>
+      </section>
+    </div>
+  </main>
+</body>
+</html>

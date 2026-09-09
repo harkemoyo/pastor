@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/css/global.css">
+  <link rel="stylesheet" href="/css/dashboard.css">
+  <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body class="app-container">
+  <%- include('../partials/header') %>
+  <main class="admin-page">
+    <div class="admin-topbar">
+      <div>
+        <h1 class="admin-title">Students</h1>
+        <div class="admin-subtitle">View, search, filter, and manage all ministry students</div>
+      </div>
+      <div class="admin-actions">
+        <a href="/admin/students/new" class="btn btn-primary">Add Student</a>
+      </div>
+    </div>
+
+    <section class="admin-surface">
+      <form method="GET" action="/admin/students" class="filters-bar">
+        <div class="filter-group" style="flex: 2; min-width: 220px;">
+          <label>Search</label>
+          <input type="text" name="search" value="<%= filters.search %>" placeholder="Name, Student ID, email, phone" />
+        </div>
+        <div class="filter-group">
+          <label>Status</label>
+          <select name="status">
+            <option value="all" <%= filters.status === 'all' ? 'selected' : '' %>>All</option>
+            <option value="active" <%= filters.status === 'active' ? 'selected' : '' %>>Active</option>
+            <option value="inactive" <%= filters.status === 'inactive' ? 'selected' : '' %>>Inactive</option>
+            <option value="suspended" <%= filters.status === 'suspended' ? 'selected' : '' %>>Suspended</option>
+            <option value="graduated" <%= filters.status === 'graduated' ? 'selected' : '' %>>Graduated</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Course</label>
+          <select name="course_id">
+            <option value="" <%= !filters.course_id ? 'selected' : '' %>>All courses</option>
+            <% courses.forEach(course => { %>
+              <option value="<%= course.id %>" <%= String(filters.course_id) === String(course.id) ? 'selected' : '' %>><%= course.title %></option>
+            <% }) %>
+          </select>
+        </div>
+        <div class="filter-group">
+          <button type="submit" class="btn btn-primary">Apply Filters</button>
+        </div>
+      </form>
+
+      <% if (students.length) { %>
+        <div class="admin-table-wrap">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Student ID</th>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>Status</th>
+                <th>Courses</th>
+                <th>Registered</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% students.forEach(student => { %>
+                <tr>
+                  <td><strong><%= student.student_id || 'N/A' %></strong></td>
+                  <td><%= student.full_name || [student.first_name, student.last_name].filter(Boolean).join(' ') %></td>
+                  <td><%= student.email %></td>
+                  <td><%= student.phone || 'N/A' %></td>
+                  <td>
+                    <span class="badge status-<%= student.status || 'active' %>"><%= (student.status || 'active').charAt(0).toUpperCase() + (student.status || 'active').slice(1) %></span>
+                  </td>
+                  <td><%= (student.student_id ? (student.enrolled_courses || 0) : 0) || 0 %></td>
+                  <td><%= student.created_at ? new Date(student.created_at).toLocaleDateString() : 'N/A' %></td>
+                  <td>
+                    <div class="action-stack">
+                      <a href="/admin/students/<%= student.student_id || student.username %>" class="btn btn-sm btn-secondary">View</a>
+                      <a href="/admin/students/<%= student.student_id || student.username %>/edit" class="btn btn-sm btn-secondary">Edit</a>
+                    </div>
+                  </td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="pagination">
+          <div>Showing <%= pagination.totalItems ? ((pagination.page - 1) * pagination.pageSize) + 1 : 0 %> - <%= Math.min(pagination.page * pagination.pageSize, pagination.totalItems) %> of <%= pagination.totalItems %> students</div>
+          <div class="pagination-links">
+            <% if (pagination.page > 1) { %>
+              <a href="/admin/students?search=<%= encodeURIComponent(filters.search) %>&status=<%= filters.status %>&course_id=<%= filters.course_id %>&page=<%= pagination.page - 1 %>">Prev</a>
+            <% } %>
+            <% for (let i = 1; i <= pagination.totalPages; i++) { %>
+              <% if (i === pagination.page) { %>
+                <span class="current"><%= i %></span>
+              <% } else { %>
+                <a href="/admin/students?search=<%= encodeURIComponent(filters.search) %>&status=<%= filters.status %>&course_id=<%= filters.course_id %>&page=<%= i %>"><%= i %></a>
+              <% } %>
+            <% } %>
+            <% if (pagination.page < pagination.totalPages) { %>
+              <a href="/admin/students?search=<%= encodeURIComponent(filters.search) %>&status=<%= filters.status %>&course_id=<%= filters.course_id %>&page=<%= pagination.page + 1 %>">Next</a>
+            <% } %>
+          </div>
+        </div>
+      <% } else { %>
+        <div class="empty-state">No students match the current search or filters.</div>
+      <% } %>
+    </section>
+  </main>
+</body>
+</html>

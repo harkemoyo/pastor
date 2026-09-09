@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/css/global.css">
+  <link rel="stylesheet" href="/css/dashboard.css">
+  <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body class="app-container">
+  <%- include('../partials/header') %>
+  <main class="admin-page">
+    <div class="admin-topbar">
+      <div>
+        <h1 class="admin-title"><%= mode === 'edit' ? 'Edit Student' : 'Add Student / Registration' %></h1>
+        <div class="admin-subtitle"><%= mode === 'edit' ? 'Update the student profile and ministry information' : 'Create a new student account and enrol in courses' %></div>
+      </div>
+      <div class="admin-actions">
+        <a href="/admin/students" class="btn btn-secondary">Back to Students</a>
+      </div>
+    </div>
+
+    <% if (error) { %>
+      <div class="alert alert-danger"><%= error %></div>
+    <% } %>
+
+    <section class="admin-surface">
+      <form method="POST" action="<%= mode === 'edit' ? `/admin/students/${formData.student_id || formData.username}/edit` : '/admin/students/new' %>">
+        <div class="admin-form-grid">
+          <div class="form-field">
+            <label>First Name *</label>
+            <input name="first_name" value="<%= formData.first_name || '' %>" required>
+          </div>
+          <div class="form-field">
+            <label>Middle Name</label>
+            <input name="middle_name" value="<%= formData.middle_name || '' %>">
+          </div>
+          <div class="form-field">
+            <label>Last Name *</label>
+            <input name="last_name" value="<%= formData.last_name || '' %>" required>
+          </div>
+          <div class="form-field">
+            <label>Date of Birth</label>
+            <input type="date" name="date_of_birth" value="<%= formData.date_of_birth || '' %>">
+          </div>
+          <div class="form-field">
+            <label>Gender</label>
+            <select name="gender">
+              <option value="">Select</option>
+              <option value="male" <%= formData.gender === 'male' ? 'selected' : '' %>>Male</option>
+              <option value="female" <%= formData.gender === 'female' ? 'selected' : '' %>>Female</option>
+              <option value="other" <%= formData.gender === 'other' ? 'selected' : '' %>>Other</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label>Phone Number *</label>
+            <input name="phone" value="<%= formData.phone || '' %>" required>
+          </div>
+          <div class="form-field">
+            <label>Email *</label>
+            <input type="email" name="email" value="<%= formData.email || '' %>" required>
+          </div>
+          <div class="form-field">
+            <label>Profile Photo</label>
+            <input type="text" name="profile_photo" value="<%= formData.profile_photo || '' %>" placeholder="Optional image URL">
+          </div>
+
+          <div class="form-field full-width">
+            <label>Address</label>
+            <input name="address" value="<%= formData.address || '' %>">
+          </div>
+          <div class="form-field">
+            <label>County</label>
+            <input name="county" value="<%= formData.county || '' %>">
+          </div>
+          <div class="form-field">
+            <label>Town</label>
+            <input name="town" value="<%= formData.town || '' %>">
+          </div>
+          <div class="form-field full-width">
+            <label>Physical Address</label>
+            <input name="physical_address" value="<%= formData.physical_address || '' %>">
+          </div>
+
+          <div class="form-field">
+            <label>Church / Ministry</label>
+            <input name="church_name" value="<%= formData.church_name || '' %>">
+          </div>
+          <div class="form-field">
+            <label>Ministry Role</label>
+            <input name="ministry_role" value="<%= formData.ministry_role || '' %>">
+          </div>
+          <div class="form-field">
+            <label>Years in Ministry</label>
+            <input type="number" min="0" name="years_in_ministry" value="<%= formData.years_in_ministry || '' %>">
+          </div>
+
+          <div class="form-field">
+            <label>Emergency Contact Name</label>
+            <input name="emergency_contact_name" value="<%= formData.emergency_contact_name || '' %>">
+          </div>
+          <div class="form-field">
+            <label>Emergency Contact Phone</label>
+            <input name="emergency_contact_phone" value="<%= formData.emergency_contact_phone || '' %>">
+          </div>
+          <div class="form-field">
+            <label>Relationship</label>
+            <input name="relationship" value="<%= formData.relationship || '' %>">
+          </div>
+
+          <div class="form-field">
+            <label>Student ID</label>
+            <input value="<%= formData.student_id || 'Auto-generated' %>" disabled>
+          </div>
+          <div class="form-field">
+            <label>Login Email / Username</label>
+            <input value="<%= formData.email || 'Uses the student email address' %>" disabled>
+          </div>
+          <% if (mode !== 'edit') { %>
+            <div class="form-field">
+              <label>Password *</label>
+              <input type="password" name="password" required>
+            </div>
+          <% } %>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary"><%= mode === 'edit' ? 'Save Changes' : 'Create Student' %></button>
+          <a href="/admin/students" class="btn btn-secondary">Cancel</a>
+        </div>
+      </form>
+    </section>
+  </main>
+</body>
+</html>

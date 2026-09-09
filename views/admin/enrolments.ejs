@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/css/global.css">
+  <link rel="stylesheet" href="/css/dashboard.css">
+  <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body class="app-container">
+  <%- include('../partials/header') %>
+  <main class="admin-page">
+    <div class="admin-topbar">
+      <div>
+        <h1 class="admin-title">Enrolments</h1>
+        <div class="admin-subtitle">Manage student-course enrolments and capacity</div>
+      </div>
+    </div>
+
+    <section class="admin-surface">
+      <h3>Create Enrolment</h3>
+      <form method="POST" action="/admin/enrolments/new" class="filters-bar">
+        <div class="filter-group" style="flex:1; min-width:220px;">
+          <label>Student</label>
+          <select name="student_id" required>
+            <option value="">Select student</option>
+            <% students.forEach(student => { %>
+              <option value="<%= student.student_id || student.username %>"><%= student.full_name || [student.first_name, student.last_name].filter(Boolean).join(' ') %> (<%= student.student_id || 'N/A' %>)</option>
+            <% }) %>
+          </select>
+        </div>
+        <div class="filter-group" style="flex:1; min-width:220px;">
+          <label>Course</label>
+          <select name="course_id" required>
+            <option value="">Select course</option>
+            <% courses.forEach(course => { %>
+              <option value="<%= course.id %>"><%= course.title %> (<%= course.code %>)</option>
+            <% }) %>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Status</label>
+          <select name="status">
+            <option value="active">Active</option>
+            <option value="pending">Pending</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <button type="submit" class="btn btn-primary">Create Enrolment</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="admin-surface" style="margin-top:1.5rem;">
+      <form method="GET" action="/admin/enrolments" class="filters-bar">
+        <div class="filter-group" style="flex:1; min-width:180px;">
+          <label>Student</label>
+          <select name="student_id">
+            <option value="all">All students</option>
+            <% students.forEach(student => { %>
+              <option value="<%= student.student_id || student.username %>" <%= filters.student_id === (student.student_id || student.username) ? 'selected' : '' %>><%= student.full_name || [student.first_name, student.last_name].filter(Boolean).join(' ') %></option>
+            <% }) %>
+          </select>
+        </div>
+        <div class="filter-group" style="flex:1; min-width:180px;">
+          <label>Course</label>
+          <select name="course_id">
+            <option value="all">All courses</option>
+            <% courses.forEach(course => { %>
+              <option value="<%= course.id %>" <%= Number(filters.course_id) === Number(course.id) ? 'selected' : '' %>><%= course.title %></option>
+            <% }) %>
+          </select>
+        </div>
+        <div class="filter-group" style="flex:1; min-width:180px;">
+          <label>Status</label>
+          <select name="status">
+            <option value="all" <%= filters.status === 'all' ? 'selected' : '' %>>All</option>
+            <option value="active" <%= filters.status === 'active' ? 'selected' : '' %>>Active</option>
+            <option value="pending" <%= filters.status === 'pending' ? 'selected' : '' %>>Pending</option>
+          </select>
+        </div>
+        <div class="filter-group" style="flex:1; min-width:180px;">
+          <label>Search</label>
+          <input type="text" name="search" value="<%= filters.search %>" placeholder="Student or course" />
+        </div>
+        <div class="filter-group">
+          <button type="submit" class="btn btn-primary">Apply</button>
+        </div>
+      </form>
+
+      <% if (enrolments.length) { %>
+        <div class="admin-table-wrap">
+          <table class="admin-table">
+            <thead>
+              <tr><th>Student</th><th>Course</th><th>Enrolment Date</th><th>Status</th><th>Actions</th></tr>
+            </thead>
+            <tbody>
+              <% enrolments.forEach(item => { %>
+                <tr>
+                  <td><%= item.student_name %></td>
+                  <td><%= item.course_name %> (<%= item.course_code %>)</td>
+                  <td><%= new Date(item.enrolled_at).toLocaleDateString() %></td>
+                  <td><span class="badge status-<%= item.status || 'active' %>"><%= (item.status || 'active').charAt(0).toUpperCase() + ((item.status || 'active').slice(1)) %></span></td>
+                  <td>
+                    <form method="POST" action="/admin/enrolments/<%= item.id %>/remove">
+                      <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Remove this enrolment?')">Remove</button>
+                    </form>
+                  </td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      <% } else { %>
+        <div class="empty-state">No enrolments match the current filters.</div>
+      <% } %>
+    </section>
+  </main>
+</body>
+</html>

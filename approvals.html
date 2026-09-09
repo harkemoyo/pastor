@@ -1,4 +1,15 @@
-<header class="top-navbar">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Student Approvals | Pastors LMS</title>
+  <link rel="stylesheet" href="/css/global.css">
+  <link rel="stylesheet" href="/css/dashboard.css">
+  <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body class="app-container">
+  <header class="top-navbar">
   <div class="nav-container">
     <div class="nav-brand">
       <a href="/" title="Pastors LMS Home" class="nav-brand-link">
@@ -11,7 +22,7 @@
     </div>
 
     <nav class="nav-links">
-      <li class="nav-item <%= (typeof currentPath !== 'undefined' && currentPath === '/') ? 'active' : '' %>">
+      <li class="nav-item ">
         <a href="/">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
             stroke-linecap="round" stroke-linejoin="round">
@@ -22,7 +33,7 @@
         </a>
       </li>
       <li
-        class="nav-item <%= (typeof currentPath !== 'undefined' && currentPath.startsWith('/courses')) ? 'active' : '' %>">
+        class="nav-item ">
         <a href="/">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
             stroke-linecap="round" stroke-linejoin="round">
@@ -57,32 +68,52 @@
         <span id="liveClock">Loading EAT...</span>
       </div>
 
-      <% if (locals.user) { %>
+      
         <div class="user-profile-btn">
-          <div class="user-avatar" title="<%= user.full_name %>">
-            <%= user.initials || 'P' %>
+          <div class="user-avatar" title="Admin User">
+            AU
           </div>
           <div class="user-info">
             <div class="user-name">
-              <%= user.full_name %>
+              Admin User
             </div>
             <div class="user-role">
-              <%= user.role==='admin' ? 'Curriculum Admin' : 'Pastor / Scholar' %>
+              Curriculum Admin
             </div>
           </div>
         </div>
-        <% if (user.role==='admin' ) { %>
+        
           <a href="/admin" class="btn-admin-link" title="Admin Dashboard">Dashboard</a>
           <a href="/admin/students" class="btn-admin-link" title="Manage Students">Students</a>
           <a href="/admin/courses" class="btn-admin-link" title="Manage Courses">Courses</a>
           <a href="/admin/enrolments" class="btn-admin-link" title="Manage Enrolments">Enrolments</a>
           <a href="/admin/activity" class="btn-admin-link" title="View Activity Log">Activity Log</a>
           <a href="/admin/profile" class="btn-admin-link" title="Admin Profile">My Profile</a>
-          <% } %>
+          
             <a href="/logout" class="btn-logout-link" title="Sign out of Pastors LMS">Logout</a>
-            <% } else { %>
-              <a href="/login" class="btn btn-gold btn-sm">Sign In</a>
-              <% } %>
+            
     </div>
   </div>
 </header>
+  <main class="admin-page">
+    <div class="admin-topbar">
+      <div>
+        <h1 class="admin-title">Student Applications</h1>
+        <div class="admin-subtitle">Review new student registrations and approve or reject them before access is granted.</div>
+      </div>
+      <div class="admin-actions">
+        <a href="/admin/students" class="btn btn-secondary">Back to Students</a>
+      </div>
+    </div>
+
+    
+    
+
+    <section class="admin-surface">
+      
+        <p>No pending student applications.</p>
+      
+    </section>
+  </main>
+</body>
+</html>
