@@ -79,5 +79,29 @@
     "status": "pending",
     "approval_status": "pending",
     "created_at": "2026-09-09T07:04:29.092Z"
+  },
+  {
+    "username": "p1000003",
+    "email": "sarah.otieno@example.com",
+    "password": "$2b$10$jIcA1fsPKc7LFT.ffpg2h.u2zpIByB6HpO0GB643VYmAHfDN/OUfi",
+    "full_name": "Pastor Sarah Otieno",
+    "first_name": "Sarah",
+    "middle_name": "",
+    "last_name": "Otieno",
+    "phone": "+254744111222",
+    "county": "Kisumu",
+    "town": "Kisumu",
+    "physical_address": "22 Lake Road",
+    "church_name": "New Hope Fellowship",
+    "ministry_role": "Assistant Pastor",
+    "years_in_ministry": 2,
+    "emergency_contact_name": "John Otieno",
+    "emergency_contact_phone": "+254700111222",
+    "relationship": "Husband",
+    "student_id": "STU-299044",
+    "role": "student",
+    "status": "active",
+    "approval_status": "approved",
+    "created_at": "2026-09-09T07:18:19.044Z"
   }
 ]

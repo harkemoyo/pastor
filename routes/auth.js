@@ -3,7 +3,7 @@ const router = express.Router();
 const fs = require('fs');
 const path = require('path');
 const bcrypt = require('bcrypt');
-const { supabase } = require('../config/supabase');
+const { supabase, supabaseAdmin } = require('../config/supabase');
 
 // Load fallback users from JSON
 function getUsers() {
@@ -203,124 +203,6 @@ router.post('/register', async (req, res) => {
     });
   }
 
-  if (supabase) {
-    try {
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: cleanEmail,
-        password: cleanPass,
-        options: {
-          data: {
-            full_name: cleanFullName,
-            role: 'student'
-          }
-        }
-      });
-
-      if (authError) {
-        const msg = authError.message || 'Unable to create account.';
-        const friendlyMessage = /already|duplicate|exists/i.test(msg)
-          ? 'An account with this email already exists.'
-          : msg;
-
-        return res.render('register', {
-          error: friendlyMessage,
-          title: 'Apply for Pastoral Training | Pastors LMS',
-          formData: {
-            full_name: cleanFullName,
-            email: cleanEmail,
-            phone: cleanPhone,
-            county: cleanCounty,
-            town: cleanTown,
-            physical_address: cleanPhysicalAddress,
-            church_name: cleanChurchName,
-            ministry_role: cleanMinistryRole,
-            years_in_ministry: cleanYearsInMinistry,
-            emergency_contact_name: cleanEmergencyContactName,
-            emergency_contact_phone: cleanEmergencyContactPhone,
-            relationship: cleanRelationship
-          }
-        });
-      }
-
-      const authUser = authData?.user;
-      if (authUser?.id) {
-        const users = getUsers();
-        const username = generateStudentUsername(users);
-        const studentId = `STU-${Date.now().toString().slice(-6)}`;
-
-        const profile = {
-          auth_user_id: authUser.id,
-          username,
-          email: cleanEmail,
-          full_name: cleanFullName,
-          first_name: cleanFirstName,
-          middle_name: cleanMiddleName,
-          last_name: cleanLastName,
-          phone: cleanPhone,
-          county: cleanCounty,
-          town: cleanTown,
-          physical_address: cleanPhysicalAddress,
-          church_name: cleanChurchName,
-          ministry_role: cleanMinistryRole,
-          years_in_ministry: cleanYearsInMinistry,
-          emergency_contact_name: cleanEmergencyContactName,
-          emergency_contact_phone: cleanEmergencyContactPhone,
-          relationship: cleanRelationship,
-          student_id: studentId,
-          role: 'student',
-          status: 'active',
-          approval_status: 'approved',
-          created_at: new Date().toISOString()
-        };
-
-        const { error: profileError } = await supabase.from('students').insert([profile]);
-        if (profileError) {
-          console.warn('Supabase profile insert failed:', profileError.message);
-        }
-
-        users.push({ ...profile, password: '' });
-        try {
-          fs.writeFileSync(path.join(__dirname, '../data/users.json'), JSON.stringify(users, null, 2));
-        } catch (fileError) {
-          console.warn('Local JSON sync failed for student self-registration:', fileError.message);
-        }
-      }
-
-      const successUsername = (() => {
-        const users = getUsers();
-        return users.find(u => u.email && u.email.toLowerCase() === cleanEmail)?.username || generateStudentUsername(users);
-      })();
-
-      return res.render('register-success', {
-        title: 'Account Created | Pastors LMS',
-        username: successUsername,
-        full_name: cleanFullName,
-        approval_status: 'approved'
-      });
-    } catch (err) {
-      console.error('Supabase self-registration error:', err);
-      return res.render('register', {
-        error: 'Unable to create your account right now. Please try again later.',
-        title: 'Apply for Pastoral Training | Pastors LMS',
-        formData: {
-          full_name: cleanFullName,
-          email: cleanEmail,
-          phone: cleanPhone,
-          county: cleanCounty,
-          town: cleanTown,
-          physical_address: cleanPhysicalAddress,
-          church_name: cleanChurchName,
-          ministry_role: cleanMinistryRole,
-          years_in_ministry: cleanYearsInMinistry,
-          emergency_contact_name: cleanEmergencyContactName,
-          emergency_contact_phone: cleanEmergencyContactPhone,
-          relationship: cleanRelationship
-        }
-      });
-    }
-  }
-
-  const hashedPassword = bcrypt.hashSync(cleanPass, 10);
   const users = getUsers();
   const duplicateEmail = users.some(u => u.email && u.email.toLowerCase() === cleanEmail);
   const duplicatePhone = users.some(u => u.phone && normalizePhone(u.phone) === normalizePhone(cleanPhone));
@@ -367,12 +249,90 @@ router.post('/register', async (req, res) => {
     });
   }
 
+  if (!supabaseAdmin) {
+    return res.render('register', {
+      error: 'Student self-registration is not available yet because Supabase admin credentials are not configured.',
+      title: 'Apply for Pastoral Training | Pastors LMS',
+      formData: {
+        full_name: cleanFullName,
+        email: cleanEmail,
+        phone: cleanPhone,
+        county: cleanCounty,
+        town: cleanTown,
+        physical_address: cleanPhysicalAddress,
+        church_name: cleanChurchName,
+        ministry_role: cleanMinistryRole,
+        years_in_ministry: cleanYearsInMinistry,
+        emergency_contact_name: cleanEmergencyContactName,
+        emergency_contact_phone: cleanEmergencyContactPhone,
+        relationship: cleanRelationship
+      }
+    });
+  }
+
+  let authUser = null;
+  try {
+    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+      email: cleanEmail,
+      password: cleanPass,
+      email_confirm: true,
+      user_metadata: {
+        full_name: cleanFullName,
+        role: 'student'
+      }
+    });
+
+    if (authError) {
+      console.error('Supabase admin createUser failed:', authError.message);
+      return res.render('register', {
+        error: authError.message || 'Unable to create student account.',
+        title: 'Apply for Pastoral Training | Pastors LMS',
+        formData: {
+          full_name: cleanFullName,
+          email: cleanEmail,
+          phone: cleanPhone,
+          county: cleanCounty,
+          town: cleanTown,
+          physical_address: cleanPhysicalAddress,
+          church_name: cleanChurchName,
+          ministry_role: cleanMinistryRole,
+          years_in_ministry: cleanYearsInMinistry,
+          emergency_contact_name: cleanEmergencyContactName,
+          emergency_contact_phone: cleanEmergencyContactPhone,
+          relationship: cleanRelationship
+        }
+      });
+    }
+
+    authUser = authData?.user || null;
+  } catch (err) {
+    console.error('Supabase admin createUser exception:', err.message);
+    return res.render('register', {
+      error: 'Unable to create your account right now. Please try again later.',
+      title: 'Apply for Pastoral Training | Pastors LMS',
+      formData: {
+        full_name: cleanFullName,
+        email: cleanEmail,
+        phone: cleanPhone,
+        county: cleanCounty,
+        town: cleanTown,
+        physical_address: cleanPhysicalAddress,
+        church_name: cleanChurchName,
+        ministry_role: cleanMinistryRole,
+        years_in_ministry: cleanYearsInMinistry,
+        emergency_contact_name: cleanEmergencyContactName,
+        emergency_contact_phone: cleanEmergencyContactPhone,
+        relationship: cleanRelationship
+      }
+    });
+  }
+
   const username = generateStudentUsername(users);
   const studentId = `STU-${Date.now().toString().slice(-6)}`;
   const profile = {
+    auth_user_id: authUser.id,
     username,
     email: cleanEmail,
-    password: hashedPassword,
     full_name: cleanFullName,
     first_name: cleanFirstName,
     middle_name: cleanMiddleName,
@@ -394,15 +354,30 @@ router.post('/register', async (req, res) => {
     created_at: new Date().toISOString()
   };
 
-  users.push(profile);
-
   try {
-    fs.writeFileSync(path.join(__dirname, '../data/users.json'), JSON.stringify(users, null, 2));
+    const { error: studentInsertError } = await supabase.from('students').insert([profile]);
 
-    await syncStudentToSupabase({
-      ...profile,
-      auth_user_id: null
-    });
+    if (studentInsertError) {
+      console.error('Student profile insert failed:', studentInsertError.message);
+      return res.render('register', {
+        error: 'Student account was created but profile storage failed. Please contact support.',
+        title: 'Apply for Pastoral Training | Pastors LMS',
+        formData: {
+          full_name: cleanFullName,
+          email: cleanEmail,
+          phone: cleanPhone,
+          county: cleanCounty,
+          town: cleanTown,
+          physical_address: cleanPhysicalAddress,
+          church_name: cleanChurchName,
+          ministry_role: cleanMinistryRole,
+          years_in_ministry: cleanYearsInMinistry,
+          emergency_contact_name: cleanEmergencyContactName,
+          emergency_contact_phone: cleanEmergencyContactPhone,
+          relationship: cleanRelationship
+        }
+      });
+    }
 
     res.render('register-success', {
       title: 'Account Created | Pastors LMS',
@@ -411,7 +386,7 @@ router.post('/register', async (req, res) => {
       approval_status: 'approved'
     });
   } catch (err) {
-    console.error('Error saving user:', err);
+    console.error('Error saving student profile:', err);
     return res.render('register', {
       error: 'Failed to submit application. Please try again.',
       title: 'Apply for Pastoral Training | Pastors LMS',
