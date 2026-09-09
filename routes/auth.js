@@ -381,7 +381,7 @@ router.post('/register', async (req, res) => {
       });
     }
     
-    const { error: studentInsertError, data: studentInsertData } = await supabaseAdmin.from('students').insert([profile]).select();
+    const { error: studentInsertError, data: studentInsertData } = await supabaseAdmin.from('students').upsert([profile], { onConflict: 'username' }).select();
 
     if (studentInsertError) {
       console.error('Student profile insert failed:', studentInsertError.message);
