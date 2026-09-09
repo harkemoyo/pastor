@@ -31,7 +31,8 @@ function normalizePhone(phone) {
 }
 
 async function syncStudentToSupabase(studentData) {
-  if (!supabase) return null;
+  const client = supabaseAdmin || supabase;
+  if (!client) return null;
 
   try {
     const payload = {
@@ -58,7 +59,7 @@ async function syncStudentToSupabase(studentData) {
       created_at: studentData.created_at || new Date().toISOString()
     };
 
-    const { data, error } = await supabase.from('students').upsert(payload, { onConflict: 'email' });
+    const { data, error } = await client.from('students').upsert(payload, { onConflict: 'email' });
     if (error) {
       console.warn('Supabase student sync failed:', error.message);
       return null;
@@ -355,7 +356,7 @@ router.post('/register', async (req, res) => {
   };
 
   try {
-    const { error: studentInsertError } = await supabase.from('students').insert([profile]);
+    const { error: studentInsertError } = await (supabaseAdmin || supabase).from('students').insert([profile]);
 
     if (studentInsertError) {
       console.error('Student profile insert failed:', studentInsertError.message);
@@ -437,7 +438,7 @@ router.post('/login', async (req, res) => {
       }
 
       if (data && data.user) {
-        const { data: profileRow, error: profileError } = await supabase
+        const { data: profileRow, error: profileError } = await (supabaseAdmin || supabase)
           .from('students')
           .select('*')
           .eq('auth_user_id', data.user.id)

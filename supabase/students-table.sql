@@ -50,14 +50,29 @@ before update on public.students
 for each row
 execute function public.set_updated_at();
 
--- Optional row-level security policy for admin-only reads and writes.
--- The project can enable RLS in Supabase and then apply app-specific admin policies.
-
 alter table public.students enable row level security;
 
--- Example policy:
--- create policy "Admins can manage students"
--- on public.students
--- for all
--- using (auth.jwt() ->> 'role' = 'admin')
--- with check (auth.jwt() ->> 'role' = 'admin');
+-- Students can create their own profile row once the auth user has been created.
+create policy "Students can insert own profile"
+on public.students
+for insert
+with check (auth.uid() = auth_user_id);
+
+-- Students can read and update only their own row.
+create policy "Students can view own profile"
+on public.students
+for select
+using (auth.uid() = auth_user_id);
+
+create policy "Students can update own profile"
+on public.students
+for update
+using (auth.uid() = auth_user_id)
+with check (auth.uid() = auth_user_id);
+
+-- Admins can manage all student records.
+create policy "Admins can manage students"
+on public.students
+for all
+using (auth.jwt() ->> 'role' = 'admin' or auth.jwt() ->> 'role' = 'super_admin')
+with check (auth.jwt() ->> 'role' = 'admin' or auth.jwt() ->> 'role' = 'super_admin');
