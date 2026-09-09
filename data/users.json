@@ -2,7 +2,7 @@
   {
     "username": "p1001234",
     "email": "pastor.james@church.org",
-    "password": "$2b$10$tuZlw7rxN0U7mftL/Ruca.7fVKIffhyLbymLZuzfgyXuR87jOxeem",
+    "password": "$2b$10$IFeR81mpSAzXDcSVYRoso.WqE/pxE.dsHCeLDjpWiEmcA5Kdz/tam",
     "full_name": "Pastor James Okonkwo",
     "role": "student",
     "approval_status": "approved",
@@ -13,7 +13,7 @@
   {
     "username": "a1000001",
     "email": "admin@pastorslms.com",
-    "password": "$2b$10$n11WH0SKAdpxqxiM6xP.VebDNJUZdu5MP3oD1YrFiel1sl458qMhO",
+    "password": "$2b$10$Sb.K4YkfyilbQO2tKmobC.AvBTwf4S.F1xYBtQ/0YcwoTbUqsUaC2",
     "full_name": "Admin User",
     "role": "admin",
     "approval_status": "approved",

@@ -428,8 +428,37 @@ router.post('/login', async (req, res) => {
   // 1. Try Supabase Auth if configured
   if (supabase) {
     try {
+      // Check if input is email or username
+      const isEmail = cleanUsername.includes('@');
+      let emailToUse = cleanUsername;
+      
+      // If it's a username, try to find the email
+      if (!isEmail) {
+        // First check local users.json for existing users
+        const users = getUsers();
+        const localUser = users.find(u => u.username === cleanUsername);
+        if (localUser && localUser.email) {
+          emailToUse = localUser.email;
+          console.log('Found email for username from local users:', emailToUse);
+        } else {
+          // If not in local users, try to find in Supabase students table
+          const { data: studentData, error: studentError } = await (supabaseAdmin || supabase)
+            .from('students')
+            .select('email')
+            .eq('username', cleanUsername)
+            .maybeSingle();
+          
+          if (!studentError && studentData && studentData.email) {
+            emailToUse = studentData.email;
+            console.log('Found email for username from Supabase:', emailToUse);
+          } else {
+            console.log('Username not found in local users or Supabase, trying as email');
+          }
+        }
+      }
+      
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: cleanUsername,
+        email: emailToUse,
         password: cleanPass
       });
 
