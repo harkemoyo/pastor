@@ -16,13 +16,38 @@ function getUsers() {
   }
 }
 
-function generateStudentUsername(users) {
+async function generateStudentUsername(users, supabaseClient) {
   const prefix = 'p';
   let counter = 1000000;
   while (true) {
     const username = `${prefix}${counter}`;
-    if (!users.some((user) => user.username === username)) return username;
-    counter += 1;
+    
+    // Check local users
+    const localExists = users.some((user) => user.username === username);
+    if (localExists) {
+      counter += 1;
+      continue;
+    }
+    
+    // Check Supabase if client is available
+    if (supabaseClient) {
+      try {
+        const { data: existingUser, error } = await supabaseClient
+          .from('students')
+          .select('username')
+          .eq('username', username)
+          .maybeSingle();
+        
+        if (!error && existingUser) {
+          counter += 1;
+          continue;
+        }
+      } catch (err) {
+        console.warn('Error checking Supabase for username:', err.message);
+      }
+    }
+    
+    return username;
   }
 }
 
@@ -328,7 +353,7 @@ router.post('/register', async (req, res) => {
     });
   }
 
-  const username = generateStudentUsername(users);
+  const username = await generateStudentUsername(users, supabaseAdmin);
   const studentId = `STU-${Date.now().toString().slice(-6)}`;
   const profile = {
     auth_user_id: authUser.id,
@@ -381,7 +406,7 @@ router.post('/register', async (req, res) => {
       });
     }
     
-    const { error: studentInsertError, data: studentInsertData } = await supabaseAdmin.from('students').upsert([profile], { onConflict: 'username' }).select();
+    const { error: studentInsertError, data: studentInsertData } = await supabaseAdmin.from('students').insert([profile]).select();
 
     if (studentInsertError) {
       console.error('Student profile insert failed:', studentInsertError.message);
