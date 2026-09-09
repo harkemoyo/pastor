@@ -365,7 +365,7 @@ router.post('/register', async (req, res) => {
       console.error('Student profile insert failed:', studentInsertError.message);
       console.error('Full error details:', JSON.stringify(studentInsertError, null, 2));
       return res.render('register', {
-        error: `Student account was created but profile storage failed: ${studentInsertError.message}`,
+        error: `Student account was created but profile storage failed: ${studentInsertError.message}. Details: ${JSON.stringify(studentInsertError)}`,
         title: 'Apply for Pastoral Training | Pastors LMS',
         formData: {
           full_name: cleanFullName,
