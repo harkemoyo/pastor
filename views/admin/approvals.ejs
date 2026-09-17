@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/css/global.css">
+  <link rel="stylesheet" href="/css/dashboard.css">
+  <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body class="app-container">
+  <%- include('../partials/header') %>
+  <main class="admin-page">
+    <div class="admin-topbar">
+      <div>
+        <h1 class="admin-title">Student Applications</h1>
+        <div class="admin-subtitle">Review new student registrations and approve or reject them before access is granted.</div>
+      </div>
+      <div class="admin-actions">
+        <a href="/admin/students" class="btn btn-secondary">Back to Students</a>
+      </div>
+    </div>
+
+    <% if (success) { %>
+      <div class="alert alert-success"><%= success %></div>
+    <% } %>
+    <% if (error) { %>
+      <div class="alert alert-danger"><%= error %></div>
+    <% } %>
+
+    <section class="admin-surface">
+      <% if (!students || students.length === 0) { %>
+        <p>No pending student applications.</p>
+      <% } else { %>
+        <div class="admin-table-wrap">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>Church</th>
+                <th>Role</th>
+                <th>Submitted</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% students.forEach(student => { %>
+                <tr>
+                  <td><%= student.full_name || student.username %></td>
+                  <td><%= student.email %></td>
+                  <td><%= student.phone || 'N/A' %></td>
+                  <td><%= student.church_name || 'N/A' %></td>
+                  <td><%= student.ministry_role || 'Student' %></td>
+                  <td><%= new Date(student.created_at || Date.now()).toLocaleDateString() %></td>
+                  <td>
+                    <div class="inline-actions">
+                      <form method="POST" action="/admin/students/<%= student.student_id || student.username %>/approve">
+                        <button type="submit" class="btn btn-success">Approve</button>
+                      </form>
+                      <form method="POST" action="/admin/students/<%= student.student_id || student.username %>/reject">
+                        <button type="submit" class="btn btn-danger">Reject</button>
+                      </form>
+                    </div>
+                  </td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      <% } %>
+    </section>
+  </main>
+</body>
+</html>

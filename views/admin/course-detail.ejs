@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/css/global.css">
+  <link rel="stylesheet" href="/css/dashboard.css">
+  <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body class="app-container">
+  <%- include('../partials/header') %>
+  <main class="admin-page">
+    <div class="admin-topbar">
+      <div>
+        <h1 class="admin-title">Course Details</h1>
+        <div class="admin-subtitle"><%= course.title %> / <%= course.code %></div>
+      </div>
+      <div class="admin-actions">
+        <a href="/admin/courses" class="btn btn-secondary">Back to Courses</a>
+      </div>
+    </div>
+
+    <% if (success) { %><div class="alert alert-success"><%= success %></div><% } %>
+    <% if (error) { %><div class="alert alert-danger"><%= error %></div><% } %>
+
+    <section class="admin-surface">
+      <div class="detail-grid">
+        <div class="info-card">
+          <h3>Course Information</h3>
+          <div class="meta-list">
+            <div class="meta-row"><strong>Course Name</strong><span><%= course.title %></span></div>
+            <div class="meta-row"><strong>Course Code</strong><span><%= course.code %></span></div>
+            <div class="meta-row"><strong>Status</strong><span><span class="badge status-<%= course.status || 'active' %>"><%= (course.status || 'active').charAt(0).toUpperCase() + ((course.status || 'active').slice(1)) %></span></span></div>
+            <div class="meta-row"><strong>Instructor</strong><span><%= course.instructor || 'TBD' %></span></div>
+            <div class="meta-row"><strong>Capacity</strong><span><%= course.capacity || 'Not limited' %></span></div>
+            <div class="meta-row"><strong>Created</strong><span><%= course.created_at ? new Date(course.created_at).toLocaleDateString() : 'N/A' %></span></div>
+          </div>
+
+          <div class="action-stack">
+            <a href="/admin/courses/<%= course.id %>/edit" class="btn btn-primary btn-sm">Edit Course</a>
+            <% if ((course.status || 'active') === 'archived') { %>
+              <form method="POST" action="/admin/courses/<%= course.id %>/restore" style="display:inline;">
+                <button type="submit" class="btn btn-success btn-sm">Restore</button>
+              </form>
+            <% } else { %>
+              <form method="POST" action="/admin/courses/<%= course.id %>/archive" style="display:inline;">
+                <button type="submit" class="btn btn-warning btn-sm">Archive</button>
+              </form>
+            <% } %>
+            <form method="POST" action="/admin/courses/<%= course.id %>/delete" style="display:inline;">
+              <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Delete this course? If students are enrolled, it will be archived instead.')">Delete</button>
+            </form>
+          </div>
+        </div>
+
+        <div class="info-card">
+          <h3>Description</h3>
+          <p><%= course.description || 'No description provided.' %></p>
+        </div>
+      </div>
+    </section>
+
+    <section class="admin-surface" style="margin-top:1.5rem;">
+      <h3>Enrolled Students</h3>
+      <% if (enrolments.length) { %>
+        <div class="admin-table-wrap">
+          <table class="admin-table">
+            <thead><tr><th>Student</th><th>Email</th><th>Status</th></tr></thead>
+            <tbody>
+              <% enrolments.forEach(item => { %>
+                <tr>
+                  <td><%= item.student_name %></td>
+                  <td><%= item.student_email %></td>
+                  <td><span class="badge status-<%= item.status || 'active' %>"><%= (item.status || 'active').charAt(0).toUpperCase() + ((item.status || 'active').slice(1)) %></span></td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      <% } else { %>
+        <div class="empty-state">No students are enrolled in this course.</div>
+      <% } %>
+    </section>
+  </main>
+</body>
+</html>

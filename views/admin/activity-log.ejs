@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/css/global.css">
+  <link rel="stylesheet" href="/css/dashboard.css">
+  <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body class="app-container">
+  <%- include('../partials/header') %>
+  <main class="admin-page">
+    <div class="admin-topbar">
+      <div>
+        <h1 class="admin-title">Activity Log</h1>
+        <div class="admin-subtitle">Administrative actions and student management changes</div>
+      </div>
+    </div>
+
+    <section class="admin-surface">
+      <% if (logs.length) { %>
+        <div class="admin-table-wrap">
+          <table class="admin-table">
+            <thead>
+              <tr><th>Admin</th><th>Action</th><th>Target</th><th>Date</th></tr>
+            </thead>
+            <tbody>
+              <% logs.forEach(log => { %>
+                <tr>
+                  <td><%= log.admin_name || log.admin_username %></td>
+                  <td><%= log.action %></td>
+                  <td><%= log.target_type %> / <%= log.target_id || 'N/A' %></td>
+                  <td><%= new Date(log.created_at).toLocaleString() %></td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      <% } else { %>
+        <div class="empty-state">No activity log entries yet.</div>
+      <% } %>
+    </section>
+  </main>
+</body>
+</html>

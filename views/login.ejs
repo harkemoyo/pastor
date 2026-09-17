@@ -48,7 +48,7 @@
 
           <form action="/login" method="POST" id="loginForm">
             <div class="form-group">
-              <label class="form-label" for="loginUsername">Username</label>
+              <label class="form-label" for="loginUsername">Username or Email</label>
               <div class="input-wrapper">
                 <span class="input-icon">
                   <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -57,7 +57,7 @@
                   </svg>
                 </span>
                 <input type="text" id="loginUsername" name="username" class="form-input"
-                  placeholder="Enter your username" value="<%= typeof username !== 'undefined' ? username : '' %>"
+                  placeholder="Enter your username or email" value="<%= typeof username !== 'undefined' ? username : '' %>"
                   required autocomplete="username">
               </div>
             </div>
