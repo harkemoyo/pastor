@@ -1,28 +1,15 @@
-const { createClient } = require('@supabase/supabase-js');
-require('dotenv').config();
-
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
-const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.error('Missing Supabase credentials in .env');
-  process.exit(1);
-}
-
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
-const supabaseAdmin = supabaseServiceRoleKey ? createClient(supabaseUrl, supabaseServiceRoleKey) : null;
+const { supabaseAdmin } = require('../config/supabase');
 
 async function inspectNewRegistrations() {
+  if (!supabaseAdmin) {
+    console.error('Supabase admin client not configured. Please set SUPABASE_SERVICE_ROLE_KEY in .env');
+    return;
+  }
+
   console.log('=== READ-ONLY INSPECTION OF NEW SUPABASE REGISTRATIONS ===\n');
 
   try {
-    // Get all auth users (requires admin access)
-    if (!supabaseAdmin) {
-      console.error('Admin client not available. Cannot inspect auth.users without SUPABASE_SERVICE_ROLE_KEY');
-      return;
-    }
-
+    // Get all auth users
     const { data: authUsers, error: authError } = await supabaseAdmin.auth.admin.listUsers();
     
     if (authError) {
@@ -39,7 +26,6 @@ async function inspectNewRegistrations() {
 
     if (profileError) {
       console.error('Error fetching profiles:', profileError.message);
-      console.log('Profiles table may not exist or no access');
       return;
     }
 
@@ -51,7 +37,8 @@ async function inspectNewRegistrations() {
       profileMap.set(profile.id, profile);
     });
 
-    // Identify new registrations (filter out obvious admin/system accounts)
+    // Identify new registrations (filter out likely legacy/admin users)
+    // New registrations would typically be recent and have specific patterns
     const newRegistrations = [];
     const authUsersWithoutProfiles = [];
     const duplicateProfiles = new Map();

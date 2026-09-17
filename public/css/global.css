@@ -227,6 +227,12 @@ a:hover {
   padding: 28px 24px;
 }
 
+@media (max-width: 640px) {
+  .main-content {
+    padding: 20px 16px;
+  }
+}
+
 .dashboard-layout {
   display: grid;
   grid-template-columns: 1fr 340px;

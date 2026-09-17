@@ -159,6 +159,13 @@
   }
 }
 
+@media (max-width: 375px) {
+  .login-card {
+    padding: 32px 24px;
+  }
+}
+
+
 .login-title {
   font-size: 1.65rem;
   font-weight: 800;
