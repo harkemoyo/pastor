@@ -117,26 +117,27 @@
           </div>
 
           <p class="login-footer-note">
-            Your application will be reviewed by our admissions team. You will receive your username and access details
-            once approved.
+            Your application will be reviewed by our admissions team. You will be able to access the LMS using your email once approved.
           </p>
     </div>
   </div>
 
   <script>
-    // Simple client-side validation
+    // Client-side validation
     document.getElementById('registerForm').addEventListener('submit', function (e) {
       const password = document.getElementById('password').value;
       const confirmPassword = document.getElementById('confirmPassword').value;
 
-      if (password !== confirmPassword) {
-        e.preventDefault();
-        alert('Passwords do not match!');
-      }
-
       if (password.length < 6) {
         e.preventDefault();
         alert('Password must be at least 6 characters!');
+        return;
+      }
+
+      if (password !== confirmPassword) {
+        e.preventDefault();
+        alert('Passwords do not match!');
+        return;
       }
     });
   </script>

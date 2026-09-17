@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title || 'Pastoral Application Onboarding | Pastors LMS' %></title>
+  <link rel="stylesheet" href="/css/global.css">
+  <link rel="stylesheet" href="/css/onboarding.css">
+  <link rel="icon" type="image/x-icon" href="/images/favicon.ico">
+</head>
+
+<body>
+  <div class="onboarding-viewport">
+    <!-- Navbar Header -->
+    <header class="onboarding-navbar">
+      <a href="/" class="onboarding-brand">
+        <img src="/images/ida-logo.jpg" alt="Intentional Discipleship Africa" class="onboarding-logo">
+        <div>
+          <div class="onboarding-brand-title">PASTORS <span class="onboarding-brand-accent">LMS</span></div>
+          <div class="onboarding-brand-tagline">EQUIPPING FAITHFUL SHEPHERDS</div>
+        </div>
+      </a>
+      <div style="display: flex; align-items: center; gap: 16px;">
+        <span style="font-size: 0.85rem; color: var(--text-muted); font-weight: 500;">
+          Signed in as: <strong><%= user && user.email ? user.email : (profile && profile.full_name) %></strong>
+        </span>
+        <a href="/logout" class="btn-secondary" style="padding: 0.4rem 0.9rem; font-size: 0.8rem;">Sign Out</a>
+      </div>
+    </header>
+
+    <main class="onboarding-container">
+      <!-- Stepper Header -->
+      <div class="stepper-header">
+        <div class="stepper-title-row">
+          <div>
+            <h1 class="stepper-title">Pastoral Candidate Onboarding</h1>
+            <p style="font-size: 0.85rem; color: var(--text-muted);">Please complete each step to submit your ministry training application.</p>
+          </div>
+          <span class="stepper-badge">Step <%= step %> of 5</span>
+        </div>
+
+        <div class="stepper-steps">
+          <div class="stepper-line">
+            <div class="stepper-line-fill" style="width: <%= ((step - 1) / 4) * 100 %>%;"></div>
+          </div>
+
+          <!-- Step 1 Indicator -->
+          <a href="/onboarding?step=1" class="step-item <%= step === 1 ? 'active' : '' %> <%= step > 1 ? 'completed clickable' : '' %>">
+            <div class="step-circle"><%= step > 1 ? '✓' : '1' %></div>
+            <span class="step-label">Account</span>
+          </a>
+
+          <!-- Step 2 Indicator -->
+          <a href="<%= (profile && profile.onboarding_step >= 2) ? '/onboarding?step=2' : '#' %>" 
+             class="step-item <%= step === 2 ? 'active' : '' %> <%= step > 2 ? 'completed clickable' : '' %> <%= (profile && profile.onboarding_step >= 2) ? 'clickable' : '' %>">
+            <div class="step-circle"><%= step > 2 ? '✓' : '2' %></div>
+            <span class="step-label">Ministry</span>
+          </a>
+
+          <!-- Step 3 Indicator -->
+          <a href="<%= (profile && profile.onboarding_step >= 3) ? '/onboarding?step=3' : '#' %>" 
+             class="step-item <%= step === 3 ? 'active' : '' %> <%= step > 3 ? 'completed clickable' : '' %> <%= (profile && profile.onboarding_step >= 3) ? 'clickable' : '' %>">
+            <div class="step-circle"><%= step > 3 ? '✓' : '3' %></div>
+            <span class="step-label">Church</span>
+          </a>
+
+          <!-- Step 4 Indicator -->
+          <a href="<%= (profile && profile.onboarding_step >= 4) ? '/onboarding?step=4' : '#' %>" 
+             class="step-item <%= step === 4 ? 'active' : '' %> <%= step > 4 ? 'completed clickable' : '' %> <%= (profile && profile.onboarding_step >= 4) ? 'clickable' : '' %>">
+            <div class="step-circle"><%= step > 4 ? '✓' : '4' %></div>
+            <span class="step-label">Location</span>
+          </a>
+
+          <!-- Step 5 Indicator -->
+          <a href="<%= (profile && profile.onboarding_step >= 5) ? '/onboarding?step=5' : '#' %>" 
+             class="step-item <%= step === 5 ? 'active' : '' %> <%= (profile && profile.onboarding_step >= 5) ? 'clickable' : '' %>">
+            <div class="step-circle">5</div>
+            <span class="step-label">Review</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- Alert Messages -->
+      <% if (typeof error !== 'undefined' && error) { %>
+        <div class="alert alert-danger" role="alert">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
+          <div><%= error %></div>
+        </div>
+      <% } %>
+
+      <% if (typeof success !== 'undefined' && success) { %>
+        <div class="alert alert-success" role="alert">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+            <polyline points="22 4 12 14.01 9 11.01" />
+          </svg>
+          <div><%= success %></div>
+        </div>
+      <% } %>
+
+      <!-- STEP 1: ACCOUNT -->
+      <% if (step === 1) { %>
+        <div class="onboarding-card">
+          <div class="card-header-block">
+            <h2 class="card-title">Step 1 — Verified Account Details</h2>
+            <p class="card-subtitle">Your credentials have been authenticated through Supabase. Please verify your basic account details below.</p>
+          </div>
+
+          <form action="/onboarding/step/1" method="POST" class="form-section">
+            <div class="form-group">
+              <label class="form-label" for="accFullName">Full Name</label>
+              <input type="text" id="accFullName" class="form-input" value="<%= (profile && profile.full_name) || (user && user.full_name) || '' %>" readonly>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="accEmail">Authenticated Email Address</label>
+              <input type="email" id="accEmail" class="form-input" value="<%= (user && user.email) || '' %>" readonly>
+              <span style="font-size: 0.78rem; color: var(--text-muted); margin-top: 4px;">
+                This email is associated with your authenticated Supabase identity and cannot be edited here.
+              </span>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Application Status</label>
+              <div style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; background: var(--gold-light); border: 1px solid var(--gold); border-radius: var(--radius-sm); font-size: 0.85rem; font-weight: 600; color: #7A5508; width: fit-content;">
+                <span>⏳</span> Pending Admissions Review
+              </div>
+            </div>
+
+            <div class="form-actions">
+              <div></div>
+              <button type="submit" class="btn-primary-action">
+                Continue to Ministry Details
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6" /></svg>
+              </button>
+            </div>
+          </form>
+        </div>
+
+      <!-- STEP 2: MINISTRY -->
+      <% } else if (step === 2) { %>
+        <div class="onboarding-card">
+          <div class="card-header-block">
+            <h2 class="card-title">Step 2 — Ministry Calling & Experience</h2>
+            <p class="card-subtitle">Tell us about your current ministry capacity and pastoral background.</p>
+          </div>
+
+          <form action="/onboarding/step/2" method="POST" class="form-section" id="step2Form">
+            <div class="form-group">
+              <label class="form-label">Primary Ministry Role</label>
+              <div class="role-grid">
+                <label class="role-card-label">
+                  <input type="radio" name="ministry_role" value="pastor" <%= (profile && profile.ministry_role === 'pastor') ? 'checked' : '' %> required>
+                  <div class="role-title">Pastor / Shepherd</div>
+                  <div class="role-desc">Lead Pastor, Senior Pastor, or primary shepherd of a local assembly.</div>
+                </label>
+
+                <label class="role-card-label">
+                  <input type="radio" name="ministry_role" value="minister" <%= (profile && profile.ministry_role === 'minister') ? 'checked' : '' %>>
+                  <div class="role-title">Minister / Associate</div>
+                  <div class="role-desc">Assistant Pastor, ordained minister, evangelist, or pastoral assistant.</div>
+                </label>
+
+                <label class="role-card-label">
+                  <input type="radio" name="ministry_role" value="church_leader" <%= (profile && profile.ministry_role === 'church_leader') ? 'checked' : '' %>>
+                  <div class="role-title">Church Leader / Elder</div>
+                  <div class="role-desc">Elder, deacon, ministry director, or council member with leadership duties.</div>
+                </label>
+
+                <label class="role-card-label">
+                  <input type="radio" name="ministry_role" value="other" <%= (!profile || !profile.ministry_role || profile.ministry_role === 'other') ? 'checked' : '' %>>
+                  <div class="role-title">Other Ministry Calling</div>
+                  <div class="role-desc">Bible teacher, church planter, chaplain, or missionary.</div>
+                </label>
+              </div>
+            </div>
+
+            <div class="form-row-2">
+              <div class="form-group">
+                <label class="form-label" for="yearsInMinistry">Years in Ministry</label>
+                <input type="number" id="yearsInMinistry" name="years_in_ministry" class="form-input" 
+                       min="0" max="80" step="1" 
+                       value="<%= (profile && typeof profile.years_in_ministry !== 'undefined') ? profile.years_in_ministry : '0' %>" required>
+                <span style="font-size: 0.76rem; color: var(--text-light);">Enter 0 if just beginning your ministry calling.</span>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="phone">Active Phone / WhatsApp Number</label>
+                <input type="tel" id="phone" name="phone" class="form-input" 
+                       placeholder="+254 700 000 000" 
+                       value="<%= (profile && profile.phone) ? profile.phone : '' %>" required>
+                <span style="font-size: 0.76rem; color: var(--text-light);">Used for official training notices and cohort communications.</span>
+              </div>
+            </div>
+
+            <div class="form-actions">
+              <a href="/onboarding?step=1" class="btn-secondary">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6" /></svg>
+                Back to Account
+              </a>
+              <button type="submit" class="btn-primary-action">
+                Continue to Church Details
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6" /></svg>
+              </button>
+            </div>
+          </form>
+        </div>
+
+      <!-- STEP 3: CHURCH -->
+      <% } else if (step === 3) { %>
+        <div class="onboarding-card">
+          <div class="card-header-block">
+            <h2 class="card-title">Step 3 — Church Affiliation</h2>
+            <p class="card-subtitle">Connect your profile to the local church where you shepherd or minister.</p>
+          </div>
+
+          <!-- Mode Toggle Tabs -->
+          <div class="church-mode-toggle">
+            <button type="button" class="church-tab-btn active" id="tabSelectExisting" onclick="switchChurchMode('select')">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
+              Select Existing Church
+            </button>
+            <button type="button" class="church-tab-btn" id="tabCreateNew" onclick="switchChurchMode('create')">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14" /><path d="M5 12h14" /></svg>
+              Register New Church
+            </button>
+          </div>
+
+          <form action="/onboarding/step/3" method="POST" id="step3Form" class="form-section">
+            <input type="hidden" name="church_action" id="churchAction" value="select">
+            <input type="hidden" name="church_id" id="selectedChurchId" value="<%= (profile && profile.church_id) ? profile.church_id : '' %>">
+
+            <!-- Panel A: Select Existing Church -->
+            <div id="panelSelectChurch">
+              <div class="search-wrapper">
+                <span class="search-input-icon">
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
+                </span>
+                <input type="text" id="churchSearchInput" class="form-input church-search-input" 
+                       placeholder="Search registered churches by name (e.g. Grace Baptist, Deliverance, AIC)..." 
+                       autocomplete="off" oninput="handleChurchSearch(this.value)">
+              </div>
+
+              <!-- Live Results Container -->
+              <div id="churchSearchResults" class="church-results-container">
+                <% if (church) { %>
+                  <div class="church-card-option selected" id="opt-<%= church.id %>" data-church-id="<%= church.id %>" data-church-name="<%= church.name %>" onclick="selectChurch(this.dataset.churchId, this.dataset.churchName)">
+                    <div class="church-card-info">
+                      <div class="church-card-name">✓ <%= church.name %></div>
+                      <div class="church-card-meta"><%= church.denomination || 'Non-denominational' %> • <%= church.town %>, <%= church.country %></div>
+                    </div>
+                    <span style="font-size: 0.8rem; color: var(--primary); font-weight: 600;">Currently Selected</span>
+                  </div>
+                <% } else { %>
+                  <p style="font-size: 0.85rem; color: var(--text-muted); padding: 10px 0;">Type at least 2 letters above to search the church registry, or click "Register New Church" if your assembly is not yet listed.</p>
+                <% } %>
+              </div>
+            </div>
+
+            <!-- Panel B: Register New Church -->
+            <div id="panelCreateChurch" style="display: none;">
+              <div class="form-group">
+                <label class="form-label" for="newChurchName">Church Name</label>
+                <input type="text" id="newChurchName" name="church_name" class="form-input" placeholder="e.g. Grace Community Church Nairobi">
+              </div>
+
+              <div class="form-row-2">
+                <div class="form-group">
+                  <label class="form-label" for="newChurchDenom">
+                    Denomination / Affiliation
+                    <span class="optional-tag">Optional</span>
+                  </label>
+                  <input type="text" id="newChurchDenom" name="denomination" class="form-input" placeholder="e.g. Baptist, Anglican, AIC, Independent">
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label" for="newChurchCountry">Country</label>
+                  <select id="newChurchCountry" name="country" class="form-select">
+                    <option value="Kenya" selected>Kenya</option>
+                    <option value="Uganda">Uganda</option>
+                    <option value="Tanzania">Tanzania</option>
+                    <option value="Rwanda">Rwanda</option>
+                    <option value="Burundi">Burundi</option>
+                    <option value="South Sudan">South Sudan</option>
+                    <option value="DR Congo">DR Congo</option>
+                    <option value="Ethiopia">Ethiopia</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-row-2">
+                <div class="form-group">
+                  <label class="form-label" for="newChurchTown">Town / City</label>
+                  <input type="text" id="newChurchTown" name="town" class="form-input" placeholder="e.g. Nairobi, Nakuru, Eldoret">
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label" for="newChurchAddress">
+                    General Street / Area Address
+                    <span class="optional-tag">Optional</span>
+                  </label>
+                  <input type="text" id="newChurchAddress" name="address" class="form-input" placeholder="e.g. Off Langata Road, Karen">
+                </div>
+              </div>
+            </div>
+
+            <div class="form-actions">
+              <a href="/onboarding?step=2" class="btn-secondary">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6" /></svg>
+                Back to Ministry
+              </a>
+              <button type="submit" class="btn-primary-action" id="btnStep3Submit">
+                Continue to Church Location
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6" /></svg>
+              </button>
+            </div>
+          </form>
+        </div>
+
+      <!-- STEP 4: CHURCH LOCATION -->
+      <% } else if (step === 4) { %>
+        <div class="onboarding-card">
+          <div class="card-header-block">
+            <h2 class="card-title">Step 4 — Church Physical Location</h2>
+            <p class="card-subtitle">
+              Provide the geographical and administrative location of the church building or meeting hall.
+            </p>
+          </div>
+
+          <div style="background: var(--info-bg); border: 1px solid rgba(29, 93, 163, 0.2); border-radius: var(--radius-md); padding: 0.9rem 1.1rem; margin-bottom: 1.5rem; display: flex; gap: 10px; align-items: flex-start;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--info); flex-shrink: 0; margin-top: 2px;"><circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" /></svg>
+            <div style="font-size: 0.84rem; color: #123C6A; line-height: 1.45;">
+              <strong>Important Notice:</strong> This represents the physical location of your <em>church congregation</em>, <strong>not</strong> your personal residence or personal device location. No automatic device tracking is performed.
+            </div>
+          </div>
+
+          <form action="/onboarding/step/4" method="POST" class="form-section" id="step4Form">
+            <div class="form-row-2">
+              <div class="form-group">
+                <label class="form-label" for="locCountry">Country</label>
+                <select id="locCountry" name="country" class="form-select" required>
+                  <% const selCountry = (church && church.country) || 'Kenya'; %>
+                  <option value="Kenya" <%= selCountry === 'Kenya' ? 'selected' : '' %>>Kenya</option>
+                  <option value="Uganda" <%= selCountry === 'Uganda' ? 'selected' : '' %>>Uganda</option>
+                  <option value="Tanzania" <%= selCountry === 'Tanzania' ? 'selected' : '' %>>Tanzania</option>
+                  <option value="Rwanda" <%= selCountry === 'Rwanda' ? 'selected' : '' %>>Rwanda</option>
+                  <option value="Burundi" <%= selCountry === 'Burundi' ? 'selected' : '' %>>Burundi</option>
+                  <option value="South Sudan" <%= selCountry === 'South Sudan' ? 'selected' : '' %>>South Sudan</option>
+                  <option value="DR Congo" <%= selCountry === 'DR Congo' ? 'selected' : '' %>>DR Congo</option>
+                  <option value="Ethiopia" <%= selCountry === 'Ethiopia' ? 'selected' : '' %>>Ethiopia</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="locAdmin1">
+                  County / State / Province
+                  <span class="optional-tag">Admin Level 1</span>
+                </label>
+                <input type="text" id="locAdmin1" name="admin_level_1" class="form-input" 
+                       placeholder="e.g. Nairobi County, Rift Valley, Central" 
+                       value="<%= (church && church.admin_level_1) || '' %>">
+              </div>
+            </div>
+
+            <div class="form-row-2">
+              <div class="form-group">
+                <label class="form-label" for="locAdmin2">
+                  District / Sub-County
+                  <span class="optional-tag">Admin Level 2</span>
+                </label>
+                <input type="text" id="locAdmin2" name="admin_level_2" class="form-input" 
+                       placeholder="e.g. Lang'ata, Kasarani, Nakuru West" 
+                       value="<%= (church && church.admin_level_2) || '' %>">
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="locTown">Town / Municipality</label>
+                <input type="text" id="locTown" name="town" class="form-input" 
+                       placeholder="e.g. Nairobi, Nakuru, Eldoret" 
+                       value="<%= (church && church.town) || '' %>" required>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="locAddress">
+                Physical Street Address / Landmarks
+                <span class="optional-tag">Optional</span>
+              </label>
+              <textarea id="locAddress" name="address" class="form-textarea" rows="2" 
+                        placeholder="e.g. Plot 45, Off Magadi Road, Next to St. Paul Dispensary"><%= (church && church.address) || '' %></textarea>
+            </div>
+
+            <div style="border-top: 1px solid var(--border-light); padding-top: 1.25rem;">
+              <div style="font-size: 0.9rem; font-weight: 700; color: var(--primary-dark); margin-bottom: 4px;">
+                Optional GPS Coordinates
+              </div>
+              <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 12px;">
+                If your church has mapped coordinates, enter them manually below. Valid ranges: Latitude -90° to +90°, Longitude -180° to +180°.
+              </p>
+
+              <div class="form-row-2">
+                <div class="form-group">
+                  <label class="form-label" for="locLat">
+                    Latitude (-90.0 to 90.0)
+                    <span class="optional-tag">Optional</span>
+                  </label>
+                  <input type="number" id="locLat" name="latitude" class="form-input" 
+                         min="-90" max="90" step="any" placeholder="e.g. -1.286389" 
+                         value="<%= (church && church.latitude !== null && typeof church.latitude !== 'undefined') ? church.latitude : '' %>">
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label" for="locLng">
+                    Longitude (-180.0 to 180.0)
+                    <span class="optional-tag">Optional</span>
+                  </label>
+                  <input type="number" id="locLng" name="longitude" class="form-input" 
+                         min="-180" max="180" step="any" placeholder="e.g. 36.817223" 
+                         value="<%= (church && church.longitude !== null && typeof church.longitude !== 'undefined') ? church.longitude : '' %>">
+                </div>
+              </div>
+            </div>
+
+            <div class="form-actions">
+              <a href="/onboarding?step=3" class="btn-secondary">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6" /></svg>
+                Back to Church
+              </a>
+              <button type="submit" class="btn-primary-action">
+                Review Application
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6" /></svg>
+              </button>
+            </div>
+          </form>
+        </div>
+
+      <!-- STEP 5: REVIEW & SUBMIT -->
+      <% } else if (step === 5) { %>
+        <div class="onboarding-card">
+          <div class="card-header-block">
+            <h2 class="card-title">Step 5 — Review & Final Submission</h2>
+            <p class="card-subtitle">Verify all your pastoral training application details before submitting for admissions review.</p>
+          </div>
+
+          <div class="review-grid">
+            <!-- Section 1: Account -->
+            <div class="review-card">
+              <div class="review-card-header">
+                <h3>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
+                  1. Candidate Identity
+                </h3>
+                <a href="/onboarding?step=1" class="review-edit-btn">Edit ✎</a>
+              </div>
+              <div class="review-card-body">
+                <div>
+                  <div class="review-field-label">Full Name</div>
+                  <div class="review-field-val"><%= (profile && profile.full_name) || (user && user.full_name) %></div>
+                </div>
+                <div>
+                  <div class="review-field-label">Email Address</div>
+                  <div class="review-field-val"><%= (user && user.email) || '' %></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Section 2: Ministry -->
+            <div class="review-card">
+              <div class="review-card-header">
+                <h3>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="20" height="14" x="2" y="7" rx="2" /><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" /></svg>
+                  2. Ministry Details
+                </h3>
+                <a href="/onboarding?step=2" class="review-edit-btn">Edit ✎</a>
+              </div>
+              <div class="review-card-body">
+                <div>
+                  <div class="review-field-label">Ministry Role</div>
+                  <div class="review-field-val" style="text-transform: capitalize;">
+                    <%= (profile && profile.ministry_role) ? profile.ministry_role.replace('_', ' ') : 'Not specified' %>
+                  </div>
+                </div>
+                <div>
+                  <div class="review-field-label">Experience</div>
+                  <div class="review-field-val">
+                    <%= (profile && typeof profile.years_in_ministry !== 'undefined') ? profile.years_in_ministry + ' year(s)' : '0 years' %>
+                  </div>
+                </div>
+                <div>
+                  <div class="review-field-label">Phone Contact</div>
+                  <div class="review-field-val"><%= (profile && profile.phone) || 'Not provided' %></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Section 3: Church -->
+            <div class="review-card">
+              <div class="review-card-header">
+                <h3>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><polyline points="9 22 9 12 15 12 15 22" /></svg>
+                  3. Church Affiliation
+                </h3>
+                <a href="/onboarding?step=3" class="review-edit-btn">Edit ✎</a>
+              </div>
+              <div class="review-card-body">
+                <div>
+                  <div class="review-field-label">Church Name</div>
+                  <div class="review-field-val"><%= (church && church.name) || 'Not linked' %></div>
+                </div>
+                <div>
+                  <div class="review-field-label">Denomination</div>
+                  <div class="review-field-val"><%= (church && church.denomination) || 'Non-denominational' %></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Section 4: Location -->
+            <div class="review-card">
+              <div class="review-card-header">
+                <h3>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" /><circle cx="12" cy="10" r="3" /></svg>
+                  4. Church Physical Location
+                </h3>
+                <a href="/onboarding?step=4" class="review-edit-btn">Edit ✎</a>
+              </div>
+              <div class="review-card-body">
+                <div>
+                  <div class="review-field-label">Town & Country</div>
+                  <div class="review-field-val"><%= (church && church.town ? church.town : '') %>, <%= (church && church.country ? church.country : '') %></div>
+                </div>
+                <div>
+                  <div class="review-field-label">State / County</div>
+                  <div class="review-field-val"><%= (church && church.admin_level_1) || 'None' %></div>
+                </div>
+                <div>
+                  <div class="review-field-label">District / Sub-County</div>
+                  <div class="review-field-val"><%= (church && church.admin_level_2) || 'None' %></div>
+                </div>
+                <div>
+                  <div class="review-field-label">Street / Landmark</div>
+                  <div class="review-field-val"><%= (church && church.address) || 'None provided' %></div>
+                </div>
+                <% if (church && church.latitude !== null && church.longitude !== null && typeof church.latitude !== 'undefined') { %>
+                <div>
+                  <div class="review-field-label">Coordinates</div>
+                  <div class="review-field-val"><%= church.latitude %>, <%= church.longitude %></div>
+                </div>
+                <% } %>
+              </div>
+            </div>
+          </div>
+
+          <div class="confirmation-callout">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 9v4" />
+              <path d="M12 17h.01" />
+              <path d="M3.6 15h16.8a2 2 0 0 0 1.8-2.9L13.8 3.5a2 2 0 0 0-3.6 0L1.8 12.1A2 2 0 0 0 3.6 15Z" />
+            </svg>
+            <div class="confirmation-text">
+              <strong>Admissions Review Process:</strong> When you submit, your application will be marked <em>Pending Review</em>.
+              No access to student modules is granted until pastoral admissions completes the verification. You will be notified once approved.
+            </div>
+          </div>
+
+          <form action="/onboarding/step/5" method="POST" style="margin-top: 1.5rem;">
+            <div style="margin-bottom: 1.5rem;">
+              <label style="display: flex; align-items: center; gap: 10px; font-size: 0.9rem; font-weight: 600; color: var(--text-title); cursor: pointer;">
+                <input type="checkbox" required style="width: 18px; height: 18px; accent-color: var(--primary);">
+                I confirm that the submitted information is true and accurately describes my pastoral ministry.
+              </label>
+            </div>
+
+            <div class="form-actions">
+              <a href="/onboarding?step=4" class="btn-secondary">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6" /></svg>
+                Back to Location
+              </a>
+              <button type="submit" class="btn-primary-action btn-submit-gold">
+                Submit Application for Review
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12" /></svg>
+              </button>
+            </div>
+          </form>
+        </div>
+      <% } %>
+    </main>
+  </div>
+
+  <script>
+    // Step 3 Church mode switcher
+    function switchChurchMode(mode) {
+      const tabSelect = document.getElementById('tabSelectExisting');
+      const tabCreate = document.getElementById('tabCreateNew');
+      const panelSelect = document.getElementById('panelSelectChurch');
+      const panelCreate = document.getElementById('panelCreateChurch');
+      const actionInput = document.getElementById('churchAction');
+      const newChurchName = document.getElementById('newChurchName');
+      const newChurchTown = document.getElementById('newChurchTown');
+
+      if (!tabSelect || !tabCreate) return;
+
+      if (mode === 'select') {
+        tabSelect.classList.add('active');
+        tabCreate.classList.remove('active');
+        panelSelect.style.display = 'block';
+        panelCreate.style.display = 'none';
+        actionInput.value = 'select';
+        if (newChurchName) newChurchName.removeAttribute('required');
+        if (newChurchTown) newChurchTown.removeAttribute('required');
+      } else {
+        tabCreate.classList.add('active');
+        tabSelect.classList.remove('active');
+        panelSelect.style.display = 'none';
+        panelCreate.style.display = 'block';
+        actionInput.value = 'create';
+        if (newChurchName) newChurchName.setAttribute('required', 'required');
+        if (newChurchTown) newChurchTown.setAttribute('required', 'required');
+      }
+    }
+
+    // Step 3 Live Search
+    let searchDebounceTimeout = null;
+    function handleChurchSearch(query) {
+      clearTimeout(searchDebounceTimeout);
+      const resultsBox = document.getElementById('churchSearchResults');
+      if (!resultsBox) return;
+
+      const trimmed = (query || '').trim();
+      if (trimmed.length < 2) {
+        resultsBox.innerHTML = '<p style="font-size: 0.85rem; color: var(--text-muted); padding: 10px 0;">Type at least 2 letters above to search the church registry.</p>';
+        return;
+      }
+
+      resultsBox.innerHTML = '<p style="font-size: 0.85rem; color: var(--text-muted); padding: 10px 0;">Searching church registry...</p>';
+
+      searchDebounceTimeout = setTimeout(() => {
+        fetch('/onboarding/churches/search?q=' + encodeURIComponent(trimmed))
+          .then(res => res.json())
+          .then(data => {
+            const churches = data.churches || [];
+            if (churches.length === 0) {
+              resultsBox.innerHTML = '<p style="font-size: 0.85rem; color: var(--text-muted); padding: 10px 0;">No matching churches found. Switch to "Register New Church" above to add your assembly.</p>';
+              return;
+            }
+
+            const currentSelected = document.getElementById('selectedChurchId').value;
+            resultsBox.innerHTML = churches.map(c => `
+              <div class="church-card-option ${c.id === currentSelected ? 'selected' : ''}" id="opt-${c.id}" onclick="selectChurch('${c.id}', '${(c.name || '').replace(/'/g, "\\'")}')">
+                <div class="church-card-info">
+                  <div class="church-card-name">${c.name}</div>
+                  <div class="church-card-meta">${c.denomination || 'Non-denominational'} • ${c.town}, ${c.country}</div>
+                </div>
+                <span style="font-size: 0.8rem; color: var(--primary); font-weight: 600;">
+                  ${c.id === currentSelected ? '✓ Selected' : 'Select'}
+                </span>
+              </div>
+            `).join('');
+          })
+          .catch(err => {
+            console.error('Search error:', err);
+            resultsBox.innerHTML = '<p style="font-size: 0.85rem; color: var(--danger); padding: 10px 0;">Unable to load churches. Please try again or create a new church.</p>';
+          });
+      }, 250);
+    }
+
+    function selectChurch(id, name) {
+      const idInput = document.getElementById('selectedChurchId');
+      if (idInput) idInput.value = id;
+
+      document.querySelectorAll('.church-card-option').forEach(el => el.classList.remove('selected'));
+      const chosen = document.getElementById('opt-' + id);
+      if (chosen) chosen.classList.add('selected');
+    }
+
+    // Step 3 submission check
+    const step3Form = document.getElementById('step3Form');
+    if (step3Form) {
+      step3Form.addEventListener('submit', function(e) {
+        const action = document.getElementById('churchAction').value;
+        if (action === 'select') {
+          const selectedId = document.getElementById('selectedChurchId').value;
+          if (!selectedId) {
+            e.preventDefault();
+            alert('Please select an existing church from the list, or switch to "Register New Church".');
+          }
+        }
+      });
+    }
+
+    // Step 4 Coordinates validation
+    const step4Form = document.getElementById('step4Form');
+    if (step4Form) {
+      step4Form.addEventListener('submit', function(e) {
+        const latInput = document.getElementById('locLat');
+        const lngInput = document.getElementById('locLng');
+
+        if (latInput && latInput.value.trim() !== '') {
+          const lat = parseFloat(latInput.value);
+          if (isNaN(lat) || lat < -90 || lat > 90) {
+            e.preventDefault();
+            alert('Latitude must be a valid number between -90 and 90 degrees.');
+            return;
+          }
+        }
+
+        if (lngInput && lngInput.value.trim() !== '') {
+          const lng = parseFloat(lngInput.value);
+          if (isNaN(lng) || lng < -180 || lng > 180) {
+            e.preventDefault();
+            alert('Longitude must be a valid number between -180 and 180 degrees.');
+            return;
+          }
+        }
+      });
+    }
+  </script>
+</body>
+</html>

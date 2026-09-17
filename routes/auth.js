@@ -44,6 +44,15 @@ router.get('/register', (req, res) => {
   });
 });
 
+// GET /register-success
+router.get('/register-success', (req, res) => {
+  res.render('register-success', {
+    title: 'Application Submitted | Pastors LMS',
+    full_name: req.session?.user?.full_name || '',
+    email: req.session?.user?.email || ''
+  });
+});
+
 // POST /register
 router.post('/register', async (req, res) => {
   const { full_name, email, password, confirm_password } = req.body;
@@ -52,7 +61,7 @@ router.post('/register', async (req, res) => {
   const cleanPass = (password || '').trim();
   const cleanConfirmPass = (confirm_password || '').trim();
 
-  // Validation
+  // Validate required fields
   if (!cleanName || !cleanEmail || !cleanPass || !cleanConfirmPass) {
     return res.render('register', {
       error: 'All fields are required.',
@@ -61,14 +70,7 @@ router.post('/register', async (req, res) => {
     });
   }
 
-  if (cleanPass !== cleanConfirmPass) {
-    return res.render('register', {
-      error: 'Passwords do not match.',
-      title: 'Apply for Pastoral Training | Pastors LMS',
-      formData: { full_name: cleanName, email: cleanEmail }
-    });
-  }
-
+  // Validate password length (minimum 6 characters)
   if (cleanPass.length < 6) {
     return res.render('register', {
       error: 'Password must be at least 6 characters.',
@@ -77,54 +79,88 @@ router.post('/register', async (req, res) => {
     });
   }
 
-  // Check if email already exists
-  const users = getUsers();
-  const existingUser = users.find(u => u.email === cleanEmail);
-  
-  if (existingUser) {
+  // Validate password confirmation match
+  if (cleanPass !== cleanConfirmPass) {
     return res.render('register', {
-      error: 'An account with this email already exists.',
+      error: 'Passwords do not match.',
       title: 'Apply for Pastoral Training | Pastors LMS',
       formData: { full_name: cleanName, email: cleanEmail }
     });
   }
 
-  // Generate username for new applicant
-  const prefix = 'p'; // All new registrations start as students
-  const existingUsernames = users.map(u => u.username);
-  let counter = 1;
-  let username;
-  
-  do {
-    username = `${prefix}${1000000 + counter}`;
-    counter++;
-  } while (existingUsernames.includes(username));
+  // Ensure Supabase client is available
+  if (!supabase) {
+    console.error('Registration failed: Supabase client is not configured.');
+    return res.render('register', {
+      error: 'Registration service is currently unavailable. Please contact the administrator.',
+      title: 'Apply for Pastoral Training | Pastors LMS',
+      formData: { full_name: cleanName, email: cleanEmail }
+    });
+  }
 
-  // Create new user with pending status
-  const newUser = {
-    username,
-    email: cleanEmail,
-    password: cleanPass,
-    full_name: cleanName,
-    role: 'student',
-    approval_status: 'pending',
-    created_at: new Date().toISOString()
-  };
-
-  users.push(newUser);
-
-  // Save to file
   try {
-    fs.writeFileSync(path.join(__dirname, '../data/users.json'), JSON.stringify(users, null, 2));
-    
-    // Render success page
-    res.render('register-success', {
-      title: 'Application Submitted | Pastors LMS',
-      username: username,
-      full_name: cleanName
+    const { data, error } = await supabase.auth.signUp({
+      email: cleanEmail,
+      password: cleanPass,
+      options: {
+        data: {
+          full_name: cleanName
+        }
+      }
+    });
+
+    if (error) {
+      const errMsg = (error.message || '').toLowerCase();
+      const isDuplicate = errMsg.includes('already registered') ||
+                          errMsg.includes('already exists') ||
+                          errMsg.includes('user already exists') ||
+                          error.code === 'user_already_exists';
+
+      if (isDuplicate) {
+        return res.render('register', {
+          error: 'An account with this email already exists.',
+          title: 'Apply for Pastoral Training | Pastors LMS',
+          formData: { full_name: cleanName, email: cleanEmail }
+        });
+      }
+
+      console.error('Supabase registration error:', error.message);
+      return res.render('register', {
+        error: 'Failed to submit application. Please try again.',
+        title: 'Apply for Pastoral Training | Pastors LMS',
+        formData: { full_name: cleanName, email: cleanEmail }
+      });
+    }
+
+    // Handle Supabase email enumeration protection (identities empty when user already exists)
+    if (data?.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+      return res.render('register', {
+        error: 'An account with this email already exists.',
+        title: 'Apply for Pastoral Training | Pastors LMS',
+        formData: { full_name: cleanName, email: cleanEmail }
+      });
+    }
+
+    // Registration submitted successfully — initialize applicant session and proceed to Step 1 onboarding
+    if (data?.user) {
+      req.session.user = {
+        id: data.user.id,
+        email: cleanEmail,
+        full_name: cleanName,
+        role: 'student',
+        initials: cleanName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase(),
+        isSupabaseUser: true
+      };
+      if (data.session?.access_token) {
+        req.session.accessToken = data.session.access_token;
+      }
+    }
+
+    return req.session.save(() => {
+      res.redirect('/onboarding');
     });
   } catch (err) {
-    console.error('Error saving user:', err);
+    console.error('Unexpected error during registration:', err);
     return res.render('register', {
       error: 'Failed to submit application. Please try again.',
       title: 'Apply for Pastoral Training | Pastors LMS',
@@ -228,121 +264,7 @@ router.post('/login', async (req, res) => {
   });
 });
 
-// GET /auth/google
-router.get('/auth/google', async (req, res) => {
-  if (!supabase) {
-    return res.render('login', {
-      error: 'Google OAuth is not available. Supabase is not configured.',
-      title: 'Sign In | Pastors LMS',
-      email: ''
-    });
-  }
 
-  try {
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${req.protocol}://${req.get('host')}/auth/google/callback`,
-        skipBrowserRedirect: false
-      }
-    });
-
-    if (error) throw error;
-
-    // Redirect to the OAuth provider
-    res.redirect(data.url);
-  } catch (err) {
-    console.error('Google OAuth error:', err);
-    res.render('login', {
-      error: 'Failed to initiate Google sign-in. Please try again.',
-      title: 'Sign In | Pastors LMS',
-      email: ''
-    });
-  }
-});
-
-// GET /auth/google/callback
-router.get('/auth/google/callback', async (req, res) => {
-  if (!supabase) {
-    return res.redirect('/login');
-  }
-
-  try {
-    console.log('Google OAuth callback received');
-    console.log('Query params:', Object.keys(req.query));
-    
-    // Get the current session from Supabase
-    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-    
-    console.log('Session data:', sessionData ? 'exists' : 'null');
-    console.log('Session error:', sessionError);
-    
-    if (sessionError) {
-      console.error('Session error:', sessionError);
-      throw sessionError;
-    }
-
-    if (sessionData.session && sessionData.session.user) {
-      const user = sessionData.session.user;
-      console.log('User found:', user.email);
-      
-      req.session.user = {
-        id: user.id,
-        email: user.email,
-        full_name: user.user_metadata?.full_name || user.user_metadata?.name || user.email.split('@')[0],
-        role: user.user_metadata?.role || 'student',
-        initials: (user.user_metadata?.full_name || user.user_metadata?.name || user.email.split('@')[0]).split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
-      };
-      
-      console.log('Session user set:', req.session.user);
-      
-      req.session.save((err) => {
-        if (err) {
-          console.error('Session save error:', err);
-          return res.redirect('/login');
-        }
-        console.log('Session saved successfully, redirecting to dashboard');
-        res.redirect('/');
-      });
-    } else {
-      // If no session, try to get user from URL params
-      console.log('No session in getSession, trying URL params');
-      if (req.query.access_token || req.query.refresh_token) {
-        const { data: userData, error: userError } = await supabase.auth.getUser(req.query.access_token);
-        if (!userError && userData.user) {
-          const user = userData.user;
-          console.log('User from token:', user.email);
-          
-          req.session.user = {
-            id: user.id,
-            email: user.email,
-            full_name: user.user_metadata?.full_name || user.user_metadata?.name || user.email.split('@')[0],
-            role: user.user_metadata?.role || 'student',
-            initials: (user.user_metadata?.full_name || user.user_metadata?.name || user.email.split('@')[0]).split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
-          };
-          
-          req.session.save((err) => {
-            if (err) {
-              console.error('Session save error:', err);
-              return res.redirect('/login');
-            }
-            console.log('Session saved successfully, redirecting to dashboard');
-            res.redirect('/');
-          });
-        } else {
-          console.log('Failed to get user from token:', userError);
-          res.redirect('/login');
-        }
-      } else {
-        console.log('No valid session found, redirecting to login');
-        res.redirect('/login');
-      }
-    }
-  } catch (err) {
-    console.error('Google OAuth callback error:', err);
-    res.redirect('/login');
-  }
-});
 
 // GET /logout
 router.get('/logout', async (req, res) => {

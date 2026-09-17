@@ -12,4 +12,21 @@ const supabase = (supabaseUrl && supabaseUrl !== 'your-supabase-project-url')
   ? createClient(supabaseUrl, supabaseAnonKey)
   : null;
 
-module.exports = { supabase };
+function getUserSupabaseClient(accessToken) {
+  if (!supabaseUrl || !supabaseAnonKey || supabaseUrl === 'your-supabase-project-url' || !accessToken) {
+    return null;
+  }
+  return createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false
+    },
+    global: {
+      headers: {
+        Authorization: `Bearer ${accessToken}`
+      }
+    }
+  });
+}
+
+module.exports = { supabase, getUserSupabaseClient };

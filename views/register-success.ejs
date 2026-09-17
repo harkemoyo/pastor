@@ -43,13 +43,19 @@
           <div class="info-row">
             <span class="info-label">Name:</span>
             <span class="info-value">
-              <%= full_name %>
+              <%= typeof full_name !== 'undefined' ? full_name : '' %>
             </span>
           </div>
           <div class="info-row">
-            <span class="info-label">Username:</span>
+            <span class="info-label">Email:</span>
             <span class="info-value">
-              <%= username %>
+              <%= typeof email !== 'undefined' ? email : '' %>
+            </span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Application Status:</span>
+            <span class="info-value" style="color: #B8860B; font-weight: 600;">
+              Pending Review
             </span>
           </div>
         </div>
@@ -57,21 +63,22 @@
         <div class="next-steps">
           <h3>What Happens Next?</h3>
           <ol>
-            <li>Your application will be reviewed by our admissions team</li>
-            <li>You will receive an email notification once your application is approved</li>
-            <li>Use your username <strong>
-                <%= username %>
-              </strong> to log in after approval</li>
-            <li>Begin your theological training journey</li>
+            <li>Your application has been received and is now pending review by our admissions team.</li>
+            <li>You will be notified once your application is approved.</li>
+            <li>Once approved, use your email address (<strong><%= typeof email !== 'undefined' ? email : '' %></strong>) to log in to the learning portal.</li>
+            <li>Begin your theological training journey.</li>
           </ol>
         </div>
 
-        <div class="action-buttons">
-          <a href="/login" class="btn btn-primary">
-            Go to Login Page
+        <div class="action-buttons" style="display: flex; gap: 12px; flex-wrap: wrap;">
+          <a href="/onboarding" class="btn btn-primary" style="flex: 1; min-width: 200px; text-decoration: none;">
+            Continue to Onboarding
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
               <polyline points="9 18 15 12 9 6" />
             </svg>
+          </a>
+          <a href="/login" class="btn btn-secondary" style="flex: 1; min-width: 140px; text-decoration: none; justify-content: center;">
+            Go to Login
           </a>
         </div>
       </div>

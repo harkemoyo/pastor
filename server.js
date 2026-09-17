@@ -6,6 +6,7 @@ const { attachUser } = require('./middleware/auth');
 const authRoutes = require('./routes/auth');
 const coursesRoutes = require('./routes/courses');
 const adminRoutes = require('./routes/admin');
+const onboardingRoutes = require('./routes/onboarding');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -41,6 +42,7 @@ app.use(attachUser);
 app.use('/', authRoutes);
 app.use('/', coursesRoutes);
 app.use('/admin', adminRoutes);
+app.use('/onboarding', onboardingRoutes);
 
 // 404 handler
 app.use((req, res) => {
