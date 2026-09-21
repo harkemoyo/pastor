@@ -624,3 +624,9 @@
     font-size: 0.7rem;
   }
 }
+
+@media (max-width: 480px) {
+  .church-results-container {
+    max-height: 200px;
+  }
+}
