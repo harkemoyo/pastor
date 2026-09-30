@@ -78,7 +78,7 @@
               <polyline points="9 18 15 12 9 6" />
             </svg>
           </a>
-          <a href="/login" class="btn btn-secondary"
+          <a href="/login?username=<%= encodeURIComponent(typeof username !== 'undefined' ? username : '') %>" class="btn btn-secondary"
             style="flex: 1; min-width: 140px; text-decoration: none; justify-content: center;">
             Go to Login
           </a>

@@ -97,6 +97,16 @@ async function syncStudentToSupabase(studentData) {
   }
 }
 
+// Normalize phone numbers for easy matching (e.g. +254712345678, 0712345678, 254712345678)
+function normalizePhone(phone) {
+  if (!phone) return '';
+  let digits = String(phone).replace(/\D/g, '');
+  if (digits.startsWith('254') && digits.length === 12) {
+    digits = '0' + digits.slice(3);
+  }
+  return digits;
+}
+
 // GET /login
 router.get('/login', (req, res) => {
   if (req.session && req.session.user) {
@@ -107,11 +117,25 @@ router.get('/login', (req, res) => {
   if (req.query.error === 'admin_required') {
     error = 'Administrator access required. Please sign in with an admin account.';
   }
+
+  // Pass active registered pastors (without sensitive passwords) so returning pastors can quickly select their name
+  const allUsers = getUsers();
+  const registeredPastors = allUsers
+    .filter(u => u.status === 'active' || u.approval_status === 'approved' || !u.approval_status)
+    .map(u => ({
+      username: u.username,
+      full_name: u.full_name || 'Pastor',
+      email: u.email || '',
+      phone: u.phone || '',
+      church_name: u.church_name || '',
+      role: u.role || 'student'
+    }));
   
   res.render('login', {
     error: error,
     title: 'Sign In | Pastors LMS',
-    username: req.query.username || ''
+    username: req.query.username || '',
+    registeredPastors: registeredPastors
   });
 });
 
@@ -470,48 +494,71 @@ router.post('/register', async (req, res) => {
 
 // POST /login
 router.post('/login', async (req, res) => {
-  const { username, password } = req.body;
+  const { username, password, remember_me } = req.body;
   const cleanUsername = (username || '').trim();
   const cleanPass = (password || '').trim();
 
+  // Helper to re-fetch registered pastors for template
+  const getRegisteredPastors = () => {
+    return getUsers()
+      .filter(u => u.status === 'active' || u.approval_status === 'approved' || !u.approval_status)
+      .map(u => ({
+        username: u.username,
+        full_name: u.full_name || 'Pastor',
+        email: u.email || '',
+        phone: u.phone || '',
+        church_name: u.church_name || '',
+        role: u.role || 'student'
+      }));
+  };
+
   if (!cleanUsername || !cleanPass) {
     return res.render('login', {
-      error: 'Please enter both your username and password.',
+      error: 'Please enter your phone number, email, or username and your password.',
       title: 'Sign In | Pastors LMS',
-      username: cleanUsername
+      username: cleanUsername,
+      registeredPastors: getRegisteredPastors()
     });
   }
 
-  console.log('Login attempt for username:', cleanUsername);
+  console.log('Login attempt for:', cleanUsername);
+  const inputLower = cleanUsername.toLowerCase();
+  const inputPhone = normalizePhone(cleanUsername);
+
+  // If user checked 'remember_me', keep session for 30 days
+  if (remember_me && req.session) {
+    req.session.cookie.maxAge = 30 * 24 * 60 * 60 * 1000; // 30 days
+  }
 
   // 1. Try Supabase Auth if configured
   if (supabase) {
     try {
-      // Check if input is email or username
       const isEmail = cleanUsername.includes('@');
       let emailToUse = cleanUsername;
       
-      // If it's a username, try to find the email
+      // If it's a username or phone number, find the email
       if (!isEmail) {
-        // First check local users.json for existing users
         const users = getUsers();
-        const localUser = users.find(u => u.username === cleanUsername);
+        const localUser = users.find(u => {
+          const matchU = u.username && u.username.toLowerCase() === inputLower;
+          const matchP = inputPhone && u.phone && normalizePhone(u.phone) === inputPhone;
+          return matchU || matchP;
+        });
+
         if (localUser && localUser.email) {
           emailToUse = localUser.email;
-          console.log('Found email for username from local users:', emailToUse);
+          console.log('Found email for identifier from local users:', emailToUse);
         } else {
-          // If not in local users, try to find in Supabase students table
+          // Check Supabase students table by username or phone
           const { data: studentData, error: studentError } = await (supabaseAdmin || supabase)
             .from('students')
             .select('email')
-            .eq('username', cleanUsername)
+            .or(`username.eq.${cleanUsername},phone.eq.${cleanUsername}`)
             .maybeSingle();
           
           if (!studentError && studentData && studentData.email) {
             emailToUse = studentData.email;
-            console.log('Found email for username from Supabase:', emailToUse);
-          } else {
-            console.log('Username not found in local users or Supabase, trying as email');
+            console.log('Found email for identifier from Supabase:', emailToUse);
           }
         }
       }
@@ -556,11 +603,14 @@ router.post('/login', async (req, res) => {
     }
   }
 
-  // 2. Local Fallback Auth
+  // 2. Local Fallback Auth (supports Username, Email, OR Phone Number!)
   const users = getUsers();
   const matchedUser = users.find(u => {
-    const usernameMatches = u.username === cleanUsername || u.email === cleanUsername;
-    if (!usernameMatches) return false;
+    const usernameMatches = (u.username && u.username.toLowerCase() === inputLower) ||
+                            (u.email && u.email.toLowerCase() === inputLower);
+    const phoneMatches = inputPhone && u.phone && normalizePhone(u.phone) === inputPhone;
+    
+    if (!usernameMatches && !phoneMatches) return false;
     if (!u.password) return false;
     if (u.password === cleanPass) return true;
     try {
@@ -596,12 +646,13 @@ router.post('/login', async (req, res) => {
     });
   }
 
-  // Failed login
+  // Failed login with clear, non-confusing guidance
   console.log('Login failed for:', cleanUsername);
   return res.render('login', {
-    error: 'Invalid username or password. Please contact your administrator if you need account access.',
+    error: 'Incorrect details. Please check your phone number, email, or password. If you need help, tap WhatsApp or Call below.',
     title: 'Sign In | Pastors LMS',
-    username: cleanUsername
+    username: cleanUsername,
+    registeredPastors: getRegisteredPastors()
   });
 });
 

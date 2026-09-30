@@ -96,6 +96,26 @@
         </div>
       </div>
 
+      <!-- Resume Active Study Direct Shortcut (Ideal for older pastors to jump straight in) -->
+      <% const activeCourse = courses.find(c => c.status === 'current') || courses[0]; %>
+      <% if (activeCourse) { %>
+        <div class="resume-study-card">
+          <div class="resume-study-content">
+            <span class="resume-badge">CURRENT ACTIVE COURSE</span>
+            <h2 class="resume-course-title"><%= activeCourse.title %> (<%= activeCourse.code %>)</h2>
+            <p class="resume-course-desc">
+              <%= activeCourse.term %> • Completed <strong><%= activeCourse.completedTopics %></strong> of <%= activeCourse.totalTopics %> topics (<%= activeCourse.percent %>%)
+            </p>
+          </div>
+          <a href="/courses/<%= activeCourse.id %>" class="btn-resume-study">
+            <span>Continue My Course</span>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
+          </a>
+        </div>
+      <% } %>
+
       <!-- Main Dashboard Grid Layout (Courses + Work To Do Sidebar) -->
       <div class="dashboard-layout">
         <!-- Left Column: Courses -->
@@ -183,9 +203,9 @@
                               </svg>
                               <%= course.modules ? course.modules.length : 0 %> Units
                             </span>
-                            <a href="/courses/<%= course.id %>" class="btn btn-primary btn-sm">
-                              Enter Course
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            <a href="/courses/<%= course.id %>" class="btn btn-primary btn-open-course">
+                              <span>Open Course &amp; Lessons</span>
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                 stroke-width="2.5">
                                 <polyline points="9 18 15 12 9 6" />
                               </svg>

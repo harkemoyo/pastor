@@ -8,9 +8,165 @@ document.addEventListener('DOMContentLoaded', () => {
   initModuleAccordions();
   initTopicCheckboxes();
   initDemoLoginButtons();
+  initLoginPortal();
+  initMobileMenu();
+  initAdminMenu();
 });
 
-// Live Nairobi / EAT Clock
+// Accessible Login Portal Enhancements
+function initLoginPortal() {
+  const loginForm = document.getElementById('directLoginForm');
+  const idInput = document.getElementById('loginIdentifier');
+  const passInput = document.getElementById('loginPassword');
+  const toggleBtn = document.getElementById('btnTogglePassword');
+  const toggleIcon = document.getElementById('pwToggleIcon');
+  const toggleText = document.getElementById('pwToggleText');
+  const rememberBox = document.getElementById('rememberedUserBox');
+  const rememberCheck = document.getElementById('rememberMeCheck');
+
+  if (!idInput) return;
+
+  // 1. Show/Hide Password Toggle
+  if (toggleBtn && passInput) {
+    toggleBtn.addEventListener('click', () => {
+      const isPass = passInput.getAttribute('type') === 'password';
+      passInput.setAttribute('type', isPass ? 'text' : 'password');
+      if (toggleText) toggleText.textContent = isPass ? 'Hide' : 'Show';
+      if (toggleIcon) toggleIcon.textContent = isPass ? '🙈' : '👁️';
+    });
+  }
+
+  // 2. Remembered Account from LocalStorage
+  try {
+    const saved = localStorage.getItem('pastors_remembered_account');
+    if (saved && rememberBox) {
+      const user = JSON.parse(saved);
+      if (user && user.name && user.identifier) {
+        const nameEl = document.getElementById('rememberedName');
+        const shortEl = document.getElementById('rememberedShortName');
+        const avatarEl = document.getElementById('rememberedAvatar');
+        const useBtn = document.getElementById('btnUseRemembered');
+        const clearBtn = document.getElementById('btnClearRemembered');
+
+        if (nameEl) nameEl.textContent = user.name;
+        if (shortEl) shortEl.textContent = user.name.split(' ')[0] || 'Pastor';
+        if (avatarEl) {
+          const initials = user.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+          avatarEl.textContent = initials || 'P';
+        }
+
+        rememberBox.style.display = 'flex';
+
+        if (useBtn) {
+          useBtn.addEventListener('click', () => {
+            idInput.value = user.identifier;
+            passInput.focus();
+            idInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          });
+        }
+
+        if (clearBtn) {
+          clearBtn.addEventListener('click', () => {
+            localStorage.removeItem('pastors_remembered_account');
+            rememberBox.style.display = 'none';
+          });
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('LocalStorage error:', err);
+  }
+
+  // 3. Registered Pastor Quick Pills
+  const pastorPills = document.querySelectorAll('.pastor-pill-btn');
+  pastorPills.forEach(pill => {
+    pill.addEventListener('click', () => {
+      const identifier = pill.getAttribute('data-identifier');
+      const name = pill.getAttribute('data-name');
+      const isDemo = pill.getAttribute('data-isdemo') === 'true';
+
+      if (identifier) {
+        idInput.value = identifier;
+        idInput.style.borderColor = '#C69214';
+        setTimeout(() => {
+          idInput.style.borderColor = '';
+        }, 1500);
+
+        if (isDemo && passInput) {
+          passInput.value = 'demo1234';
+        }
+
+        if (passInput) {
+          passInput.focus();
+        }
+
+        // Store selected name for friendly display
+        if (name && rememberCheck && rememberCheck.checked) {
+          try {
+            localStorage.setItem('pastors_remembered_account', JSON.stringify({
+              name: name,
+              identifier: identifier
+            }));
+          } catch (e) {}
+        }
+      }
+    });
+  });
+
+  // 4. Instant Demo 1-Click
+  const demoInstantBtn = document.getElementById('btnDemoInstant');
+  if (demoInstantBtn && loginForm) {
+    demoInstantBtn.addEventListener('click', () => {
+      idInput.value = 'p1001234';
+      passInput.value = 'demo1234';
+      loginForm.submit();
+    });
+  }
+
+  // 5. Save on Successful Submit
+  if (loginForm) {
+    loginForm.addEventListener('submit', () => {
+      if (rememberCheck && rememberCheck.checked && idInput.value) {
+        try {
+          const currentSaved = localStorage.getItem('pastors_remembered_account');
+          let nameToSave = 'Pastor';
+          if (currentSaved) {
+            const parsed = JSON.parse(currentSaved);
+            if (parsed.identifier === idInput.value) {
+              nameToSave = parsed.name;
+            }
+          }
+          localStorage.setItem('pastors_remembered_account', JSON.stringify({
+            name: nameToSave,
+            identifier: idInput.value.trim()
+          }));
+        } catch (e) {}
+      }
+    });
+  }
+}
+
+// 1-Click Demo Login Fill (Legacy / Fallback support)
+function initDemoLoginButtons() {
+  const demoButtons = document.querySelectorAll('.btn-demo-pill');
+  const idInput = document.getElementById('loginIdentifier') || document.getElementById('loginEmail') || document.getElementById('loginUsername');
+  const passInput = document.getElementById('loginPassword') || document.getElementById('loginPass');
+  const loginForm = document.getElementById('directLoginForm') || document.getElementById('loginForm');
+
+  if (!demoButtons.length || !idInput || !passInput || !loginForm) return;
+
+  demoButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const email = btn.getAttribute('data-email');
+      const pass = btn.getAttribute('data-pass');
+      if (email && pass) {
+        idInput.value = email;
+        passInput.value = pass;
+        loginForm.submit();
+      }
+    });
+  });
+}
 function initClock() {
   const clockEl = document.getElementById('liveClock');
   if (!clockEl) return;
@@ -143,24 +299,64 @@ function initTopicCheckboxes() {
   });
 }
 
-// 1-Click Demo Login Fill
-function initDemoLoginButtons() {
-  const demoButtons = document.querySelectorAll('.btn-demo-pill');
-  const emailInput = document.getElementById('loginEmail');
-  const passInput = document.getElementById('loginPass');
-  const loginForm = document.getElementById('loginForm');
 
-  if (!demoButtons.length || !emailInput || !passInput || !loginForm) return;
+// Mobile Menu Toggle
+function initMobileMenu() {
+  const mobileToggle = document.getElementById('mobileMenuToggle');
+  const navLinks = document.getElementById('navLinks');
 
-  demoButtons.forEach(btn => {
-    btn.addEventListener('click', () => {
-      const email = btn.getAttribute('data-email');
-      const pass = btn.getAttribute('data-pass');
-      if (email && pass) {
-        emailInput.value = email;
-        passInput.value = pass;
-        loginForm.submit();
-      }
-    });
+  if (!mobileToggle || !navLinks) return;
+
+  mobileToggle.addEventListener('click', () => {
+    const isExpanded = mobileToggle.getAttribute('aria-expanded') === 'true';
+    mobileToggle.setAttribute('aria-expanded', !isExpanded);
+    navLinks.classList.toggle('active');
+  });
+
+  // Close menu when clicking outside
+  document.addEventListener('click', (e) => {
+    if (!mobileToggle.contains(e.target) && !navLinks.contains(e.target)) {
+      mobileToggle.setAttribute('aria-expanded', 'false');
+      navLinks.classList.remove('active');
+    }
+  });
+
+  // Close menu on escape key
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      mobileToggle.setAttribute('aria-expanded', 'false');
+      navLinks.classList.remove('active');
+    }
+  });
+}
+
+// Admin Menu Dropdown
+function initAdminMenu() {
+  const adminToggle = document.getElementById('adminMenuToggle');
+  const adminDropdown = document.getElementById('adminDropdown');
+
+  if (!adminToggle || !adminDropdown) return;
+
+  adminToggle.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const isExpanded = adminToggle.getAttribute('aria-expanded') === 'true';
+    adminToggle.setAttribute('aria-expanded', !isExpanded);
+    adminDropdown.classList.toggle('active');
+  });
+
+  // Close dropdown when clicking outside
+  document.addEventListener('click', (e) => {
+    if (!adminToggle.contains(e.target) && !adminDropdown.contains(e.target)) {
+      adminToggle.setAttribute('aria-expanded', 'false');
+      adminDropdown.classList.remove('active');
+    }
+  });
+
+  // Close dropdown on escape key
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      adminToggle.setAttribute('aria-expanded', 'false');
+      adminDropdown.classList.remove('active');
+    }
   });
 }

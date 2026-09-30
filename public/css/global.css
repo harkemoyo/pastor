@@ -227,9 +227,35 @@ a:hover {
   padding: 28px 24px;
 }
 
+/* Responsive Breakpoints */
+@media (max-width: 1024px) {
+  .main-content {
+    max-width: 100%;
+    padding: 24px 20px;
+  }
+}
+
+@media (max-width: 768px) {
+  .main-content {
+    padding: 22px 18px;
+  }
+}
+
 @media (max-width: 640px) {
   .main-content {
     padding: 20px 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .main-content {
+    padding: 18px 14px;
+  }
+}
+
+@media (max-width: 360px) {
+  .main-content {
+    padding: 16px 12px;
   }
 }
 
