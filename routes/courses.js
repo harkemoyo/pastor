@@ -81,6 +81,8 @@ router.get('/', requireAuth, async (req, res) => {
   });
 });
 
+const { getCourseModulesWithTopics } = require('../data/course-content');
+
 // GET /courses/:id - Course Detail
 router.get('/courses/:id', requireAuth, async (req, res) => {
   const courseId = parseInt(req.params.id, 10);
@@ -98,10 +100,11 @@ router.get('/courses/:id', requireAuth, async (req, res) => {
   }
 
   const course = enrichCourseStats(rawCourse);
+  course.modulesWithTopics = getCourseModulesWithTopics(course);
   const courseTasks = (data.tasks || []).filter(t => t.course_id === courseId);
 
   res.render('course-detail', {
-    title: `${course.title} | Pastors LMS`,
+    title: `${course.code} - ${course.title} | Pastors LMS`,
     course,
     courseTasks,
     allTasks: data.tasks || []
