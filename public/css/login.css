@@ -32,7 +32,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-family: var(--font-body);
+  font-size: 1rem;
   color: var(--portal-text);
   -webkit-font-smoothing: antialiased;
 }
@@ -684,3 +685,33 @@
     box-sizing: border-box;
   }
 }
+
+/* ==========================================================================
+   FRONTEND REFRESH — Login & Register share the landing page hero look
+   ========================================================================== */
+.login-body,
+.login-viewport {
+  background-image:
+    linear-gradient(135deg, rgba(43, 9, 44, 0.93), rgba(74, 21, 75, 0.86) 55%, rgba(126, 42, 128, 0.78)),
+    url('/images/hero-pastor.webp');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+}
+.login-bg-pattern, .login-glow-1, .login-glow-2 { display: none; }
+
+.login-card-container,
+.login-card {
+  border: none;
+  border-top: 6px solid var(--portal-gold);
+  border-radius: 20px;
+  box-shadow: 0 30px 70px rgba(0, 0, 0, 0.35);
+}
+
+.brand-title, .card-title, .login-title, .login-brand-title {
+  font-family: var(--font-heading);
+}
+.login-top-brand .brand-title { color: #FFFFFF; }
+.login-top-brand .brand-sub { color: rgba(255, 255, 255, 0.8); }
+.main-portal-logo { height: 84px; border-radius: 50%; padding: 6px; }
+.field-input, .form-input { font-size: 1.05rem; }

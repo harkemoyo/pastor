@@ -38,6 +38,12 @@ app.use(session({
 // User local attachment middleware
 app.use(attachUser);
 
+// Public landing page (guests only; signed-in users fall through to the dashboard)
+app.get('/', (req, res, next) => {
+  if (req.session && req.session.user) return next();
+  res.render('landing');
+});
+
 // Routes
 app.use('/', authRoutes);
 app.use('/', coursesRoutes);

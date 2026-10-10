@@ -3,7 +3,7 @@
    Equipping Faithful Church Shepherds
    ========================================================================== */
 
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&family=Playfair+Display:wght@600;700;800&display=swap');
 
 :root {
   /* Brand Palette: Regal Theological Purple & Warm Sanctuary Gold */
@@ -19,6 +19,10 @@
   --gold-dark: #9A711A;
   --gold-subtle: rgba(212, 168, 67, 0.12);
 
+  /* Logo red (maroon) — accent only; tint is for dark purple backgrounds */
+  --brand-red: #8B1A1A;
+  --brand-red-tint: #FF6B6F;
+
   /* Neutrals & Surfaces */
   --bg-app: #F7F5F0;
   --surface: #FFFFFF;
@@ -31,8 +35,8 @@
   --text-body: #373347;
   --text-muted: #6B677C;
   --text-light: #9B97AC;
-  --font-heading: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-body: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-heading: 'Playfair Display', Georgia, 'Times New Roman', serif;
+  --font-body: 'Lato', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 
   /* Status Tokens */
   --success: #1B7A4B;
@@ -65,22 +69,33 @@
   padding: 0;
 }
 
+/* 18px base (1rem) so text is comfortable for elderly readers */
+html {
+  font-size: 112.5%;
+}
+
 html, body {
   min-height: 100%;
   font-family: var(--font-body);
+  font-size: 1rem;
   color: var(--text-body);
   background-color: var(--bg-app);
-  line-height: 1.55;
+  line-height: 1.65;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Typography Defaults */
+/* Typography Defaults: Playfair Display headings, Lato body */
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-heading);
   color: var(--text-title);
   line-height: 1.25;
   font-weight: 700;
+}
+
+/* Controls stay in the clear sans-serif body font */
+button, input, select, textarea, .btn, label {
+  font-family: var(--font-body);
 }
 
 a {
@@ -100,9 +115,9 @@ a:hover {
   justify-content: center;
   gap: 8px;
   padding: 10px 20px;
-  font-family: var(--font-heading);
-  font-size: 0.9375rem;
-  font-weight: 600;
+  font-family: var(--font-body);
+  font-size: 1rem;
+  font-weight: 700;
   border-radius: var(--radius-md);
   border: 1px solid transparent;
   cursor: pointer;

@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title><%= course.code %> - <%= course.title %> | Pastors LMS</title>
   <link rel="stylesheet" href="/css/global.css">
+  <link rel="stylesheet" href="/css/footer.css">
   <link rel="stylesheet" href="/css/dashboard.css">
   <link rel="stylesheet" href="/css/course.css">
   <link rel="icon" type="image/x-icon" href="/images/favicon.ico">
@@ -19,7 +20,7 @@
   <header class="bp-top-bar">
     <div class="bp-top-left">
       <a href="/" class="bp-brand" title="Return to Dashboard">
-        <img src="/images/IDA-Logo-Complete.png" alt="Pastors Theological Seminary" class="bp-logo">
+        <img src="/images/IDA-Logo-Complete.webp" alt="Pastors Theological Seminary" class="bp-logo">
       </a>
       <div class="bp-top-divider"></div>
       <div class="bp-course-identity">
@@ -326,7 +327,7 @@
           
           <div class="bp-banner-content">
             <div class="bp-banner-crest">
-              <img src="/images/IDA-Logo-Colored.png" alt="IDA Seminary Crest" class="bp-crest-img">
+              <img src="/images/IDA-Logo-Colored.webp" alt="IDA Seminary Crest" class="bp-crest-img">
             </div>
             
             <!-- High-Contrast Golden Banner Badge -->
@@ -473,6 +474,8 @@
       <%- include('partials/sidebar', { tasks: courseTasks.length > 0 ? courseTasks : allTasks }) %>
     </div>
   </main>
+
+  <%- include('partials/footer') %>
 
   <!-- Embed Rich Course Content into Client Script for Instant Fast Switching -->
   <script>
