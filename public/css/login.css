@@ -692,8 +692,8 @@
 .login-body,
 .login-viewport {
   background-image:
-    linear-gradient(135deg, rgba(43, 9, 44, 0.93), rgba(74, 21, 75, 0.86) 55%, rgba(126, 42, 128, 0.78)),
-    url('/images/hero-pastor.webp');
+    linear-gradient(135deg, rgba(43, 9, 44, 0.55), rgba(74, 21, 75, 0.42) 55%, rgba(126, 42, 128, 0.32)),
+    url('/images/Ps-Imgs/IMG_20261001_162109.webp');
   background-size: cover;
   background-position: center;
   background-attachment: fixed;
