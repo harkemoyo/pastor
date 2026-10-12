@@ -12,9 +12,13 @@ Files include `ida-logo.webp` and the `IDA-Logo-*` set (Colored, Complete, Full,
 
 | Background | Use |
 |---|---|
-| Light | Primary full-color logo |
-| Dark (footer, login hero, banners) | White variant |
-| Print, certificates | Dark or monochrome (Black or B&W) |
+| Light or white (landing nav, onboarding bar, course top bar, white cards, light banner) | `IDA-Logo-Complete.webp` (transparent, color) |
+| Dark (main navbar, login hero, footer, dark banners) | `IDA-Logo-White.webp` (transparent, white, made from `IDA-Logo-Black`) |
+| Print, certificates | `IDA-Logo-Black.webp` (transparent) |
+
+Never use `IDA-Logo-B&W`: it is white on a solid black square (no transparency), which draws a box on the page.
+Never put a background, padding, border or shadow behind a logo. Pick the right variant instead.
+Assets served by the site must live in `public/images/`. Files in this skill folder are source copies only.
 
 ## Steps
 1. Look at the background behind the logo in the CSS and pick the variant from the table.

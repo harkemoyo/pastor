@@ -44,7 +44,7 @@
 }
 
 .bp-logo {
-  height: 38px;
+  height: 52px;
   width: auto;
   object-fit: contain;
 }
@@ -651,18 +651,13 @@
 }
 
 .bp-banner-crest {
-  background: #FFFFFF;
-  padding: 8px 12px;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  border: 1px solid #EADDEC;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .bp-crest-img {
-  height: 48px;
+  height: 84px;
   width: auto;
   object-fit: contain;
 }

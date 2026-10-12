@@ -2,7 +2,7 @@
 html { scroll-behavior: smooth; }
 .landing-nav { position: sticky; top: 0; z-index: 50; display: flex; align-items: center; justify-content: space-between; padding: 12px 5%; background: rgba(255,255,255,.92); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border-light); }
 .landing-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; font-family: var(--font-heading); font-weight: 800; color: var(--primary); }
-.landing-logo img { height: 40px; }
+.landing-logo img { height: 60px; }
 .landing-logo b { color: var(--gold); }
 .landing-nav nav { display: flex; align-items: center; gap: 22px; }
 .landing-nav nav a { text-decoration: none; color: var(--text-body); font-weight: 600; font-size: .92rem; }
