@@ -8,25 +8,27 @@
     <%= title || 'Application Submitted | Pastors LMS' %>
   </title>
   <link rel="stylesheet" href="/css/global.css">
+  <link rel="stylesheet" href="/css/dashboard.css">
   <link rel="stylesheet" href="/css/login.css">
+  <link rel="stylesheet" href="/css/footer.css">
   <link rel="icon" type="image/x-icon" href="/images/favicon.ico">
 </head>
 
-<body>
-  <div class="login-viewport">
-    <div class="login-bg-pattern"></div>
-    <div class="login-glow-1"></div>
-    <div class="login-glow-2"></div>
+<body class="login-body">
+  <%- include('partials/header') %>
 
+  <div class="login-viewport-content">
     <div class="login-card">
       <div class="login-header">
-        <div class="login-brand">
-          <img src="/images/IDA-Logo-Complete.webp" alt="Intentional Discipleship Africa" class="login-logo">
-          <div class="login-brand-text">
-            <div class="login-brand-title">PASTORS <span class="login-brand-accent">LMS</span></div>
-            <div class="login-brand-tagline">EQUIPPING FAITHFUL SHEPHERDS</div>
+        <a href="/" class="login-brand-link" title="Pastors LMS Home">
+          <div class="login-brand">
+            <img src="/images/IDA-Logo-Complete.webp" alt="Pastors LMS - Intentional Discipleship Africa" class="login-logo" width="142" height="110">
+            <div class="login-brand-text">
+              <div class="login-brand-title">PASTORS <span class="login-brand-accent">LMS</span></div>
+              <div class="login-brand-tagline">EQUIPPING FAITHFUL SHEPHERDS</div>
+            </div>
           </div>
-        </div>
+        </a>
         <div class="success-icon">
           <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
@@ -91,6 +93,8 @@
     </div>
   </div>
 
+  <%- include('partials/footer') %>
+
   <style>
     .login-brand {
       display: flex;
@@ -101,9 +105,10 @@
     }
 
     .login-logo {
-      height: 80px;
+      height: 110px;
       width: auto;
       flex-shrink: 0;
+      object-fit: contain;
     }
 
     .login-brand-text {
@@ -147,7 +152,7 @@
       }
 
       .login-logo {
-        height: 60px;
+        height: 84px;
       }
 
       .login-brand-title {

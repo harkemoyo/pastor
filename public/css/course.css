@@ -21,11 +21,11 @@
 .bp-top-bar {
   background: #FFFFFF;
   border-bottom: 1px solid #D9DEE3;
-  height: 60px;
+  min-height: 80px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 24px;
+  padding: 6px 24px;
   position: sticky;
   top: 0;
   z-index: 100;
@@ -44,7 +44,7 @@
 }
 
 .bp-logo {
-  height: 52px;
+  height: 72px;
   width: auto;
   object-fit: contain;
 }
@@ -657,7 +657,7 @@
 }
 
 .bp-crest-img {
-  height: 84px;
+  height: 96px;
   width: auto;
   object-fit: contain;
 }
@@ -977,6 +977,19 @@
 @media (max-width: 900px) {
   .bp-split-layout {
     grid-template-columns: 1fr;
+  }
+
+  .bp-top-bar {
+    min-height: 72px;
+    padding: 6px 16px;
+  }
+
+  .bp-logo {
+    height: 62px;
+  }
+
+  .bp-crest-img {
+    height: 80px;
   }
 
   .bp-sidebar {

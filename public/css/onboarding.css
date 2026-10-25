@@ -15,7 +15,8 @@
 .onboarding-navbar {
   background: var(--surface);
   border-bottom: 1px solid var(--border);
-  padding: 1rem 2rem;
+  padding: 0.75rem 2rem;
+  min-height: 86px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -29,9 +30,9 @@
 }
 
 .onboarding-logo {
-  height: 64px;
+  height: 80px;
   width: auto;
-  border-radius: var(--radius-sm);
+  object-fit: contain;
 }
 
 .onboarding-brand-title {
@@ -620,6 +621,15 @@
     padding-bottom: 8px;
   }
 
+  .onboarding-navbar {
+    padding: 0.6rem 1rem;
+    min-height: 74px;
+  }
+
+  .onboarding-logo {
+    height: 68px;
+  }
+
   .step-label {
     font-size: 0.7rem;
   }
@@ -628,5 +638,9 @@
 @media (max-width: 480px) {
   .church-results-container {
     max-height: 200px;
+  }
+
+  .onboarding-logo {
+    height: 60px;
   }
 }

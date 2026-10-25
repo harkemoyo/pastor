@@ -16,8 +16,8 @@
 .nav-container {
   max-width: 1380px;
   margin: 0 auto;
-  padding: 0 24px;
-  height: 72px;
+  padding: 6px 24px;
+  min-height: 86px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -112,8 +112,13 @@
     font-size: 0.5rem;
   }
 
+  .nav-container {
+    padding: 6px 18px;
+    min-height: 80px;
+  }
+
   .nav-logo {
-    height: 52px;
+    height: 72px;
   }
 }
 
@@ -140,14 +145,24 @@
     display: none;
   }
 
+  .nav-container {
+    padding: 6px 14px;
+    min-height: 74px;
+  }
+
   .nav-logo {
-    height: 56px;
+    height: 68px;
   }
 }
 
 @media (max-width: 480px) {
   .nav-container {
-    padding: 8px 12px;
+    padding: 6px 12px;
+    min-height: 70px;
+  }
+
+  .nav-logo {
+    height: 62px;
   }
 
   .nav-right {
@@ -177,11 +192,12 @@
 
 @media (max-width: 360px) {
   .nav-container {
-    padding: 6px 10px;
+    padding: 4px 10px;
+    min-height: 64px;
   }
 
   .nav-logo {
-    height: 48px;
+    height: 56px;
   }
 
   .user-avatar {
@@ -217,9 +233,10 @@
 }
 
 .nav-logo {
-  height: 64px;
+  height: 80px;
   width: auto;
   flex-shrink: 0;
+  object-fit: contain;
 }
 
 .nav-brand-text {
@@ -253,7 +270,7 @@
 
 @media (max-width: 768px) {
   .nav-brand-title {
-    font-size: 1.1rem;
+    font-size: 1.15rem;
   }
   
   .nav-brand-tagline {
@@ -261,22 +278,8 @@
     letter-spacing: 0.9px;
   }
   
-  .nav-logo {
-    height: 48px;
-  }
-  
   .nav-brand-link {
-    gap: 8px;
-  }
-}
-
-@media (max-width: 480px) {
-  .nav-brand-text {
-    display: none;
-  }
-  
-  .nav-logo {
-    height: 56px;
+    gap: 10px;
   }
 }
 
