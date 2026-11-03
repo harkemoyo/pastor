@@ -14,13 +14,27 @@
 </head>
 <body class="landing-body">
   <header class="landing-nav">
-    <a href="/" class="landing-logo">
-      <img src="/images/IDA-Logo-Complete.webp" alt="Pastors LMS - Intentional Discipleship Africa" width="130" height="100">
-      <span>PASTORS <b>LMS</b></span>
-    </a>
-    <nav>
-      <a href="#programs">Programs</a>
-      <a href="#about">About</a>
+    <div class="landing-nav-bar">
+      <!-- Left: Mobile menu toggle -->
+      <button type="button" class="landing-mobile-toggle" id="landingMobileToggle" aria-label="Toggle navigation menu" aria-expanded="false" aria-controls="landingNavMenu">
+        <svg class="icon-hamburger" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <line x1="3" y1="12" x2="21" y2="12"></line>
+          <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+        <svg class="icon-close" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+
+      <!-- Center: Logo -->
+      <a href="/" class="landing-logo">
+        <img src="/images/IDA-Logo-Complete.webp" alt="Pastors LMS - Intentional Discipleship Africa" width="130" height="100">
+        <span>PASTORS <b>LMS</b></span>
+      </a>
+
+      <!-- Right: Log In with popup -->
       <div class="nav-dropdown" id="loginDropdown">
         <button type="button" class="btn-ghost nav-dropdown-toggle" id="loginToggle" aria-haspopup="true" aria-expanded="false" aria-controls="loginMenu">Log In <span class="caret" aria-hidden="true">&#9662;</span></button>
         <div class="nav-dropdown-menu" id="loginMenu" role="menu">
@@ -28,7 +42,16 @@
           <a href="/register" role="menuitem"><strong>Sign Up / Register</strong><small>Don't have an account?</small></a>
         </div>
       </div>
-      <a href="/register" class="btn-cta">Sign Up</a>
+
+      <a href="/register" class="btn-cta desktop-cta">Sign Up</a>
+    </div>
+
+    <!-- Navigation links (desktop header / mobile dropdown) -->
+    <nav class="landing-nav-menu" id="landingNavMenu">
+      <a href="#programs">Programs</a>
+      <a href="#about">About</a>
+      <a href="#faq">FAQ</a>
+      <a href="/register" class="btn-cta mobile-menu-cta">Sign Up</a>
     </nav>
   </header>
 
@@ -102,11 +125,6 @@
         <details class="reveal"><summary>Can I study on my phone?</summary><p>Yes. The portal is fully mobile-friendly.</p></details>
       </div>
     </section>
-
-    <section class="final-cta">
-      <h2>Ready to begin?</h2>
-      <a href="/register" class="btn-cta btn-lg">Sign Up</a>
-    </section>
   </main>
 
   <%- include('partials/footer') %>
@@ -136,13 +154,61 @@
     }, { threshold: 0.6 });
     document.querySelectorAll('[data-count]').forEach(el => counterIO.observe(el));
 
-    // Login dropdown
-    const dd = document.getElementById('loginDropdown');
-    const toggle = document.getElementById('loginToggle');
-    const setOpen = (open) => { dd.classList.toggle('open', open); toggle.setAttribute('aria-expanded', open); };
-    toggle.addEventListener('click', (e) => { e.stopPropagation(); setOpen(!dd.classList.contains('open')); });
-    document.addEventListener('click', (e) => { if (!dd.contains(e.target)) setOpen(false); });
-    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { setOpen(false); toggle.focus(); } });
+    // Dropdowns: Navigation menu (left) and Login popup (right)
+    const mobileToggle = document.getElementById('landingMobileToggle');
+    const navMenu = document.getElementById('landingNavMenu');
+    const loginToggle = document.getElementById('loginToggle');
+    const loginDropdown = document.getElementById('loginDropdown');
+
+    const setNavOpen = (open) => {
+      if (!navMenu || !mobileToggle) return;
+      navMenu.classList.toggle('open', open);
+      mobileToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+      if (open && loginDropdown) setLoginOpen(false);
+    };
+
+    const setLoginOpen = (open) => {
+      if (!loginDropdown || !loginToggle) return;
+      loginDropdown.classList.toggle('open', open);
+      loginToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+      if (open && navMenu) setNavOpen(false);
+    };
+
+    if (mobileToggle) {
+      mobileToggle.addEventListener('click', (e) => {
+        e.stopPropagation();
+        setNavOpen(!navMenu.classList.contains('open'));
+      });
+    }
+
+    if (loginToggle) {
+      loginToggle.addEventListener('click', (e) => {
+        e.stopPropagation();
+        setLoginOpen(!loginDropdown.classList.contains('open'));
+      });
+    }
+
+    document.addEventListener('click', (e) => {
+      if (navMenu && !navMenu.contains(e.target) && mobileToggle && !mobileToggle.contains(e.target)) {
+        setNavOpen(false);
+      }
+      if (loginDropdown && !loginDropdown.contains(e.target)) {
+        setLoginOpen(false);
+      }
+    });
+
+    if (navMenu) {
+      navMenu.querySelectorAll('a').forEach(link => {
+        link.addEventListener('click', () => setNavOpen(false));
+      });
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        setNavOpen(false);
+        setLoginOpen(false);
+      }
+    });
   </script>
 </body>
 </html>
