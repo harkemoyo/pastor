@@ -462,7 +462,7 @@ router.post('/students/:studentId/edit', requireAdmin, async (req, res) => {
   });
 });
 
-router.post('/students/new', requireAdmin, (req, res) => {
+router.post('/students/new', requireAdmin, async (req, res) => {
   const { first_name, middle_name, last_name, date_of_birth, gender, phone, email, profile_photo, address, county, town, physical_address, church_name, ministry_role, years_in_ministry, emergency_contact_name, emergency_contact_phone, relationship, password } = req.body;
 
   const cleanFirst = (first_name || '').trim();
@@ -481,7 +481,7 @@ router.post('/students/new', requireAdmin, (req, res) => {
     });
   }
 
-  const users = getUsers();
+  const users = await getStudents();
   const emailExists = users.some(user => user.email && user.email.toLowerCase() === cleanEmail);
   const phoneExists = cleanPhone && users.some(user => (user.phone || '').replace(/\s+/g, '') === cleanPhone.replace(/\s+/g, ''));
 
@@ -540,7 +540,77 @@ router.post('/students/new', requireAdmin, (req, res) => {
 
   users.push(newUser);
 
-  if (saveUsers(users)) {
+  if (supabaseAdmin) {
+    // Create the Supabase Auth login first, then the students profile row
+    const renderError = message => res.render('admin/student-form', {
+      title: 'Add Student | Pastors LMS',
+      user: req.session.user,
+      formData: req.body,
+      error: message,
+      mode: 'create'
+    });
+
+    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+      email: cleanEmail,
+      password: cleanPassword,
+      email_confirm: true,
+      user_metadata: { full_name: fullName }
+    });
+    if (authError) {
+      console.error('Admin create student - auth failed:', authError.message);
+      return renderError(authError.message || 'Could not create the student login.');
+    }
+
+    // Pick the next free pXXXXXXX login username
+    let username = null;
+    for (let n = 1000000; !username; n += 1) {
+      const candidate = `p${n}`;
+      if (!users.some(user => user.username === candidate)) username = candidate;
+    }
+
+    const profile = {
+      auth_user_id: authData.user.id,
+      username,
+      email: cleanEmail,
+      full_name: fullName,
+      first_name: cleanFirst,
+      middle_name: (middle_name || '').trim(),
+      last_name: cleanLast,
+      phone: cleanPhone,
+      county: county || '',
+      town: town || '',
+      physical_address: physical_address || '',
+      church_name: church_name || '',
+      ministry_role: ministry_role || '',
+      years_in_ministry: Number(years_in_ministry) || 0,
+      emergency_contact_name: emergency_contact_name || '',
+      emergency_contact_phone: emergency_contact_phone || '',
+      relationship: relationship || '',
+      student_id: studentId,
+      role: 'student',
+      status: 'active',
+      approval_status: 'approved'
+    };
+
+    const { error: insertError } = await supabaseAdmin.from('students').insert([profile]);
+    if (insertError) {
+      console.error('Admin create student - profile insert failed:', insertError.message);
+      // Roll back the auth user so the email can be reused
+      await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
+      return renderError(`Could not save the student profile: ${insertError.message}`);
+    }
+
+    appendActivity({
+      adminUsername: req.session.user.username,
+      adminName: req.session.user.full_name,
+      action: `Admin added student ${fullName}`,
+      targetType: 'student',
+      targetId: studentId
+    });
+    return res.redirect(`/admin/students/${studentId}?success=${encodeURIComponent(`Student created. Login username: ${username}`)}`);
+  }
+
+  if (saveUsers([...getUsers(), newUser])) {
     appendActivity({
       adminUsername: req.session.user.username,
       adminName: req.session.user.full_name,

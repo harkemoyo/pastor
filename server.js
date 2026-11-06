@@ -7,6 +7,7 @@ const authRoutes = require('./routes/auth');
 const coursesRoutes = require('./routes/courses');
 const adminRoutes = require('./routes/admin');
 const onboardingRoutes = require('./routes/onboarding');
+const libraryRoutes = require('./routes/library');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -49,11 +50,13 @@ app.get('/', (req, res, next) => {
 // Routes
 app.use('/', authRoutes);
 app.use('/', coursesRoutes);
+app.use('/', libraryRoutes);
 app.use('/admin', adminRoutes);
 app.use('/onboarding', onboardingRoutes);
 
 // 404 handler
 app.use((req, res) => {
+  console.warn(`[404 Not Found] ${req.method} ${req.originalUrl || req.url}`);
   res.status(404).render('login', {
     error: 'The requested page was not found (404).',
     title: 'Page Not Found | Pastors LMS',

@@ -11,6 +11,8 @@ document.addEventListener('DOMContentLoaded', () => {
   initLoginPortal();
   initMobileMenu();
   initAdminMenu();
+  initConfirmForms();
+  initProgressBars();
 });
 
 // Accessible Login Portal Enhancements
@@ -167,26 +169,103 @@ function initDemoLoginButtons() {
     });
   });
 }
+// Country detection from the browser's timezone (no network or permission needed)
+const TIMEZONE_COUNTRIES = {
+  'Africa/Kampala': 'UG',
+  'Africa/Nairobi': 'KE',
+  'Africa/Dar_es_Salaam': 'TZ',
+  'Africa/Kigali': 'RW',
+  'Africa/Bujumbura': 'BI',
+  'Africa/Juba': 'SS',
+  'Africa/Addis_Ababa': 'ET',
+  'Africa/Mogadishu': 'SO',
+  'Africa/Lusaka': 'ZM',
+  'Africa/Harare': 'ZW',
+  'Africa/Johannesburg': 'ZA',
+  'Africa/Lagos': 'NG',
+  'Africa/Accra': 'GH',
+  'Africa/Kinshasa': 'CD',
+  'Africa/Lubumbashi': 'CD',
+  'Africa/Maputo': 'MZ',
+  'Africa/Blantyre': 'MW',
+  'Africa/Cairo': 'EG',
+  'Europe/London': 'GB',
+  'America/New_York': 'US',
+  'America/Chicago': 'US',
+  'America/Denver': 'US',
+  'America/Los_Angeles': 'US'
+};
+const EAST_AFRICA_ZONES = ['Africa/Kampala', 'Africa/Nairobi', 'Africa/Dar_es_Salaam', 'Africa/Kigali', 'Africa/Bujumbura', 'Africa/Juba', 'Africa/Addis_Ababa', 'Africa/Mogadishu'];
+
+function countryToFlag(code) {
+  // Regional indicator symbols turn an ISO country code into a flag emoji
+  return code.toUpperCase().replace(/./g, ch => String.fromCodePoint(127397 + ch.charCodeAt(0)));
+}
+
+function detectCountry() {
+  let zone = 'Africa/Nairobi';
+  try {
+    zone = Intl.DateTimeFormat().resolvedOptions().timeZone || zone;
+  } catch (e) {}
+
+  let code = TIMEZONE_COUNTRIES[zone];
+  if (!code) {
+    // Fall back to the region in the browser language (e.g. en-UG)
+    const region = (navigator.language || '').split('-')[1];
+    if (region && /^[A-Za-z]{2}$/.test(region)) code = region;
+  }
+  return { zone, code };
+}
+
 function initClock() {
   const clockEl = document.getElementById('liveClock');
   if (!clockEl) return;
 
+  const flagEl = document.getElementById('navFlag');
+  const wrapEl = document.getElementById('navClock');
+  const { zone, code } = detectCountry();
+  const label = EAST_AFRICA_ZONES.includes(zone) ? 'EAT' : '';
+
+  if (flagEl && code) {
+    flagEl.textContent = countryToFlag(code);
+    let countryName = code;
+    try {
+      countryName = new Intl.DisplayNames(['en'], { type: 'region' }).of(code.toUpperCase()) || code;
+    } catch (e) {}
+    flagEl.setAttribute('aria-label', countryName);
+    if (wrapEl) wrapEl.setAttribute('title', `${countryName} (${zone.replace('_', ' ')})`);
+  }
+
   function update() {
-    const now = new Date();
-    // Nairobi is UTC+3 (East Africa Time)
-    const options = {
-      timeZone: 'Africa/Nairobi',
+    const timeStr = new Date().toLocaleTimeString('en-US', {
+      timeZone: zone,
       hour: '2-digit',
       minute: '2-digit',
-      second: '2-digit',
       hour12: true
-    };
-    const timeStr = now.toLocaleTimeString('en-US', options);
-    clockEl.textContent = `${timeStr} EAT`;
+    });
+    clockEl.textContent = label ? `${timeStr} ${label}` : timeStr;
   }
 
   update();
   setInterval(update, 1000);
+}
+
+// Ask before submitting any form marked with data-confirm (e.g. removing a library item)
+function initConfirmForms() {
+  document.querySelectorAll('form[data-confirm]').forEach(form => {
+    form.addEventListener('submit', e => {
+      if (!window.confirm(form.getAttribute('data-confirm'))) {
+        e.preventDefault();
+      }
+    });
+  });
+}
+
+// Progress bars render their width from data-percent (keeps styles out of the markup)
+function initProgressBars() {
+  document.querySelectorAll('.progress-bar[data-percent]').forEach(bar => {
+    bar.style.width = `${bar.getAttribute('data-percent')}%`;
+  });
 }
 
 // Course Filter Tabs on Dashboard

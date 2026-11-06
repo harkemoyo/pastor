@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/css/global.css">
+  <link rel="stylesheet" href="/css/footer.css">
+  <link rel="stylesheet" href="/css/dashboard.css">
+  <link rel="stylesheet" href="/css/library.css">
+  <link rel="icon" type="image/x-icon" href="/images/favicon.ico">
+</head>
+
+<body class="app-container">
+  <%- include('partials/header') %>
+
+  <main class="main-content">
+    <section class="library-hero">
+      <h1 class="library-title">Manage Library</h1>
+      <p class="library-subtitle">Add videos, notes and links for students, or remove old ones.</p>
+      <a href="/library" id="btnViewLibrary" class="btn btn-gold">View library as a student</a>
+    </section>
+
+    <% if (success) { %><div class="library-alert library-alert-success" id="libraryAlertSuccess"><%= success %></div><% } %>
+    <% if (error) { %><div class="library-alert library-alert-error" id="libraryAlertError"><%= error %></div><% } %>
+
+    <section class="library-panel">
+      <h2 class="library-panel-title">Add a material</h2>
+      <form method="POST" action="/teacher/library" id="addMaterialForm" class="library-form">
+        <div class="form-group">
+          <label class="form-label" for="materialTitle">Title</label>
+          <input type="text" id="materialTitle" name="title" class="form-input" required
+            placeholder="Introduction to Romans (Video)" value="<%= formData.title || '' %>">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="materialType">Type</label>
+          <select id="materialType" name="type" class="form-input">
+            <% types.forEach(t => { %>
+              <option value="<%= t %>" <%= formData.type === t ? 'selected' : '' %>><%= t.charAt(0).toUpperCase() + t.slice(1) %></option>
+            <% }) %>
+          </select>
+        </div>
+
+        <div class="form-group library-form-wide">
+          <label class="form-label" for="materialUrl">Web address (YouTube, Google Drive, PDF link)</label>
+          <input type="url" id="materialUrl" name="url" class="form-input" required placeholder="https://"
+            value="<%= formData.url || '' %>">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="materialCourse">Course (optional)</label>
+          <select id="materialCourse" name="course_id" class="form-input">
+            <option value="">All courses</option>
+            <% courses.forEach(c => { %>
+              <option value="<%= c.id %>" <%= String(formData.course_id) === String(c.id) ? 'selected' : '' %>><%= c.code %> — <%= c.title %></option>
+            <% }) %>
+          </select>
+        </div>
+
+        <div class="form-group library-form-wide">
+          <label class="form-label" for="materialDescription">Short description (optional)</label>
+          <textarea id="materialDescription" name="description" class="form-input" rows="3"><%= formData.description || '' %></textarea>
+        </div>
+
+        <button type="submit" id="btnAddMaterial" class="btn btn-primary">Add to library</button>
+      </form>
+    </section>
+
+    <section class="library-panel">
+      <h2 class="library-panel-title">Materials (<%= items.length %>)</h2>
+      <% if (!items.length) { %>
+        <p>No materials yet.</p>
+      <% } else { %>
+        <div class="library-table-wrap">
+          <table class="library-table" id="materialsTable">
+            <thead>
+              <tr><th>Title</th><th>Type</th><th>Added by</th><th>Action</th></tr>
+            </thead>
+            <tbody>
+              <% items.forEach(item => { %>
+                <tr id="row-<%= item.id %>">
+                  <td><a href="<%= item.url %>" target="_blank" rel="noopener noreferrer"><%= item.title %></a></td>
+                  <td><%= item.type %></td>
+                  <td><%= item.added_by_name || item.added_by %></td>
+                  <td>
+                    <form method="POST" action="/teacher/library/<%= item.id %>/delete"
+                      data-confirm="Remove this material from the library?">
+                      <button type="submit" id="btnRemove-<%= item.id %>" class="btn btn-danger">Remove</button>
+                    </form>
+                  </td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      <% } %>
+    </section>
+  </main>
+
+  <%- include('partials/footer') %>
+  <script src="/js/app.js"></script>
+</body>
+
+</html>
+

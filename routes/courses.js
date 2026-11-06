@@ -81,6 +81,19 @@ router.get('/', requireAuth, async (req, res) => {
   });
 });
 
+// GET /courses - My Courses list
+router.get('/courses', requireAuth, (req, res) => {
+  const courses = getLMSData().courses.map(enrichCourseStats);
+  const currentCount = courses.filter(c => c.status === 'current').length;
+  const pastCount = courses.filter(c => c.status === 'past').length;
+
+  res.render('courses', {
+    title: 'My Courses | Pastors LMS',
+    courses,
+    stats: { currentCount, pastCount }
+  });
+});
+
 const { getCourseModulesWithTopics } = require('../data/course-content');
 
 // GET /courses/:id - Course Detail

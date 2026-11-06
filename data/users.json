@@ -1,5 +1,15 @@
 [
   {
+    "username": "t1000001",
+    "email": "teacher@pastorslms.com",
+    "password": "$2b$10$DJb9FyaEAHibnqIi/.Q6POf6c1JiXwWmpJBRx9X2WMuTEjmE4.fUS",
+    "full_name": "Teacher Demo",
+    "role": "teacher",
+    "approval_status": "approved",
+    "created_at": "2026-11-06T00:00:00Z",
+    "status": "active"
+  },
+  {
     "username": "demo1234",
     "email": "demo@pastorslms.com",
     "password": "$2b$10$h/5GUE9klOpp4EZJXNH/xO0CHnMyAquMAfWdBkYy6mm8K1x1RGhRa",

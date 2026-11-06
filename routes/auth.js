@@ -635,6 +635,22 @@ router.post('/login', async (req, res) => {
 
   console.log('Matched user:', matchedUser ? matchedUser.username : 'none');
 
+  if (!matchedUser) {
+    // Explain the failure without logging the password itself
+    const knownUser = users.find(u =>
+      (u.username && u.username.toLowerCase() === inputLower) ||
+      (u.email && u.email.toLowerCase() === inputLower) ||
+      (inputPhone && u.phone && normalizePhone(u.phone) === inputPhone)
+    );
+    if (!knownUser) {
+      console.log('Login diagnosis: no local account matches that username, email, or phone.');
+    } else if (!knownUser.password) {
+      console.log('Login diagnosis: account found but it has no local password set.');
+    } else {
+      console.log(`Login diagnosis: account "${knownUser.username}" found but password did not match (typed length: ${cleanPass.length}).`);
+    }
+  }
+
   if (matchedUser) {
     const initials = (matchedUser.full_name || matchedUser.email || 'Pastor')
       .split(' ')
