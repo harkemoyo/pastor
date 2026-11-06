@@ -156,8 +156,12 @@
                     <path d="M7 11V7a5 5 0 0 1 10 0v4" />
                   </svg>
                 </span>
-                <input type="password" id="password" name="password" class="form-input"
+                <input type="password" id="password" name="password" class="form-input has-pw-toggle"
                   placeholder="Create a password (min 6 characters)" required autocomplete="new-password">
+                <button type="button" class="btn-pw-toggle" data-toggle-target="password" aria-label="Toggle password visibility">
+                  <span class="pw-toggle-icon">👁️</span>
+                  <span class="pw-toggle-text">Show</span>
+                </button>
               </div>
             </div>
 
@@ -170,8 +174,12 @@
                     <path d="M7 11V7a5 5 0 0 1 10 0v4" />
                   </svg>
                 </span>
-                <input type="password" id="confirmPassword" name="confirm_password" class="form-input"
+                <input type="password" id="confirmPassword" name="confirm_password" class="form-input has-pw-toggle"
                   placeholder="Confirm your password" required autocomplete="new-password">
+                <button type="button" class="btn-pw-toggle" data-toggle-target="confirmPassword" aria-label="Toggle password visibility">
+                  <span class="pw-toggle-icon">👁️</span>
+                  <span class="pw-toggle-text">Show</span>
+                </button>
               </div>
             </div>
 

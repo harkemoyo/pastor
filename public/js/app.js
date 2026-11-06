@@ -14,7 +14,33 @@ document.addEventListener('DOMContentLoaded', () => {
   initConfirmForms();
   initProgressBars();
   initAdminLiveSearch();
+  initPasswordToggles();
 });
+
+// Universal Password Show/Hide Toggle (works on Login, Register, Admin forms)
+function initPasswordToggles() {
+  document.querySelectorAll('.btn-pw-toggle').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const targetId = btn.getAttribute('data-toggle-target');
+      let input = targetId ? document.getElementById(targetId) : null;
+      if (!input) {
+        const wrap = btn.closest('.password-input-wrap, .input-wrapper, .form-group');
+        if (wrap) input = wrap.querySelector('input[type="password"], input[type="text"]');
+      }
+      if (!input) return;
+
+      const isPass = input.getAttribute('type') === 'password';
+      input.setAttribute('type', isPass ? 'text' : 'password');
+
+      const textEl = btn.querySelector('.pw-toggle-text, #pwToggleText');
+      const iconEl = btn.querySelector('.pw-toggle-icon, #pwToggleIcon');
+      if (textEl) textEl.textContent = isPass ? 'Hide' : 'Show';
+      if (iconEl) iconEl.textContent = isPass ? '🙈' : '👁️';
+      btn.setAttribute('aria-label', isPass ? 'Hide password' : 'Show password');
+    });
+  });
+}
 
 // Accessible Login Portal Enhancements
 function initLoginPortal() {

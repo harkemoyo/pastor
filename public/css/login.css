@@ -643,6 +643,35 @@
   padding-left: 44px;
 }
 
+.input-wrapper .form-input.has-pw-toggle {
+  padding-right: 85px;
+}
+
+.input-wrapper .btn-pw-toggle {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: #F4F1EA;
+  border: 1px solid var(--portal-border, #d1d5db);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--portal-text, #1f2937);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  user-select: none;
+  z-index: 2;
+  transition: background 0.15s ease;
+}
+
+.input-wrapper .btn-pw-toggle:hover {
+  background: #EAE5D8;
+}
+
 .login-footer {
   margin-top: 20px;
   text-align: center;
