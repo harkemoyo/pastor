@@ -550,11 +550,23 @@ router.post('/login', async (req, res) => {
           console.log('Found email for identifier from local users:', emailToUse);
         } else {
           // Check Supabase students table by username or phone
-          const { data: studentData, error: studentError } = await (supabaseAdmin || supabase)
-            .from('students')
-            .select('email')
-            .or(`username.eq.${cleanUsername},phone.eq.${cleanUsername}`)
-            .maybeSingle();
+          // Query each column separately with .eq() so user input cannot inject PostgREST filter syntax
+          const lookupClient = supabaseAdmin || supabase;
+          let studentData = null;
+          let studentError = null;
+          for (const column of ['username', 'phone']) {
+            const result = await lookupClient
+              .from('students')
+              .select('email')
+              .eq(column, cleanUsername)
+              .limit(1)
+              .maybeSingle();
+            studentError = result.error;
+            if (!result.error && result.data && result.data.email) {
+              studentData = result.data;
+              break;
+            }
+          }
           
           if (!studentError && studentData && studentData.email) {
             emailToUse = studentData.email;
@@ -579,7 +591,8 @@ router.post('/login', async (req, res) => {
           .eq('auth_user_id', data.user.id)
           .maybeSingle();
 
-        const role = profileRow?.role || data.user.user_metadata?.role || 'student';
+        // Never trust user_metadata for authorization (users can edit it). Use the students table or app_metadata.
+        const role = profileRow?.role || data.user.app_metadata?.role || 'student';
         const fullName = profileRow?.full_name || data.user.user_metadata?.full_name || cleanUsername;
 
         req.session.user = {

@@ -1,5 +1,16 @@
 [
   {
+    "username": "demo1234",
+    "email": "demo@pastorslms.com",
+    "password": "$2b$10$h/5GUE9klOpp4EZJXNH/xO0CHnMyAquMAfWdBkYy6mm8K1x1RGhRa",
+    "full_name": "Demo Pastor",
+    "role": "student",
+    "approval_status": "approved",
+    "created_at": "2026-11-06T00:00:00Z",
+    "status": "active",
+    "student_id": "STU-DEMO"
+  },
+  {
     "username": "p1001234",
     "email": "pastor.james@church.org",
     "password": "$2b$10$IFeR81mpSAzXDcSVYRoso.WqE/pxE.dsHCeLDjpWiEmcA5Kdz/tam",

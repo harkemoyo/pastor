@@ -35,6 +35,8 @@
             <div class="meta-row"><strong>Email</strong><span><%= student.email %></span></div>
             <div class="meta-row"><strong>Phone</strong><span><%= student.phone || 'N/A' %></span></div>
             <div class="meta-row"><strong>Status</strong><span><span class="badge status-<%= student.status || 'active' %>"><%= (student.status || 'active').charAt(0).toUpperCase() + (student.status || 'active').slice(1) %></span></span></div>
+            <div class="meta-row"><strong>County</strong><span><%= student.county || 'N/A' %></span></div>
+            <div class="meta-row"><strong>Town</strong><span><%= student.town || 'N/A' %></span></div>
             <div class="meta-row"><strong>Address</strong><span><%= student.physical_address || student.address || 'N/A' %></span></div>
             <div class="meta-row"><strong>Church / Ministry</strong><span><%= student.church_name || 'N/A' %></span></div>
             <div class="meta-row"><strong>Ministry Role</strong><span><%= student.ministry_role || 'N/A' %></span></div>

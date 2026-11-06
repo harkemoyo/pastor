@@ -23,6 +23,8 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
 // Session configuration
+// Vercel terminates TLS at a proxy, so trust it for secure cookies to work
+app.set('trust proxy', 1);
 app.use(session({
   secret: process.env.SESSION_SECRET || 'pastors-lms-secure-key-nairobi-2026',
   resave: false,
@@ -31,7 +33,7 @@ app.use(session({
     maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
     httpOnly: true,
     sameSite: 'lax',
-    secure: false // Set to false for local development
+    secure: process.env.NODE_ENV === 'production' // HTTPS-only cookies in production (Vercel)
   }
 }));
 

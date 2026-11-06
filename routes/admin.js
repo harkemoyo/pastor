@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const bcrypt = require('bcrypt');
 const { requireAdmin } = require('../middleware/auth');
+const { supabaseAdmin } = require('../config/supabase');
 
 const USERS_FILE = path.join(__dirname, '../data/users.json');
 const COURSES_FILE = path.join(__dirname, '../data/courses.json');
@@ -34,6 +35,58 @@ function writeJson(filePath, data) {
 
 function getUsers() {
   return readJson(USERS_FILE, []);
+}
+
+// Read students from Supabase (source of truth for signups); fall back to users.json
+// when Supabase admin credentials are not configured or the query fails.
+async function getStudents() {
+  if (supabaseAdmin) {
+    try {
+      const { data, error } = await supabaseAdmin
+        .from('students')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (!error && Array.isArray(data)) return data;
+      console.warn('Supabase students read failed, using local users.json:', error && error.message);
+    } catch (err) {
+      console.warn('Supabase students read error, using local users.json:', err.message);
+    }
+  }
+  return getUsers();
+}
+
+function isStudentRecord(user) {
+  return user.role !== 'admin' && user.role !== 'super_admin';
+}
+
+function matchesStudentId(user, id) {
+  return user.student_id === id || user.username === id || user.email === id;
+}
+
+// Find one student by student_id, username or email (Supabase first, local fallback).
+async function findStudent(id) {
+  const students = await getStudents();
+  return students.find(user => matchesStudentId(user, id)) || null;
+}
+
+// Persist field changes for a student. Supabase rows (have a uuid `id`) are updated in the
+// database; local fallback records are updated in users.json. Returns true on success.
+async function updateStudent(student, fields) {
+  if (supabaseAdmin && student.id) {
+    const { error } = await supabaseAdmin.from('students').update(fields).eq('id', student.id);
+    if (error) {
+      console.error('Supabase student update failed:', error.message);
+      return false;
+    }
+    Object.assign(student, fields);
+    return true;
+  }
+  const users = getUsers();
+  const local = users.find(user => matchesStudentId(user, student.student_id || student.username));
+  if (!local) return false;
+  Object.assign(local, fields);
+  Object.assign(student, fields);
+  return saveUsers(users);
 }
 
 function saveUsers(users) {
@@ -160,8 +213,8 @@ router.get('/', requireAdmin, (req, res) => {
   res.redirect('/admin/dashboard');
 });
 
-router.get('/dashboard', requireAdmin, (req, res) => {
-  const users = getUsers().filter(user => user.role !== 'admin' && user.role !== 'super_admin');
+router.get('/dashboard', requireAdmin, async (req, res) => {
+  const users = (await getStudents()).filter(isStudentRecord);
   const courses = getCoursesData().courses || [];
   const enrolments = getEnrolments();
   const log = getActivityLog();
@@ -198,8 +251,8 @@ router.get('/dashboard', requireAdmin, (req, res) => {
   });
 });
 
-router.get('/students', requireAdmin, (req, res) => {
-  const users = getUsers().filter(user => user.role !== 'admin' && user.role !== 'super_admin');
+router.get('/students', requireAdmin, async (req, res) => {
+  const users = (await getStudents()).filter(isStudentRecord);
   const courses = getCoursesData().courses || [];
   const courseIdFilter = req.query.course_id || '';
   const statusFilter = req.query.status || 'all';
@@ -231,8 +284,8 @@ router.get('/students', requireAdmin, (req, res) => {
   });
 });
 
-router.get('/approvals', requireAdmin, (req, res) => {
-  const pendingStudents = getUsers()
+router.get('/approvals', requireAdmin, async (req, res) => {
+  const pendingStudents = (await getStudents())
     .filter(user => user.role === 'student' && (user.approval_status === 'pending' || user.status === 'pending'))
     .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
 
@@ -245,21 +298,22 @@ router.get('/approvals', requireAdmin, (req, res) => {
   });
 });
 
-router.post('/students/:studentId/approve', requireAdmin, (req, res) => {
-  const users = getUsers();
-  const student = users.find(user => user.student_id === req.params.studentId || user.username === req.params.studentId || user.email === req.params.studentId);
+router.post('/students/:studentId/approve', requireAdmin, async (req, res) => {
+  const student = await findStudent(req.params.studentId);
 
   if (!student) {
     return res.redirect('/admin/approvals?error=' + encodeURIComponent('Student record not found.'));
   }
 
-  student.approval_status = 'approved';
-  student.status = 'active';
-  student.role = 'student';
-  student.approved_by = req.session.user.username;
-  student.approved_at = new Date().toISOString();
+  const saved = await updateStudent(student, {
+    approval_status: 'approved',
+    status: 'active',
+    role: 'student',
+    approved_by: req.session.user.username,
+    approved_at: new Date().toISOString()
+  });
 
-  if (saveUsers(users)) {
+  if (saved) {
     appendActivity({
       adminUsername: req.session.user.username,
       adminName: req.session.user.full_name,
@@ -273,18 +327,16 @@ router.post('/students/:studentId/approve', requireAdmin, (req, res) => {
   return res.redirect('/admin/approvals?error=' + encodeURIComponent('Approval failed. Please try again.'));
 });
 
-router.post('/students/:studentId/reject', requireAdmin, (req, res) => {
-  const users = getUsers();
-  const student = users.find(user => user.student_id === req.params.studentId || user.username === req.params.studentId || user.email === req.params.studentId);
+router.post('/students/:studentId/reject', requireAdmin, async (req, res) => {
+  const student = await findStudent(req.params.studentId);
 
   if (!student) {
     return res.redirect('/admin/approvals?error=' + encodeURIComponent('Student record not found.'));
   }
 
-  student.approval_status = 'rejected';
-  student.status = 'inactive';
+  const saved = await updateStudent(student, { approval_status: 'rejected', status: 'rejected' });
 
-  if (saveUsers(users)) {
+  if (saved) {
     appendActivity({
       adminUsername: req.session.user.username,
       adminName: req.session.user.full_name,
@@ -308,9 +360,8 @@ router.get('/students/new', requireAdmin, (req, res) => {
   });
 });
 
-router.get('/students/:studentId/edit', requireAdmin, (req, res) => {
-  const users = getUsers();
-  const student = users.find(user => user.student_id === req.params.studentId || user.username === req.params.studentId || user.email === req.params.studentId);
+router.get('/students/:studentId/edit', requireAdmin, async (req, res) => {
+  const student = await findStudent(req.params.studentId);
 
   if (!student) {
     return res.redirect('/admin/students');
@@ -325,9 +376,9 @@ router.get('/students/:studentId/edit', requireAdmin, (req, res) => {
   });
 });
 
-router.post('/students/:studentId/edit', requireAdmin, (req, res) => {
-  const users = getUsers();
-  const student = users.find(user => user.student_id === req.params.studentId || user.username === req.params.studentId || user.email === req.params.studentId);
+router.post('/students/:studentId/edit', requireAdmin, async (req, res) => {
+  const users = await getStudents();
+  const student = users.find(user => matchesStudentId(user, req.params.studentId));
 
   if (!student) {
     return res.redirect('/admin/students');
@@ -356,28 +407,41 @@ router.post('/students/:studentId/edit', requireAdmin, (req, res) => {
     });
   }
 
-  student.first_name = first_name.trim();
-  student.middle_name = (middle_name || '').trim();
-  student.last_name = last_name.trim();
-  student.full_name = buildFullName(student);
-  student.date_of_birth = date_of_birth || '';
-  student.gender = gender || '';
-  student.phone = phone.trim();
-  student.email = email.trim().toLowerCase();
-  student.profile_photo = profile_photo || '';
-  student.address = address || '';
-  student.county = county || '';
-  student.town = town || '';
-  student.physical_address = physical_address || '';
-  student.church_name = church_name || '';
-  student.ministry_role = ministry_role || '';
-  student.years_in_ministry = years_in_ministry || '';
-  student.emergency_contact_name = emergency_contact_name || '';
-  student.emergency_contact_phone = emergency_contact_phone || '';
-  student.relationship = relationship || '';
-  student.username = student.email;
+  const isSupabaseRow = Boolean(supabaseAdmin && student.id);
+  const cleanFirstName = first_name.trim();
+  const cleanMiddleName = (middle_name || '').trim();
+  const cleanLastName = last_name.trim();
+  const updates = {
+    first_name: cleanFirstName,
+    middle_name: cleanMiddleName,
+    last_name: cleanLastName,
+    full_name: buildFullName({ first_name: cleanFirstName, middle_name: cleanMiddleName, last_name: cleanLastName }),
+    phone: phone.trim(),
+    email: email.trim().toLowerCase(),
+    county: county || '',
+    town: town || '',
+    physical_address: physical_address || '',
+    church_name: church_name || '',
+    ministry_role: ministry_role || '',
+    years_in_ministry: Number(years_in_ministry) || 0,
+    emergency_contact_name: emergency_contact_name || '',
+    emergency_contact_phone: emergency_contact_phone || '',
+    relationship: relationship || ''
+  };
 
-  if (saveUsers(users)) {
+  if (!isSupabaseRow) {
+    // Local-only fields; the Supabase students table has no columns for these
+    Object.assign(updates, {
+      date_of_birth: date_of_birth || '',
+      gender: gender || '',
+      profile_photo: profile_photo || '',
+      address: address || '',
+      years_in_ministry: years_in_ministry || '',
+      username: email.trim().toLowerCase()
+    });
+  }
+
+  if (await updateStudent(student, updates)) {
     appendActivity({
       adminUsername: req.session.user.username,
       adminName: req.session.user.full_name,
@@ -497,8 +561,8 @@ router.post('/students/new', requireAdmin, (req, res) => {
   });
 });
 
-router.get('/students/:studentId', requireAdmin, (req, res) => {
-  const users = getUsers();
+router.get('/students/:studentId', requireAdmin, async (req, res) => {
+  const users = await getStudents();
   const student = users.find(user => user.student_id === req.params.studentId || user.username === req.params.studentId || user.email === req.params.studentId);
 
   if (!student) {
@@ -529,19 +593,16 @@ router.get('/students/:studentId', requireAdmin, (req, res) => {
   });
 });
 
-router.post('/students/:studentId/status', requireAdmin, (req, res) => {
-  const users = getUsers();
-  const student = users.find(user => user.student_id === req.params.studentId || user.username === req.params.studentId);
+router.post('/students/:studentId/status', requireAdmin, async (req, res) => {
+  const student = await findStudent(req.params.studentId);
 
   if (!student) {
     return res.redirect('/admin/students');
   }
 
   const newStatus = normalizeStudentStatus(req.body.status);
-  student.status = newStatus;
-  student.archived = newStatus === 'inactive';
 
-  if (saveUsers(users)) {
+  if (await updateStudent(student, { status: newStatus })) {
     appendActivity({
       adminUsername: req.session.user.username,
       adminName: req.session.user.full_name,
@@ -554,18 +615,26 @@ router.post('/students/:studentId/status', requireAdmin, (req, res) => {
   res.redirect(`/admin/students/${student.student_id}`);
 });
 
-router.post('/students/:studentId/reset-password', requireAdmin, (req, res) => {
-  const users = getUsers();
-  const student = users.find(user => user.student_id === req.params.studentId || user.username === req.params.studentId);
+router.post('/students/:studentId/reset-password', requireAdmin, async (req, res) => {
+  const student = await findStudent(req.params.studentId);
 
   if (!student) {
     return res.redirect('/admin/students');
   }
 
   const tempPassword = (req.body.new_password || 'Pastor@2026').trim();
-  student.password = bcrypt.hashSync(tempPassword, 10);
+  let saved = false;
 
-  if (saveUsers(users)) {
+  if (supabaseAdmin && student.auth_user_id) {
+    // Supabase students sign in through Supabase Auth, so the password must change there
+    const { error } = await supabaseAdmin.auth.admin.updateUserById(student.auth_user_id, { password: tempPassword });
+    if (error) console.error('Supabase password reset failed:', error.message);
+    saved = !error;
+  } else {
+    saved = await updateStudent(student, { password: bcrypt.hashSync(tempPassword, 10) });
+  }
+
+  if (saved) {
     appendActivity({
       adminUsername: req.session.user.username,
       adminName: req.session.user.full_name,
@@ -580,18 +649,18 @@ router.post('/students/:studentId/reset-password', requireAdmin, (req, res) => {
   res.redirect(`/admin/students/${student.student_id}?error=${encodeURIComponent('Failed to reset password. Please try again.')}`);
 });
 
-router.post('/students/:studentId/archive', requireAdmin, (req, res) => {
-  const users = getUsers();
-  const student = users.find(user => user.student_id === req.params.studentId || user.username === req.params.studentId);
+router.post('/students/:studentId/archive', requireAdmin, async (req, res) => {
+  const student = await findStudent(req.params.studentId);
 
   if (!student) {
     return res.redirect('/admin/students');
   }
 
-  student.status = 'inactive';
-  student.archived = true;
+  const archiveFields = supabaseAdmin && student.id
+    ? { status: 'inactive' }
+    : { status: 'inactive', archived: true };
 
-  if (saveUsers(users)) {
+  if (await updateStudent(student, archiveFields)) {
     appendActivity({
       adminUsername: req.session.user.username,
       adminName: req.session.user.full_name,

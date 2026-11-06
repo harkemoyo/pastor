@@ -41,6 +41,7 @@
                 <th>Email</th>
                 <th>Phone</th>
                 <th>Church</th>
+                <th>Location</th>
                 <th>Role</th>
                 <th>Submitted</th>
                 <th>Action</th>
@@ -53,6 +54,7 @@
                   <td><%= student.email %></td>
                   <td><%= student.phone || 'N/A' %></td>
                   <td><%= student.church_name || 'N/A' %></td>
+                  <td><%= [student.town, student.county].filter(Boolean).join(', ') || 'N/A' %></td>
                   <td><%= student.ministry_role || 'Student' %></td>
                   <td><%= new Date(student.created_at || Date.now()).toLocaleDateString() %></td>
                   <td>
