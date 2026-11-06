@@ -17,22 +17,58 @@
         <h1 class="admin-title">Students</h1>
         <div class="admin-subtitle">View, search, filter, and manage all ministry students</div>
       </div>
-      <div class="admin-actions">
-        <a href="/admin/students/new" class="btn btn-primary">Add Student</a>
+      <div class="admin-actions" style="display: flex; gap: 8px;">
+        <button type="button" class="btn btn-secondary" onclick="window.print()" title="Print student roster for physical meetings">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: -2px; margin-right: 4px;">
+            <polyline points="6 9 6 2 18 2 18 9"></polyline>
+            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+            <rect x="6" y="14" width="12" height="8"></rect>
+          </svg>
+          Print Roster
+        </button>
+        <a href="/admin/students/new" class="btn btn-primary">+ Add Student</a>
       </div>
     </div>
 
+    <% if (typeof success !== 'undefined' && success) { %>
+      <div style="background: #e7f6ec; color: #14532d; border: 1.5px solid #86efac; padding: 12px 16px; border-radius: 8px; margin-bottom: 1rem; font-weight: 600;">
+        <%= success %>
+      </div>
+    <% } %>
+    <% if (typeof error !== 'undefined' && error) { %>
+      <div style="background: #fdecee; color: #7f1d1d; border: 1.5px solid #fca5a5; padding: 12px 16px; border-radius: 8px; margin-bottom: 1rem; font-weight: 600;">
+        <%= error %>
+      </div>
+    <% } %>
+
     <section class="admin-surface">
-      <form method="GET" action="/admin/students" class="filters-bar">
+      <!-- Quick Status Filter Tabs -->
+      <div class="status-pill-list">
+        <a href="/admin/students?status=all" class="status-pill <%= (!filters.status || filters.status === 'all') ? 'active' : '' %>">
+          All <span class="pill-count"><%= (typeof statusCounts !== 'undefined' && statusCounts) ? statusCounts.all : students.length %></span>
+        </a>
+        <a href="/admin/students?status=active" class="status-pill <%= filters.status === 'active' ? 'active' : '' %>">
+          Active <span class="pill-count"><%= (typeof statusCounts !== 'undefined' && statusCounts) ? statusCounts.active : 0 %></span>
+        </a>
+        <a href="/admin/students?status=pending" class="status-pill <%= filters.status === 'pending' ? 'active' : '' %>">
+          Pending Approval <span class="pill-count"><%= (typeof statusCounts !== 'undefined' && statusCounts) ? statusCounts.pending : 0 %></span>
+        </a>
+        <a href="/admin/students?status=inactive" class="status-pill <%= filters.status === 'inactive' ? 'active' : '' %>">
+          Inactive / Suspended <span class="pill-count"><%= (typeof statusCounts !== 'undefined' && statusCounts) ? statusCounts.inactive : 0 %></span>
+        </a>
+      </div>
+
+      <form method="GET" action="/admin/students" class="filters-bar" id="studentFilterForm">
         <div class="filter-group" style="flex: 2; min-width: 220px;">
           <label>Search</label>
-          <input type="text" name="search" value="<%= filters.search %>" placeholder="Name, Student ID, email, phone" />
+          <input type="text" id="adminStudentSearch" name="search" value="<%= filters.search %>" placeholder="Type name, phone, church, town..." autocomplete="off" />
         </div>
         <div class="filter-group">
           <label>Status</label>
-          <select name="status">
-            <option value="all" <%= filters.status === 'all' ? 'selected' : '' %>>All</option>
+          <select name="status" onchange="document.getElementById('studentFilterForm').submit()">
+            <option value="all" <%= filters.status === 'all' ? 'selected' : '' %>>All Statuses</option>
             <option value="active" <%= filters.status === 'active' ? 'selected' : '' %>>Active</option>
+            <option value="pending" <%= filters.status === 'pending' ? 'selected' : '' %>>Pending</option>
             <option value="inactive" <%= filters.status === 'inactive' ? 'selected' : '' %>>Inactive</option>
             <option value="suspended" <%= filters.status === 'suspended' ? 'selected' : '' %>>Suspended</option>
             <option value="graduated" <%= filters.status === 'graduated' ? 'selected' : '' %>>Graduated</option>
@@ -40,7 +76,7 @@
         </div>
         <div class="filter-group">
           <label>Course</label>
-          <select name="course_id">
+          <select name="course_id" onchange="document.getElementById('studentFilterForm').submit()">
             <option value="" <%= !filters.course_id ? 'selected' : '' %>>All courses</option>
             <% courses.forEach(course => { %>
               <option value="<%= course.id %>" <%= String(filters.course_id) === String(course.id) ? 'selected' : '' %>><%= course.title %></option>
@@ -48,19 +84,18 @@
           </select>
         </div>
         <div class="filter-group">
-          <button type="submit" class="btn btn-primary">Apply Filters</button>
+          <button type="submit" class="btn btn-primary">Filter</button>
         </div>
       </form>
 
       <% if (students.length) { %>
         <div class="admin-table-wrap">
-          <table class="admin-table">
+          <table class="admin-table" id="adminStudentsTable">
             <thead>
               <tr>
                 <th>Student ID</th>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Phone</th>
+                <th>Pastor / Learner</th>
+                <th>Contact</th>
                 <th>Status</th>
                 <th>Courses</th>
                 <th>Registered</th>
@@ -69,18 +104,45 @@
             </thead>
             <tbody>
               <% students.forEach(student => { %>
-                <tr>
+                <tr class="student-row">
                   <td><strong><%= student.student_id || 'N/A' %></strong></td>
-                  <td><%= student.full_name || [student.first_name, student.last_name].filter(Boolean).join(' ') %></td>
-                  <td><%= student.email %></td>
-                  <td><%= student.phone || 'N/A' %></td>
+                  <td>
+                    <div style="font-weight: 700; font-size: 0.95rem;"><%= student.full_name || [student.first_name, student.last_name].filter(Boolean).join(' ') %></div>
+                    <% if (student.church_name || student.town || student.county) { %>
+                      <small style="color: #6b7280; font-size: 0.8rem; display: block; margin-top: 2px;">
+                        🏛️ <%= [student.church_name, [student.town, student.county].filter(Boolean).join(', ')].filter(Boolean).join(' • ') %>
+                      </small>
+                    <% } %>
+                  </td>
+                  <td>
+                    <div style="font-size: 0.88rem;"><%= student.email %></div>
+                    <% if (student.phone) { %>
+                      <% const rawDigits = String(student.phone).replace(/\D/g, ''); %>
+                      <div style="margin-top: 3px; font-size: 0.82rem; display: flex; align-items: center; gap: 6px;">
+                        <a href="tel:<%= student.phone %>" style="color: #4b5563; text-decoration: none;">📞 <%= student.phone %></a>
+                        <% if (rawDigits) { %>
+                          <a href="https://wa.me/<%= rawDigits.startsWith('0') ? '254' + rawDigits.slice(1) : rawDigits %>" target="_blank" rel="noopener noreferrer" title="Chat on WhatsApp" style="color: #16a34a; font-weight: 600; text-decoration: none;">💬 WhatsApp</a>
+                        <% } %>
+                      </div>
+                    <% } else { %>
+                      <small style="color: #9ca3af;">No phone</small>
+                    <% } %>
+                  </td>
                   <td>
                     <span class="badge status-<%= student.status || 'active' %>"><%= (student.status || 'active').charAt(0).toUpperCase() + (student.status || 'active').slice(1) %></span>
                   </td>
                   <td><%= (student.student_id ? (student.enrolled_courses || 0) : 0) || 0 %></td>
                   <td><%= student.created_at ? new Date(student.created_at).toLocaleDateString() : 'N/A' %></td>
                   <td>
-                    <div class="action-stack">
+                    <div class="action-stack" style="display: flex; gap: 6px; flex-wrap: wrap;">
+                      <% if (student.status === 'pending' || student.approval_status === 'pending') { %>
+                        <form method="POST" action="/admin/students/<%= student.student_id || student.username %>/approve" style="display: inline;">
+                          <input type="hidden" name="redirect_to" value="/admin/students">
+                          <button type="submit" class="btn btn-sm btn-success" style="background: #166534; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-weight: 600; cursor: pointer;">
+                            ✓ Approve
+                          </button>
+                        </form>
+                      <% } %>
                       <a href="/admin/students/<%= student.student_id || student.username %>" class="btn btn-sm btn-secondary">View</a>
                       <a href="/admin/students/<%= student.student_id || student.username %>/edit" class="btn btn-sm btn-secondary">Edit</a>
                     </div>

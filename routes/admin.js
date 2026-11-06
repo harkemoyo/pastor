@@ -10,7 +10,7 @@ const USERS_FILE = path.join(__dirname, '../data/users.json');
 const COURSES_FILE = path.join(__dirname, '../data/courses.json');
 const ENROLMENTS_FILE = path.join(__dirname, '../data/enrolments.json');
 const ACTIVITY_FILE = path.join(__dirname, '../data/activity-log.json');
-const STUDENT_STATUS_OPTIONS = ['active', 'inactive', 'suspended', 'graduated'];
+const STUDENT_STATUS_OPTIONS = ['active', 'pending', 'inactive', 'suspended', 'graduated', 'rejected'];
 const COURSE_STATUS_OPTIONS = ['active', 'inactive', 'archived'];
 
 function readJson(filePath, fallback) {
@@ -56,7 +56,7 @@ async function getStudents() {
 }
 
 function isStudentRecord(user) {
-  return user.role !== 'admin' && user.role !== 'super_admin';
+  return user.role === 'student' || (!user.role && user.role !== 'admin' && user.role !== 'super_admin' && user.role !== 'teacher');
 }
 
 function matchesStudentId(user, id) {
@@ -169,7 +169,16 @@ function getStudentCourseIds(studentId) {
 function studentMatchesSearch(student, term) {
   if (!term) return true;
   const text = term.toLowerCase();
-  return [student.full_name || '', student.student_id || '', student.email || '', student.phone || '', student.username || '']
+  return [
+    student.full_name || '',
+    student.student_id || '',
+    student.email || '',
+    student.phone || '',
+    student.username || '',
+    student.church_name || '',
+    student.county || '',
+    student.town || ''
+  ]
     .join(' ')
     .toLowerCase()
     .includes(text);
@@ -267,6 +276,13 @@ router.get('/students', requireAdmin, async (req, res) => {
     return matchesSearch && matchesStatus && matchesCourse;
   });
 
+  const statusCounts = {
+    all: users.length,
+    active: users.filter(u => normalizeStudentStatus(u.status) === 'active').length,
+    pending: users.filter(u => normalizeStudentStatus(u.status) === 'pending').length,
+    inactive: users.filter(u => ['inactive', 'suspended', 'graduated'].includes(normalizeStudentStatus(u.status))).length
+  };
+
   const result = paginate(filteredStudents, page, 10);
 
   res.render('admin/students', {
@@ -274,13 +290,16 @@ router.get('/students', requireAdmin, async (req, res) => {
     user: req.session.user,
     students: result.items,
     courses,
+    statusCounts,
     filters: {
       search,
       status: statusFilter,
       course_id: courseIdFilter
     },
     pagination: result,
-    selectedStudentCount: 0
+    selectedStudentCount: 0,
+    success: req.query.success || null,
+    error: req.query.error || null
   });
 });
 
@@ -300,9 +319,10 @@ router.get('/approvals', requireAdmin, async (req, res) => {
 
 router.post('/students/:studentId/approve', requireAdmin, async (req, res) => {
   const student = await findStudent(req.params.studentId);
+  const redirectTo = req.body.redirect_to || req.query.redirect_to || '/admin/approvals';
 
   if (!student) {
-    return res.redirect('/admin/approvals?error=' + encodeURIComponent('Student record not found.'));
+    return res.redirect(redirectTo + '?error=' + encodeURIComponent('Student record not found.'));
   }
 
   const saved = await updateStudent(student, {
@@ -321,10 +341,10 @@ router.post('/students/:studentId/approve', requireAdmin, async (req, res) => {
       targetType: 'student',
       targetId: student.student_id || student.username
     });
-    return res.redirect('/admin/approvals?success=' + encodeURIComponent('Student approved successfully.'));
+    return res.redirect(redirectTo + '?success=' + encodeURIComponent('Student approved successfully.'));
   }
 
-  return res.redirect('/admin/approvals?error=' + encodeURIComponent('Approval failed. Please try again.'));
+  return res.redirect(redirectTo + '?error=' + encodeURIComponent('Approval failed. Please try again.'));
 });
 
 router.post('/students/:studentId/reject', requireAdmin, async (req, res) => {
@@ -814,6 +834,10 @@ router.post('/students/:studentId/courses/:courseId/remove', requireAdmin, (req,
     });
   }
   res.redirect(`/admin/students/${studentId}?success=${encodeURIComponent('Course removed from student.')}`);
+});
+
+router.get('/library', requireAdmin, (req, res) => {
+  res.redirect('/teacher/library');
 });
 
 router.get('/courses', requireAdmin, (req, res) => {

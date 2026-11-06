@@ -13,6 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initAdminMenu();
   initConfirmForms();
   initProgressBars();
+  initAdminLiveSearch();
 });
 
 // Accessible Login Portal Enhancements
@@ -237,17 +238,37 @@ function initClock() {
   }
 
   function update() {
-    const timeStr = new Date().toLocaleTimeString('en-US', {
-      timeZone: zone,
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true
-    });
-    clockEl.textContent = label ? `${timeStr} ${label}` : timeStr;
+    try {
+      const timeStr = new Date().toLocaleTimeString('en-US', {
+        timeZone: zone,
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      });
+      clockEl.textContent = label ? `${timeStr} ${label}` : timeStr;
+    } catch (e) {
+      clockEl.textContent = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }) + ' EAT';
+    }
   }
 
   update();
   setInterval(update, 1000);
+}
+
+// Live client-side instant search for Admin Student table
+function initAdminLiveSearch() {
+  const input = document.getElementById('adminStudentSearch');
+  const table = document.getElementById('adminStudentsTable');
+  if (!input || !table) return;
+
+  input.addEventListener('input', () => {
+    const term = input.value.trim().toLowerCase();
+    const rows = table.querySelectorAll('tbody tr.student-row');
+    rows.forEach(row => {
+      const text = row.textContent.toLowerCase();
+      row.style.display = (!term || text.includes(term)) ? '' : 'none';
+    });
+  });
 }
 
 // Ask before submitting any form marked with data-confirm (e.g. removing a library item)
