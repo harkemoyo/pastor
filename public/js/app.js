@@ -237,6 +237,22 @@ function initClock() {
     if (wrapEl) wrapEl.setAttribute('title', `${countryName} (${zone.replace('_', ' ')})`);
   }
 
+  const cohortBadge = document.getElementById('cohortBadge');
+  if (cohortBadge && code) {
+    const flag = countryToFlag(code);
+    let regionName = 'East Africa';
+    if (code === 'UG') regionName = 'Uganda';
+    else if (code === 'KE') regionName = 'Kenya';
+    else if (code === 'TZ') regionName = 'Tanzania';
+    else if (code === 'RW') regionName = 'Rwanda';
+    else {
+      try {
+        regionName = new Intl.DisplayNames(['en'], { type: 'region' }).of(code.toUpperCase()) || regionName;
+      } catch (e) {}
+    }
+    cohortBadge.textContent = `${flag} ${regionName} Pastoral Cohort • AY2027`;
+  }
+
   function update() {
     try {
       const timeStr = new Date().toLocaleTimeString('en-US', {
