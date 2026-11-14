@@ -1,6 +1,10 @@
 /**
  * Pastors LMS — Client Application Scripts
  */
+(function () {
+  'use strict';
+  if (window.__PASTORS_LMS_APP_INITED__) return;
+  window.__PASTORS_LMS_APP_INITED__ = true;
 
 document.addEventListener('DOMContentLoaded', () => {
   initClock();
@@ -502,3 +506,4 @@ function initAdminMenu() {
     }
   });
 }
+})();
