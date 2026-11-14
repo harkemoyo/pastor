@@ -255,7 +255,7 @@
 }
 
 .nav-logo {
-  height: 100px;
+  height: 80px;
   width: auto;
   flex-shrink: 0;
   object-fit: contain;
