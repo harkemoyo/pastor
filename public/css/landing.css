@@ -4,12 +4,12 @@ html { scroll-behavior: smooth; }
 .landing-logo { display: flex; align-items: center; gap: 14px; text-decoration: none; font-family: var(--font-heading); font-weight: 800; color: var(--primary); }
 .landing-logo img { height: 100px; width: auto; object-fit: contain; }
 .landing-logo span { font-size: 1.45rem; letter-spacing: 0.5px; }
-.landing-logo b { color: var(--accent); }
+.landing-logo b { color: var(--burgundy); }
 
 /* Buttons */
 .btn-cta, .btn-ghost { display: inline-block; padding: 10px 20px; border-radius: 999px; font-weight: 700; text-decoration: none; transition: var(--transition); white-space: nowrap; }
-.btn-cta { background: var(--accent); color: var(--primary-dark); }
-.btn-cta:hover { background: var(--accent-hover); transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.btn-cta { background: var(--burgundy); color: #FFFFFF; }
+.btn-cta:hover { background: var(--burgundy-hover); color: #FFFFFF; transform: translateY(-2px); box-shadow: var(--shadow-md); }
 .btn-ghost { border: 2px solid var(--primary); color: var(--primary); }
 .hero .btn-ghost { border-color: #fff; color: #fff; }
 .btn-ghost:hover { background: var(--primary-subtle); }
@@ -231,12 +231,12 @@ html { scroll-behavior: smooth; }
 .hero-sub { font-size: 1.15rem; opacity: .9; margin-bottom: 32px; }
 .hero-actions { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
 
-.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; max-width: 1000px; margin: -50px auto 0; padding: 0 5%; position: relative; z-index: 2; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 18px; max-width: 1140px; margin: -50px auto 0; padding: 0 24px; position: relative; z-index: 2; }
 .stat { background: #fff; border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); padding: 24px; text-align: center; }
 .stat strong { display: block; font-family: var(--font-heading); font-size: 2rem; color: var(--primary); }
 .stat span { color: var(--text-muted); font-size: .9rem; }
 
-.section { padding: 80px 5%; max-width: 1100px; margin: 0 auto; }
+.section { padding: 80px 24px; max-width: 1200px; margin: 0 auto; }
 .section.alt { max-width: none; background: rgba(25, 47, 71,.05); }
 .section.alt > * { max-width: 900px; margin-left: auto; margin-right: auto; }
 .section h2 { font-family: var(--font-heading); font-size: 2rem; color: var(--primary); text-align: center; margin-bottom: 36px; }
