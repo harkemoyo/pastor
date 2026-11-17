@@ -438,6 +438,13 @@
   text-transform: capitalize;
 }
 
+.user-handle {
+  font-size: 0.76rem;
+  color: #F1D487;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
 /* Admin Menu */
 .admin-menu-wrapper {
   position: relative;
@@ -624,6 +631,21 @@
   font-size: 0.78rem;
   font-weight: 700;
   margin-bottom: 12px;
+}
+
+.hero-username-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: #FFFFFF;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  margin-bottom: 12px;
+  margin-left: 8px;
 }
 
 .hero-title {

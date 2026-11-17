@@ -6,6 +6,7 @@ function requireAuth(req, res, next) {
   if (req.session && req.session.user) {
     return next();
   }
+  console.log(`[AUTH] Unauthenticated access to ${req.originalUrl}. Session exists: ${!!req.session}, User: ${!!req.session?.user}. Redirecting to /login`);
   return res.redirect('/login');
 }
 

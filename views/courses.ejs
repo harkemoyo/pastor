@@ -16,6 +16,17 @@
   <%- include('partials/header') %>
 
   <main class="main-content">
+    <% if (locals.user && ['admin', 'super_admin'].includes(user.role)) { %>
+      <div class="admin-course-notice">
+        <span class="admin-course-notice-text">
+          <strong>Admin View:</strong> You are previewing courses as students see them.
+        </span>
+        <a href="/admin/courses" class="btn btn-secondary admin-course-notice-btn" id="btnAdminManageCourses">
+          <span>Manage Courses &amp; Units &rarr;</span>
+        </a>
+      </div>
+    <% } %>
+
     <div class="section-header-row">
       <h1 class="section-title">My Courses</h1>
       <div class="course-tabs">

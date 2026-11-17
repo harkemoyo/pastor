@@ -139,6 +139,108 @@ router.get('/login', (req, res) => {
   });
 });
 
+// GET /forgot-password
+router.get('/forgot-password', (req, res) => {
+  res.render('forgot-password', {
+    title: 'Forgot Password | Pastors LMS',
+    error: null,
+    success: null,
+    identifier: req.query.username || ''
+  });
+});
+
+// POST /forgot-password
+router.post('/forgot-password', async (req, res) => {
+  const { identifier } = req.body;
+  const cleanId = (identifier || '').trim();
+
+  if (!cleanId) {
+    return res.render('forgot-password', {
+      title: 'Forgot Password | Pastors LMS',
+      error: 'Please enter your phone number, email address, or username.',
+      success: null,
+      identifier: ''
+    });
+  }
+
+  const isEmail = cleanId.includes('@');
+  let targetEmail = isEmail ? cleanId.toLowerCase() : null;
+  let pastorName = 'Pastor';
+  const inputLower = cleanId.toLowerCase();
+  const inputPhone = normalizePhone(cleanId);
+
+  // 1. Look up in local users
+  const users = getUsers();
+  const matched = users.find(u => {
+    const matchU = u.username && u.username.toLowerCase() === inputLower;
+    const matchId = u.student_id && u.student_id.toLowerCase() === inputLower;
+    const matchE = u.email && u.email.toLowerCase() === inputLower;
+    const matchP = inputPhone && u.phone && normalizePhone(u.phone) === inputPhone;
+    return matchU || matchId || matchE || matchP;
+  });
+
+  if (matched) {
+    targetEmail = matched.email;
+    pastorName = matched.full_name || 'Pastor';
+  } else if (!targetEmail && (supabaseAdmin || supabase)) {
+    // Look up in Supabase
+    try {
+      const lookupClient = supabaseAdmin || supabase;
+      for (const col of ['username', 'student_id']) {
+        const { data } = await lookupClient.from('students').select('email, full_name').ilike(col, cleanId).maybeSingle();
+        if (data && data.email) {
+          targetEmail = data.email;
+          pastorName = data.full_name || 'Pastor';
+          break;
+        }
+      }
+      if (!targetEmail && inputPhone) {
+        const { data } = await lookupClient.from('students').select('email, full_name').eq('phone', cleanId).maybeSingle();
+        if (data && data.email) {
+          targetEmail = data.email;
+          pastorName = data.full_name || 'Pastor';
+        }
+      }
+    } catch (err) {
+      console.warn('Supabase lookup in forgot-password error:', err.message);
+    }
+  }
+
+  let emailSent = false;
+  if (targetEmail && supabase) {
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(targetEmail);
+      if (!error) {
+        emailSent = true;
+      } else {
+        console.warn('Supabase resetPasswordForEmail warning:', error.message);
+      }
+    } catch (e) {
+      console.warn('Supabase password reset exception:', e.message);
+    }
+  }
+
+  const waText = encodeURIComponent(
+    `Hello Pastor Hark & IDA Admin, I need help resetting my Pastors LMS password. My name/ID is ${pastorName} (${cleanId}).`
+  );
+  const waUrl = `https://wa.me/254707821269?text=${waText}`;
+
+  return res.render('forgot-password', {
+    title: 'Forgot Password | Pastors LMS',
+    error: null,
+    success: {
+      message: emailSent
+        ? `A password reset link has been dispatched to ${targetEmail}. Please check your inbox.`
+        : `Your reset request has been recorded for ${cleanId}. If you need immediate access, you can also reach our administrative desk directly on WhatsApp.`,
+      emailSent,
+      targetEmail,
+      waUrl,
+      pastorName
+    },
+    identifier: cleanId
+  });
+});
+
 // GET /register
 router.get('/register', (req, res) => {
   if (req.session && req.session.user) {
@@ -466,7 +568,10 @@ router.post('/register', async (req, res) => {
     res.render('register-success', {
       title: 'Account Created | Pastors LMS',
       username: username,
+      student_id: studentId,
       full_name: cleanFullName,
+      email: cleanEmail,
+      phone: cleanPhone,
       approval_status: 'approved'
     });
   } catch (err) {
@@ -541,74 +646,141 @@ router.post('/login', async (req, res) => {
         const users = getUsers();
         const localUser = users.find(u => {
           const matchU = u.username && u.username.toLowerCase() === inputLower;
+          const matchId = u.student_id && u.student_id.toLowerCase() === inputLower;
           const matchP = inputPhone && u.phone && normalizePhone(u.phone) === inputPhone;
-          return matchU || matchP;
+          return matchU || matchId || matchP;
         });
 
         if (localUser && localUser.email) {
           emailToUse = localUser.email;
           console.log('Found email for identifier from local users:', emailToUse);
         } else {
-          // Check Supabase students table by username or phone
-          // Query each column separately with .eq() so user input cannot inject PostgREST filter syntax
+          // Check Supabase students table by username, student_id, or phone
           const lookupClient = supabaseAdmin || supabase;
           let studentData = null;
           let studentError = null;
-          for (const column of ['username', 'phone']) {
-            const result = await lookupClient
+          
+          // 1. Try username case-insensitively
+          const userRes = await lookupClient
+            .from('students')
+            .select('email')
+            .ilike('username', cleanUsername)
+            .limit(1)
+            .maybeSingle();
+          
+          if (!userRes.error && userRes.data && userRes.data.email) {
+            studentData = userRes.data;
+          }
+
+          // 2. Try student_id case-insensitively if not found
+          if (!studentData) {
+            const idRes = await lookupClient
               .from('students')
               .select('email')
-              .eq(column, cleanUsername)
+              .ilike('student_id', cleanUsername)
               .limit(1)
               .maybeSingle();
-            studentError = result.error;
-            if (!result.error && result.data && result.data.email) {
-              studentData = result.data;
-              break;
+            if (!idRes.error && idRes.data && idRes.data.email) {
+              studentData = idRes.data;
+            }
+          }
+
+          // 3. Try phone number (both raw and normalized) if not found
+          if (!studentData) {
+            for (const phoneVal of [cleanUsername, inputPhone].filter(Boolean)) {
+              const phoneRes = await lookupClient
+                .from('students')
+                .select('email')
+                .eq('phone', phoneVal)
+                .limit(1)
+                .maybeSingle();
+              if (!phoneRes.error && phoneRes.data && phoneRes.data.email) {
+                studentData = phoneRes.data;
+                break;
+              }
             }
           }
           
-          if (!studentError && studentData && studentData.email) {
+          // 4. Try matching full_name case-insensitively if not found
+          if (!studentData) {
+            const nameRes = await lookupClient
+              .from('students')
+              .select('email')
+              .ilike('full_name', cleanUsername)
+              .limit(1)
+              .maybeSingle();
+            if (!nameRes.error && nameRes.data && nameRes.data.email) {
+              studentData = nameRes.data;
+            }
+          }
+
+          // 5. Try Supabase Auth metadata lookup if admin client is available
+          if (!studentData && supabaseAdmin) {
+            try {
+              const { data: authList } = await supabaseAdmin.auth.admin.listUsers({ perPage: 100 });
+              if (authList && authList.users) {
+                const found = authList.users.find(u => {
+                  const m = u.user_metadata || {};
+                  const matchU = m.username && m.username.toLowerCase() === inputLower;
+                  const matchId = m.student_id && m.student_id.toLowerCase() === inputLower;
+                  const matchP = inputPhone && m.phone && normalizePhone(m.phone) === inputPhone;
+                  return matchU || matchId || matchP;
+                });
+                if (found && found.email) {
+                  studentData = { email: found.email };
+                  console.log('Found email from Supabase Auth admin metadata:', found.email);
+                }
+              }
+            } catch (errList) {
+              console.warn('Supabase auth.admin.listUsers error:', errList.message);
+            }
+          }
+          
+          if (studentData && studentData.email) {
             emailToUse = studentData.email;
             console.log('Found email for identifier from Supabase:', emailToUse);
           }
         }
       }
       
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: emailToUse,
-        password: cleanPass
-      });
+      if (emailToUse && emailToUse.includes('@')) {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: emailToUse,
+          password: cleanPass
+        });
 
-      if (error) {
-        throw error;
-      }
-
-      if (data && data.user) {
-        const { data: profileRow, error: profileError } = await (supabaseAdmin || supabase)
-          .from('students')
-          .select('*')
-          .eq('auth_user_id', data.user.id)
-          .maybeSingle();
-
-        // Never trust user_metadata for authorization (users can edit it). Use the students table or app_metadata.
-        const role = profileRow?.role || data.user.app_metadata?.role || 'student';
-        const fullName = profileRow?.full_name || data.user.user_metadata?.full_name || cleanUsername;
-
-        req.session.user = {
-          id: data.user.id,
-          username: profileRow?.username || data.user.user_metadata?.username || cleanUsername,
-          email: data.user.email,
-          full_name: fullName,
-          role,
-          initials: (fullName || 'Pastor').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
-        };
-
-        console.log('Supabase login successful for:', cleanUsername);
-        if (profileError && profileError.code !== 'PGRST116') {
-          console.warn('Student profile lookup warning:', profileError.message);
+        if (error) {
+          throw error;
         }
-        return req.session.save(() => res.redirect('/'));
+
+        if (data && data.user) {
+          const { data: profileRow, error: profileError } = await (supabaseAdmin || supabase)
+            .from('students')
+            .select('*')
+            .eq('auth_user_id', data.user.id)
+            .maybeSingle();
+
+          // Never trust user_metadata for authorization (users can edit it). Use the students table or app_metadata.
+          const role = profileRow?.role || data.user.app_metadata?.role || 'student';
+          const fullName = profileRow?.full_name || data.user.user_metadata?.full_name || cleanUsername;
+
+          req.session.user = {
+            id: data.user.id,
+            username: profileRow?.username || data.user.user_metadata?.username || cleanUsername,
+            email: data.user.email,
+            full_name: fullName,
+            role,
+            initials: (fullName || 'Pastor').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
+          };
+
+          console.log('Supabase login successful for:', cleanUsername);
+          if (profileError && profileError.code !== 'PGRST116') {
+            console.warn('Student profile lookup warning:', profileError.message);
+          }
+          return req.session.save(() => res.redirect('/'));
+        }
+      } else {
+        console.log('Identifier did not resolve to an email address; attempting local fallback auth for:', cleanUsername);
       }
     } catch (err) {
       console.warn('Supabase auth failed or not available, checking local fallback:', err.message);
@@ -616,10 +788,11 @@ router.post('/login', async (req, res) => {
     }
   }
 
-  // 2. Local Fallback Auth (supports Username, Email, OR Phone Number!)
+  // 2. Local Fallback Auth (supports Username, Student ID, Email, OR Phone Number!)
   const users = getUsers();
   const matchedUser = users.find(u => {
     const usernameMatches = (u.username && u.username.toLowerCase() === inputLower) ||
+                            (u.student_id && u.student_id.toLowerCase() === inputLower) ||
                             (u.email && u.email.toLowerCase() === inputLower);
     const phoneMatches = inputPhone && u.phone && normalizePhone(u.phone) === inputPhone;
     
@@ -639,6 +812,7 @@ router.post('/login', async (req, res) => {
     // Explain the failure without logging the password itself
     const knownUser = users.find(u =>
       (u.username && u.username.toLowerCase() === inputLower) ||
+      (u.student_id && u.student_id.toLowerCase() === inputLower) ||
       (u.email && u.email.toLowerCase() === inputLower) ||
       (inputPhone && u.phone && normalizePhone(u.phone) === inputPhone)
     );

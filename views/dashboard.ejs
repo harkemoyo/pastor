@@ -24,6 +24,11 @@
         <div class="hero-welcome-badge">
           <span id="cohortBadge">🇰🇪 Nairobi Pastoral Cohort • AY2027</span>
         </div>
+        <% if (locals.user && (user.username || user.student_id)) { %>
+          <div class="hero-username-badge" title="Your login username / Student ID">
+            <span>👤 Username: @<%= user.username || user.student_id %></span>
+          </div>
+        <% } %>
         <h1 class="hero-title">Karibu, <%= locals.user ? user.full_name : 'Pastor' %>! 🙏</h1>
         <p class="hero-verse">
           “Do your best to present yourself to God as one approved, a worker who does not need to be ashamed and who

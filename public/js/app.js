@@ -24,24 +24,31 @@ document.addEventListener('DOMContentLoaded', () => {
 // Universal Password Show/Hide Toggle (works on Login, Register, Admin forms)
 function initPasswordToggles() {
   document.querySelectorAll('.btn-pw-toggle').forEach(btn => {
+    // Avoid binding twice if called multiple times
+    if (btn.__pwToggleBound) return;
+    btn.__pwToggleBound = true;
+
     btn.addEventListener('click', (e) => {
       e.preventDefault();
+      e.stopPropagation();
       const targetId = btn.getAttribute('data-toggle-target');
       let input = targetId ? document.getElementById(targetId) : null;
       if (!input) {
-        const wrap = btn.closest('.password-input-wrap, .input-wrapper, .form-group');
+        const wrap = btn.closest('.password-input-wrap, .input-wrapper, .form-group, .form-field-group');
         if (wrap) input = wrap.querySelector('input[type="password"], input[type="text"]');
       }
       if (!input) return;
 
-      const isPass = input.getAttribute('type') === 'password';
-      input.setAttribute('type', isPass ? 'text' : 'password');
+      const isCurrentlyPass = input.type === 'password' || input.getAttribute('type') === 'password';
+      const nextType = isCurrentlyPass ? 'text' : 'password';
+      input.type = nextType;
+      input.setAttribute('type', nextType);
 
       const textEl = btn.querySelector('.pw-toggle-text, #pwToggleText');
       const iconEl = btn.querySelector('.pw-toggle-icon, #pwToggleIcon');
-      if (textEl) textEl.textContent = isPass ? 'Hide' : 'Show';
-      if (iconEl) iconEl.textContent = isPass ? '🙈' : '👁️';
-      btn.setAttribute('aria-label', isPass ? 'Hide password' : 'Show password');
+      if (textEl) textEl.textContent = isCurrentlyPass ? 'Hide' : 'Show';
+      if (iconEl) iconEl.textContent = isCurrentlyPass ? '🙈' : '👁️';
+      btn.setAttribute('aria-label', isCurrentlyPass ? 'Hide password' : 'Show password');
     });
   });
 }
@@ -51,23 +58,10 @@ function initLoginPortal() {
   const loginForm = document.getElementById('directLoginForm');
   const idInput = document.getElementById('loginIdentifier');
   const passInput = document.getElementById('loginPassword');
-  const toggleBtn = document.getElementById('btnTogglePassword');
-  const toggleIcon = document.getElementById('pwToggleIcon');
-  const toggleText = document.getElementById('pwToggleText');
   const rememberBox = document.getElementById('rememberedUserBox');
   const rememberCheck = document.getElementById('rememberMeCheck');
 
   if (!idInput) return;
-
-  // 1. Show/Hide Password Toggle
-  if (toggleBtn && passInput) {
-    toggleBtn.addEventListener('click', () => {
-      const isPass = passInput.getAttribute('type') === 'password';
-      passInput.setAttribute('type', isPass ? 'text' : 'password');
-      if (toggleText) toggleText.textContent = isPass ? 'Hide' : 'Show';
-      if (toggleIcon) toggleIcon.textContent = isPass ? '🙈' : '👁️';
-    });
-  }
 
   // 2. Remembered Account from LocalStorage
   try {

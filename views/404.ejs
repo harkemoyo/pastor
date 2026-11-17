@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title || 'Page Not Found (404) | Pastors LMS' %></title>
+  <link rel="stylesheet" href="/css/global.css">
+  <link rel="stylesheet" href="/css/footer.css">
+  <link rel="stylesheet" href="/css/dashboard.css">
+  <link rel="icon" type="image/x-icon" href="/images/favicon.ico">
+  <style>
+    .not-found-container {
+      max-width: 680px;
+      margin: 60px auto;
+      padding: 40px 32px;
+      text-align: center;
+      background: #ffffff;
+      border-radius: 16px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+      border: 1px solid #ede7f6;
+    }
+    .not-found-code {
+      font-size: 72px;
+      font-weight: 800;
+      color: #3b1443;
+      line-height: 1;
+      margin-bottom: 12px;
+    }
+    .not-found-title {
+      font-size: 24px;
+      font-weight: 700;
+      color: #1f2937;
+      margin-bottom: 12px;
+    }
+    .not-found-message {
+      font-size: 16px;
+      color: #6b7280;
+      margin-bottom: 28px;
+      line-height: 1.6;
+    }
+    .not-found-actions {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+  </style>
+</head>
+<body class="app-container">
+  <%- include('partials/header') %>
+
+  <main class="main-content">
+    <div class="not-found-container">
+      <div class="not-found-code">404</div>
+      <h1 class="not-found-title">Page Not Found</h1>
+      <p class="not-found-message">
+        The page or resource you requested (<code><%= requestedUrl || '' %></code>) could not be located. It may have moved or the address may be incorrect.
+      </p>
+      <div class="not-found-actions">
+        <a href="/" class="btn btn-primary" id="btn404Home">
+          <span>Go to Home</span>
+        </a>
+        <a href="/courses" class="btn btn-secondary" id="btn404Courses">
+          <span>My Courses</span>
+        </a>
+      </div>
+    </div>
+  </main>
+
+  <%- include('partials/footer') %>
+</body>
+</html>

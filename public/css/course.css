@@ -1019,3 +1019,28 @@
     gap: 10px;
   }
 }
+
+/* Admin preview notice on student courses page */
+.admin-course-notice {
+  background: #fbf5ff;
+  border: 1px solid #d8b4fe;
+  border-radius: 10px;
+  padding: 12px 18px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.admin-course-notice-text {
+  color: #4a154b;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.admin-course-notice-btn {
+  padding: 6px 14px;
+  font-size: 13px;
+}
