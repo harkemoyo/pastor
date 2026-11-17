@@ -5,6 +5,43 @@ const path = require('path');
 const bcrypt = require('bcrypt');
 const { supabase, supabaseAdmin } = require('../config/supabase');
 
+let sharp = null;
+try {
+  sharp = require('sharp');
+} catch {
+  // sharp optional in constrained environments
+}
+
+/**
+ * Decode a base64 image data URL, optimize to WebP in public/uploads/profiles,
+ * and fall back to returning the compact data URL if disk write fails.
+ */
+async function saveProfilePicture(dataUrl, username) {
+  if (!dataUrl || typeof dataUrl !== 'string' || !dataUrl.startsWith('data:image/')) {
+    return null;
+  }
+  const match = dataUrl.match(/^data:image\/[a-zA-Z0-9+.-]+;base64,(.+)$/);
+  if (!match) return null;
+
+  try {
+    const buffer = Buffer.from(match[1], 'base64');
+    const dir = path.join(__dirname, '../public/uploads/profiles');
+    fs.mkdirSync(dir, { recursive: true });
+    const filename = `${username}.webp`;
+    const filePath = path.join(dir, filename);
+
+    if (sharp) {
+      await sharp(buffer).resize(320, 320, { fit: 'cover' }).webp({ quality: 85 }).toFile(filePath);
+    } else {
+      fs.writeFileSync(filePath, buffer);
+    }
+    return `/uploads/profiles/${filename}`;
+  } catch (err) {
+    console.warn('Could not save profile picture to disk, storing data URL fallback:', err.message);
+    return dataUrl;
+  }
+}
+
 // Load fallback users from JSON
 function getUsers() {
   try {
@@ -268,31 +305,38 @@ router.post('/register', async (req, res) => {
     first_name,
     middle_name,
     last_name,
+    age,
+    cohort,
     email,
     phone,
     county,
     town,
     physical_address,
     church_name,
+    church_size,
     ministry_role,
     years_in_ministry,
     emergency_contact_name,
     emergency_contact_phone,
     relationship,
+    profile_picture_data,
     password,
     confirm_password
   } = req.body;
 
-  const cleanFirstName = (first_name || full_name || '').trim();
+  const cleanFirstName = (first_name || '').trim();
   const cleanMiddleName = (middle_name || '').trim();
   const cleanLastName = (last_name || '').trim();
-  const cleanFullName = (full_name || [cleanFirstName, cleanMiddleName, cleanLastName].filter(Boolean).join(' ')).trim();
+  const cleanFullName = ([cleanFirstName, cleanMiddleName, cleanLastName].filter(Boolean).join(' ') || (full_name || '')).trim();
+  const cleanAge = age ? Number(age) : null;
+  const cleanCohort = (cohort || '').trim();
   const cleanEmail = (email || '').trim().toLowerCase();
   const cleanPhone = (phone || '').trim();
   const cleanCounty = (county || '').trim();
   const cleanTown = (town || '').trim();
   const cleanPhysicalAddress = (physical_address || '').trim();
   const cleanChurchName = (church_name || '').trim();
+  const cleanChurchSize = (church_size || '').trim();
   const cleanMinistryRole = (ministry_role || '').trim();
   const cleanYearsInMinistry = Number(years_in_ministry || 0);
   const cleanEmergencyContactName = (emergency_contact_name || '').trim();
@@ -301,66 +345,41 @@ router.post('/register', async (req, res) => {
   const cleanPass = (password || '').trim();
   const cleanConfirmPass = (confirm_password || '').trim();
 
-  if (!cleanFullName || !cleanEmail || !cleanPhone || !cleanPass || !cleanConfirmPass) {
-    return res.render('register', {
-      error: 'Full name, email, phone number, and password are required.',
-      title: 'Apply for Pastoral Training | Pastors LMS',
-      formData: {
-        full_name: cleanFullName,
-        email: cleanEmail,
-        phone: cleanPhone,
-        county: cleanCounty,
-        town: cleanTown,
-        physical_address: cleanPhysicalAddress,
-        church_name: cleanChurchName,
-        ministry_role: cleanMinistryRole,
-        years_in_ministry: cleanYearsInMinistry,
-        emergency_contact_name: cleanEmergencyContactName,
-        emergency_contact_phone: cleanEmergencyContactPhone,
-        relationship: cleanRelationship
-      }
-    });
+  const formData = {
+    first_name: cleanFirstName,
+    last_name: cleanLastName,
+    age: cleanAge || '',
+    cohort: cleanCohort,
+    email: cleanEmail,
+    phone: cleanPhone,
+    county: cleanCounty,
+    town: cleanTown,
+    physical_address: cleanPhysicalAddress,
+    church_name: cleanChurchName,
+    church_size: cleanChurchSize,
+    ministry_role: cleanMinistryRole,
+    years_in_ministry: cleanYearsInMinistry,
+    emergency_contact_name: cleanEmergencyContactName,
+    emergency_contact_phone: cleanEmergencyContactPhone,
+    relationship: cleanRelationship,
+    profile_picture_data: profile_picture_data || ''
+  };
+
+  const renderRegisterError = (errorMsg) => res.render('register', {
+    error: errorMsg,
+    title: 'Apply for Pastoral Training | Pastors LMS',
+    formData
+  });
+
+  if (!cleanFirstName || !cleanLastName || !cleanEmail || !cleanPhone || !cleanPass || !cleanConfirmPass) {
+    return renderRegisterError('First name, last name, email, phone number, and password are required.');
   }
 
   if (cleanPass !== cleanConfirmPass) {
-    return res.render('register', {
-      error: 'Passwords do not match.',
-      title: 'Apply for Pastoral Training | Pastors LMS',
-      formData: {
-        full_name: cleanFullName,
-        email: cleanEmail,
-        phone: cleanPhone,
-        county: cleanCounty,
-        town: cleanTown,
-        physical_address: cleanPhysicalAddress,
-        church_name: cleanChurchName,
-        ministry_role: cleanMinistryRole,
-        years_in_ministry: cleanYearsInMinistry,
-        emergency_contact_name: cleanEmergencyContactName,
-        emergency_contact_phone: cleanEmergencyContactPhone,
-        relationship: cleanRelationship
-      }
-    });
+    return renderRegisterError('Passwords do not match.');
   }
   if (cleanPass.length < 6) {
-    return res.render('register', {
-      error: 'Password must be at least 6 characters.',
-      title: 'Apply for Pastoral Training | Pastors LMS',
-      formData: {
-        full_name: cleanFullName,
-        email: cleanEmail,
-        phone: cleanPhone,
-        county: cleanCounty,
-        town: cleanTown,
-        physical_address: cleanPhysicalAddress,
-        church_name: cleanChurchName,
-        ministry_role: cleanMinistryRole,
-        years_in_ministry: cleanYearsInMinistry,
-        emergency_contact_name: cleanEmergencyContactName,
-        emergency_contact_phone: cleanEmergencyContactPhone,
-        relationship: cleanRelationship
-      }
-    });
+    return renderRegisterError('Password must be at least 6 characters.');
   }
 
   const users = getUsers();
@@ -368,67 +387,20 @@ router.post('/register', async (req, res) => {
   const duplicatePhone = users.some(u => u.phone && normalizePhone(u.phone) === normalizePhone(cleanPhone));
 
   if (duplicateEmail) {
-    return res.render('register', {
-      error: 'An account with this email already exists.',
-      title: 'Apply for Pastoral Training | Pastors LMS',
-      formData: {
-        full_name: cleanFullName,
-        email: cleanEmail,
-        phone: cleanPhone,
-        county: cleanCounty,
-        town: cleanTown,
-        physical_address: cleanPhysicalAddress,
-        church_name: cleanChurchName,
-        ministry_role: cleanMinistryRole,
-        years_in_ministry: cleanYearsInMinistry,
-        emergency_contact_name: cleanEmergencyContactName,
-        emergency_contact_phone: cleanEmergencyContactPhone,
-        relationship: cleanRelationship
-      }
-    });
+    return renderRegisterError('An account with this email already exists.');
   }
 
   if (duplicatePhone) {
-    return res.render('register', {
-      error: 'A student with this phone number already exists.',
-      title: 'Apply for Pastoral Training | Pastors LMS',
-      formData: {
-        full_name: cleanFullName,
-        email: cleanEmail,
-        phone: cleanPhone,
-        county: cleanCounty,
-        town: cleanTown,
-        physical_address: cleanPhysicalAddress,
-        church_name: cleanChurchName,
-        ministry_role: cleanMinistryRole,
-        years_in_ministry: cleanYearsInMinistry,
-        emergency_contact_name: cleanEmergencyContactName,
-        emergency_contact_phone: cleanEmergencyContactPhone,
-        relationship: cleanRelationship
-      }
-    });
+    return renderRegisterError('A student with this phone number already exists.');
   }
 
   if (!supabaseAdmin) {
-    return res.render('register', {
-      error: 'Student self-registration is not available yet because Supabase admin credentials are not configured.',
-      title: 'Apply for Pastoral Training | Pastors LMS',
-      formData: {
-        full_name: cleanFullName,
-        email: cleanEmail,
-        phone: cleanPhone,
-        county: cleanCounty,
-        town: cleanTown,
-        physical_address: cleanPhysicalAddress,
-        church_name: cleanChurchName,
-        ministry_role: cleanMinistryRole,
-        years_in_ministry: cleanYearsInMinistry,
-        emergency_contact_name: cleanEmergencyContactName,
-        emergency_contact_phone: cleanEmergencyContactPhone,
-        relationship: cleanRelationship
-      }
-    });
+    return renderRegisterError('Student self-registration is not available yet because Supabase admin credentials are not configured.');
   }
+
+  const username = await generateStudentUsername(users, supabaseAdmin);
+  const studentId = `IDA-${Date.now().toString().slice(-6)}`;
+  const profilePictureUrl = await saveProfilePicture(profile_picture_data, username);
 
   let authUser = null;
   try {
@@ -438,58 +410,29 @@ router.post('/register', async (req, res) => {
       email_confirm: true,
       user_metadata: {
         full_name: cleanFullName,
+        username,
+        student_id: studentId,
+        phone: cleanPhone,
+        cohort: cleanCohort,
+        church_size: cleanChurchSize,
+        age: cleanAge,
+        profile_picture: profilePictureUrl,
         role: 'student'
       }
     });
 
     if (authError) {
       console.error('Supabase admin createUser failed:', authError.message);
-      return res.render('register', {
-        error: authError.message || 'Unable to create student account.',
-        title: 'Apply for Pastoral Training | Pastors LMS',
-        formData: {
-          full_name: cleanFullName,
-          email: cleanEmail,
-          phone: cleanPhone,
-          county: cleanCounty,
-          town: cleanTown,
-          physical_address: cleanPhysicalAddress,
-          church_name: cleanChurchName,
-          ministry_role: cleanMinistryRole,
-          years_in_ministry: cleanYearsInMinistry,
-          emergency_contact_name: cleanEmergencyContactName,
-          emergency_contact_phone: cleanEmergencyContactPhone,
-          relationship: cleanRelationship
-        }
-      });
+      return renderRegisterError(authError.message || 'Unable to create student account.');
     }
 
     authUser = authData?.user || null;
   } catch (err) {
     console.error('Supabase admin createUser exception:', err.message);
-    return res.render('register', {
-      error: 'Unable to create your account right now. Please try again later.',
-      title: 'Apply for Pastoral Training | Pastors LMS',
-      formData: {
-        full_name: cleanFullName,
-        email: cleanEmail,
-        phone: cleanPhone,
-        county: cleanCounty,
-        town: cleanTown,
-        physical_address: cleanPhysicalAddress,
-        church_name: cleanChurchName,
-        ministry_role: cleanMinistryRole,
-        years_in_ministry: cleanYearsInMinistry,
-        emergency_contact_name: cleanEmergencyContactName,
-        emergency_contact_phone: cleanEmergencyContactPhone,
-        relationship: cleanRelationship
-      }
-    });
+    return renderRegisterError('Unable to create your account right now. Please try again later.');
   }
 
-  const username = await generateStudentUsername(users, supabaseAdmin);
-  const studentId = `STU-${Date.now().toString().slice(-6)}`;
-  const profile = {
+  const baseProfile = {
     auth_user_id: authUser.id,
     username,
     email: cleanEmail,
@@ -514,55 +457,31 @@ router.post('/register', async (req, res) => {
     created_at: new Date().toISOString()
   };
 
+  const extendedProfile = {
+    ...baseProfile,
+    cohort: cleanCohort || null,
+    church_size: cleanChurchSize || null,
+    age: cleanAge,
+    profile_picture: profilePictureUrl
+  };
+
   try {
-    console.log('Attempting student profile insert with:', { auth_user_id: profile.auth_user_id, username: profile.username, email: profile.email });
-    
-    // Always use admin client for profile insert to bypass RLS
-    if (!supabaseAdmin) {
-      console.error('Supabase admin client not available for profile insert');
-      return res.render('register', {
-        error: 'Student account was created but profile storage failed. Admin client not configured.',
-        title: 'Apply for Pastoral Training | Pastors LMS',
-        formData: {
-          full_name: cleanFullName,
-          email: cleanEmail,
-          phone: cleanPhone,
-          county: cleanCounty,
-          town: cleanTown,
-          physical_address: cleanPhysicalAddress,
-          church_name: cleanChurchName,
-          ministry_role: cleanMinistryRole,
-          years_in_ministry: cleanYearsInMinistry,
-          emergency_contact_name: cleanEmergencyContactName,
-          emergency_contact_phone: cleanEmergencyContactPhone,
-          relationship: cleanRelationship
-        }
-      });
+    console.log('Attempting student profile insert with:', { auth_user_id: baseProfile.auth_user_id, username: baseProfile.username, email: baseProfile.email });
+
+    let { error: studentInsertError } = await supabaseAdmin.from('students').insert([extendedProfile]).select();
+
+    // If new columns (cohort, church_size, age, profile_picture) have not yet been migrated in Supabase,
+    // retry with the base schema so registration never breaks.
+    if (studentInsertError && /column|schema cache/i.test(studentInsertError.message || '')) {
+      console.warn('Extended columns missing in Supabase students table (run supabase/add-signup-fields.sql). Falling back to base columns.');
+      const retry = await supabaseAdmin.from('students').insert([baseProfile]).select();
+      studentInsertError = retry.error;
     }
-    
-    const { error: studentInsertError, data: studentInsertData } = await supabaseAdmin.from('students').insert([profile]).select();
 
     if (studentInsertError) {
       console.error('Student profile insert failed:', studentInsertError.message);
       console.error('Full error details:', JSON.stringify(studentInsertError, null, 2));
-      return res.render('register', {
-        error: `Student account was created but profile storage failed: ${studentInsertError.message}. Details: ${JSON.stringify(studentInsertError)}`,
-        title: 'Apply for Pastoral Training | Pastors LMS',
-        formData: {
-          full_name: cleanFullName,
-          email: cleanEmail,
-          phone: cleanPhone,
-          county: cleanCounty,
-          town: cleanTown,
-          physical_address: cleanPhysicalAddress,
-          church_name: cleanChurchName,
-          ministry_role: cleanMinistryRole,
-          years_in_ministry: cleanYearsInMinistry,
-          emergency_contact_name: cleanEmergencyContactName,
-          emergency_contact_phone: cleanEmergencyContactPhone,
-          relationship: cleanRelationship
-        }
-      });
+      return renderRegisterError(`Student account was created but profile storage failed: ${studentInsertError.message}. Details: ${JSON.stringify(studentInsertError)}`);
     }
 
     res.render('register-success', {
@@ -572,28 +491,12 @@ router.post('/register', async (req, res) => {
       full_name: cleanFullName,
       email: cleanEmail,
       phone: cleanPhone,
+      profile_picture: profilePictureUrl,
       approval_status: 'approved'
     });
   } catch (err) {
     console.error('Error saving student profile:', err);
-    return res.render('register', {
-      error: 'Failed to submit application. Please try again.',
-      title: 'Apply for Pastoral Training | Pastors LMS',
-      formData: {
-        full_name: cleanFullName,
-        email: cleanEmail,
-        phone: cleanPhone,
-        county: cleanCounty,
-        town: cleanTown,
-        physical_address: cleanPhysicalAddress,
-        church_name: cleanChurchName,
-        ministry_role: cleanMinistryRole,
-        years_in_ministry: cleanYearsInMinistry,
-        emergency_contact_name: cleanEmergencyContactName,
-        emergency_contact_phone: cleanEmergencyContactPhone,
-        relationship: cleanRelationship
-      }
-    });
+    return renderRegisterError('Failed to submit application. Please try again.');
   }
 });
 

@@ -41,29 +41,27 @@
 
           <form action="/register" method="POST" id="registerForm">
             <div class="form-group">
-              <label class="form-label" for="fullName">Full Name</label>
-              <div class="input-wrapper">
-                <span class="input-icon">
-                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                    <circle cx="12" cy="7" r="4" />
-                  </svg>
-                </span>
-                <input type="text" id="fullName" name="full_name" class="form-input" placeholder="Pastor John Doe"
-                  value="<%= typeof formData !== 'undefined' && formData ? formData.full_name : '' %>" required>
-              </div>
-            </div>
-
-            <div class="form-group">
               <label class="form-label" for="firstName">First Name</label>
               <input type="text" id="firstName" name="first_name" class="form-input" placeholder="John"
-                value="<%= typeof formData !== 'undefined' && formData ? formData.first_name || '' : '' %>">
+                value="<%= typeof formData !== 'undefined' && formData ? formData.first_name || '' : '' %>" required>
             </div>
 
             <div class="form-group">
               <label class="form-label" for="lastName">Last Name</label>
               <input type="text" id="lastName" name="last_name" class="form-input" placeholder="Doe"
-                value="<%= typeof formData !== 'undefined' && formData ? formData.last_name || '' : '' %>">
+                value="<%= typeof formData !== 'undefined' && formData ? formData.last_name || '' : '' %>" required>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="age">Age</label>
+              <input type="number" id="age" name="age" class="form-input" min="18" max="110" placeholder="e.g. 42"
+                value="<%= typeof formData !== 'undefined' && formData ? formData.age || '' : '' %>" required>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="cohort">Cohort</label>
+              <input type="text" id="cohort" name="cohort" class="form-input" placeholder="e.g. AY2027 - Nairobi"
+                value="<%= typeof formData !== 'undefined' && formData ? formData.cohort || '' : '' %>" required>
             </div>
 
             <div class="form-group">
@@ -95,10 +93,35 @@
             </div>
 
             <div class="form-group">
-              <label class="form-label" for="ministryRole">Ministry Role</label>
-              <input type="text" id="ministryRole" name="ministry_role" class="form-input"
-                placeholder="Senior Pastor / Evangelist"
-                value="<%= typeof formData !== 'undefined' && formData ? formData.ministry_role || '' : '' %>">
+              <label class="form-label" for="churchSize">Church Size (Approx. Members)</label>
+              <input type="number" id="churchSize" name="church_size" class="form-input" min="0" placeholder="e.g. 120"
+                value="<%= typeof formData !== 'undefined' && formData ? formData.church_size || '' : '' %>">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" id="ministryRoleLabel" for="ministryRoleTrigger">Ministry Role</label>
+              <% const selectedRole = (typeof formData !== 'undefined' && formData && formData.ministry_role) ? formData.ministry_role : ''; %>
+              <div class="custom-select-wrapper" id="ministryRoleDropdown">
+                <input type="hidden" id="ministryRole" name="ministry_role" value="<%= selectedRole %>">
+                <button type="button" id="ministryRoleTrigger" class="custom-select-trigger <%= selectedRole ? '' : 'is-placeholder' %>"
+                  aria-haspopup="listbox" aria-expanded="false" aria-labelledby="ministryRoleLabel ministryRoleValue">
+                  <span id="ministryRoleValue"><%= selectedRole || 'Select your ministry role' %></span>
+                  <span class="custom-select-arrow" aria-hidden="true">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                      <polyline points="6 9 12 15 18 9" />
+                    </svg>
+                  </span>
+                </button>
+                <ul class="custom-select-menu" id="ministryRoleMenu" role="listbox" aria-labelledby="ministryRoleLabel">
+                  <% ['Senior Pastor', 'Associate', 'Member', 'Deacon'].forEach(roleOpt => { %>
+                    <li class="custom-select-option <%= selectedRole === roleOpt ? 'selected' : '' %>"
+                      role="option" tabindex="0" data-value="<%= roleOpt %>"
+                      aria-selected="<%= selectedRole === roleOpt ? 'true' : 'false' %>">
+                      <%= roleOpt %>
+                    </li>
+                  <% }) %>
+                </ul>
+              </div>
             </div>
 
             <div class="form-group">
@@ -145,6 +168,24 @@
               <input type="text" id="relationship" name="relationship" class="form-input"
                 placeholder="Spouse / Elder / Friend"
                 value="<%= typeof formData !== 'undefined' && formData ? formData.relationship || '' : '' %>">
+            </div>
+
+            <div class="form-group full-width">
+              <label class="form-label" for="profilePictureInput">Profile Picture (For Official Transcript)</label>
+              <div class="profile-upload-box">
+                <div class="profile-preview-circle" id="profilePreviewCircle">
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                    <circle cx="12" cy="7" r="4" />
+                  </svg>
+                </div>
+                <div class="profile-upload-controls">
+                  <input type="file" id="profilePictureInput" class="profile-file-input" accept="image/*">
+                  <input type="hidden" id="profilePictureData" name="profile_picture_data"
+                    value="<%= typeof formData !== 'undefined' && formData ? formData.profile_picture_data || '' : '' %>">
+                  <p class="profile-upload-hint">Upload a clear passport-style photo. This picture will appear on your generated academic transcript.</p>
+                </div>
+              </div>
             </div>
 
             <div class="form-group">
@@ -205,8 +246,127 @@
   <%- include('partials/footer') %>
 
   <script>
+    // Profile Picture Resize & Preview (max 320x320 for fast upload & transcript quality)
+    (function () {
+      const fileInput = document.getElementById('profilePictureInput');
+      const dataInput = document.getElementById('profilePictureData');
+      const previewCircle = document.getElementById('profilePreviewCircle');
+
+      function showPreview(src) {
+        if (!src || !previewCircle) return;
+        previewCircle.innerHTML = '<img src="' + src + '" alt="Profile preview">';
+      }
+
+      if (dataInput && dataInput.value) {
+        showPreview(dataInput.value);
+      }
+
+      if (fileInput) {
+        fileInput.addEventListener('change', function () {
+          const file = fileInput.files && fileInput.files[0];
+          if (!file) return;
+          const reader = new FileReader();
+          reader.onload = function (ev) {
+            const img = new Image();
+            img.onload = function () {
+              const maxSide = 320;
+              let w = img.width;
+              let h = img.height;
+              if (w > h && w > maxSide) {
+                h = Math.round((h * maxSide) / w);
+                w = maxSide;
+              } else if (h >= w && h > maxSide) {
+                w = Math.round((w * maxSide) / h);
+                h = maxSide;
+              }
+              const canvas = document.createElement('canvas');
+              canvas.width = w;
+              canvas.height = h;
+              const ctx = canvas.getContext('2d');
+              ctx.drawImage(img, 0, 0, w, h);
+              const compressed = canvas.toDataURL('image/jpeg', 0.85);
+              if (dataInput) dataInput.value = compressed;
+              showPreview(compressed);
+            };
+            img.src = ev.target.result;
+          };
+          reader.readAsDataURL(file);
+        });
+      }
+    })();
+
+    // Custom Accessible Dropdown (Ministry Role)
+    (function () {
+      const wrapper = document.getElementById('ministryRoleDropdown');
+      const trigger = document.getElementById('ministryRoleTrigger');
+      const valueText = document.getElementById('ministryRoleValue');
+      const hiddenInput = document.getElementById('ministryRole');
+      const menu = document.getElementById('ministryRoleMenu');
+      if (!wrapper || !trigger || !hiddenInput || !menu) return;
+
+      const options = Array.from(menu.querySelectorAll('.custom-select-option'));
+
+      function closeMenu() {
+        wrapper.classList.remove('open');
+        trigger.setAttribute('aria-expanded', 'false');
+      }
+
+      function selectOption(opt) {
+        const val = opt.getAttribute('data-value') || '';
+        hiddenInput.value = val;
+        valueText.textContent = val;
+        trigger.classList.remove('is-placeholder');
+        options.forEach(o => {
+          const isSel = o === opt;
+          o.classList.toggle('selected', isSel);
+          o.setAttribute('aria-selected', isSel ? 'true' : 'false');
+        });
+        closeMenu();
+        trigger.focus();
+      }
+
+      trigger.addEventListener('click', function (e) {
+        e.stopPropagation();
+        const isOpen = wrapper.classList.toggle('open');
+        trigger.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+      });
+
+      options.forEach(opt => {
+        opt.addEventListener('click', function (e) {
+          e.stopPropagation();
+          selectOption(opt);
+        });
+        opt.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            selectOption(opt);
+          } else if (e.key === 'Escape') {
+            closeMenu();
+            trigger.focus();
+          }
+        });
+      });
+
+      document.addEventListener('click', function (e) {
+        if (!wrapper.contains(e.target)) closeMenu();
+      });
+
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') closeMenu();
+      });
+    })();
+
     // Client-side validation
     document.getElementById('registerForm').addEventListener('submit', function (e) {
+      const ministryRole = document.getElementById('ministryRole').value;
+      if (!ministryRole) {
+        e.preventDefault();
+        alert('Please select your Ministry Role.');
+        const trigger = document.getElementById('ministryRoleTrigger');
+        if (trigger) trigger.focus();
+        return;
+      }
+
       const password = document.getElementById('password').value;
       const confirmPassword = document.getElementById('confirmPassword').value;
 

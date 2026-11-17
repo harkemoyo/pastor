@@ -92,7 +92,7 @@
   </header>
 
   <!-- =========================================================================
-       2. SECONDARY COURSE NAVIGATION BAR (Deep Plum / Aubergine #3D144C)
+       2. SECONDARY COURSE NAVIGATION BAR (Deep Plum / Aubergine #192F47)
        ========================================================================= -->
   <nav class="bp-course-nav">
     <div class="bp-nav-container">
@@ -370,7 +370,7 @@
             &larr; Previous Topic
           </button>
           
-          <button type="button" class="btn btn-gold btn-mark-complete" id="btnMarkTopicComplete" data-course-id="<%= course.id %>">
+          <button type="button" class="btn btn-accent btn-mark-complete" id="btnMarkTopicComplete" data-course-id="<%= course.id %>">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
               <polyline points="20 6 9 17 4 12" />
             </svg>
@@ -401,7 +401,7 @@
         <div class="course-header-meta">
           <div style="display: flex; align-items: center; gap: 8px;">
             <span class="course-code-tag"><%= course.code %></span>
-            <span class="badge <%= course.status === 'current' ? 'badge-gold' : 'badge-success' %>">
+            <span class="badge <%= course.status === 'current' ? 'badge-accent' : 'badge-success' %>">
               <%= course.term %> &bull; <%= course.status === 'current' ? 'In Progress' : 'Completed' %>
             </span>
           </div>

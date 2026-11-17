@@ -1,6 +1,6 @@
 /* ==========================================================================
    PASTORS LMS — MULTI-STEP ONBOARDING STYLES
-   Regal Theological Aesthetic (Purple & Sanctuary Gold)
+   Regal Theological Aesthetic (Navy & Burgundy)
    ========================================================================== */
 
 .onboarding-viewport {
@@ -44,7 +44,7 @@
 }
 
 .onboarding-brand-accent {
-  color: var(--gold);
+  color: var(--accent);
 }
 
 .onboarding-brand-tagline {
@@ -93,7 +93,7 @@
   font-weight: 600;
   padding: 4px 12px;
   border-radius: 20px;
-  border: 1px solid rgba(74, 21, 75, 0.15);
+  border: 1px solid rgba(25, 47, 71, 0.15);
 }
 
 /* Stepper Progress Bar & Dots */
@@ -116,7 +116,7 @@
 
 .stepper-line-fill {
   height: 100%;
-  background: linear-gradient(90deg, var(--primary), var(--gold));
+  background: linear-gradient(90deg, var(--primary), var(--accent));
   transition: width 0.35s ease;
 }
 
@@ -296,7 +296,7 @@
 }
 
 .role-card-label:hover {
-  border-color: var(--gold);
+  border-color: var(--accent);
   background: #FFFDF8;
 }
 
@@ -312,7 +312,7 @@
 .role-card-label:has(input:checked) {
   border-color: var(--primary);
   background: var(--primary-subtle);
-  box-shadow: 0 2px 8px rgba(74, 21, 75, 0.08);
+  box-shadow: 0 2px 8px rgba(25, 47, 71, 0.08);
 }
 
 .role-title {
@@ -405,7 +405,7 @@
 
 .church-card-option:hover {
   border-color: var(--primary-light);
-  background: #FAF8FB;
+  background: #F5F7FA;
 }
 
 .church-card-option.selected {
@@ -480,17 +480,17 @@
 .btn-primary-action:hover {
   background: var(--primary-hover);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(74, 21, 75, 0.25);
+  box-shadow: 0 4px 12px rgba(25, 47, 71, 0.25);
 }
 
-.btn-submit-gold {
-  background: linear-gradient(135deg, var(--gold), #BD8E2C);
+.btn-submit-accent {
+  background: linear-gradient(135deg, var(--accent), #D9C7AA);
   color: #FFFFFF;
 }
 
-.btn-submit-gold:hover {
-  background: linear-gradient(135deg, var(--gold-hover), #9A711A);
-  box-shadow: 0 4px 14px rgba(189, 142, 44, 0.35);
+.btn-submit-accent:hover {
+  background: linear-gradient(135deg, var(--accent-hover), #670C21);
+  box-shadow: 0 4px 14px rgba(217, 199, 170, 0.35);
 }
 
 /* Step 5 Review Section */
@@ -512,7 +512,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 0.85rem 1.25rem;
-  background: #F4F1EA;
+  background: #F4F0E7;
   border-bottom: 1px solid var(--border);
 }
 
@@ -563,8 +563,8 @@
 }
 
 .confirmation-callout {
-  background: var(--gold-light);
-  border: 1px solid rgba(212, 168, 67, 0.4);
+  background: var(--accent-light);
+  border: 1px solid rgba(217, 199, 170, 0.4);
   border-radius: var(--radius-md);
   padding: 1.25rem;
   display: flex;
@@ -574,12 +574,12 @@
 
 .confirmation-callout svg {
   flex-shrink: 0;
-  color: var(--gold-dark);
+  color: var(--accent-dark);
 }
 
 .confirmation-text {
   font-size: 0.88rem;
-  color: #5D4307;
+  color: #30383A;
   line-height: 1.45;
 }
 

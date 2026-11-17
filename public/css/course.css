@@ -114,7 +114,7 @@
   width: 9px;
   height: 9px;
   border-radius: 50%;
-  background: #F37021;
+  background: #670C21;
   border: 1.5px solid #FFFFFF;
 }
 
@@ -138,7 +138,7 @@
   width: 34px;
   height: 34px;
   border-radius: 50%;
-  background: #3B1443;
+  background: #192F47;
   color: #FFFFFF;
   display: flex;
   align-items: center;
@@ -174,10 +174,10 @@
 }
 
 /* ==========================================================================
-   2. SECONDARY COURSE NAVIGATION BAR (Deep Plum / Aubergine #3B1443)
+   2. SECONDARY COURSE NAVIGATION BAR (Deep Plum / Aubergine #192F47)
    ========================================================================= */
 .bp-course-nav {
-  background: #3B1443;
+  background: #192F47;
   height: 48px;
   display: flex;
   align-items: stretch;
@@ -235,7 +235,7 @@
   left: 0;
   right: 0;
   height: 3px;
-  background: #F5A623;
+  background: #670C21;
 }
 
 /* Dropdown styling */
@@ -276,8 +276,8 @@
 }
 
 .bp-nav-submenu a:hover {
-  background: #F4EEF7;
-  color: #3B1443;
+  background: #EEF2F7;
+  color: #192F47;
   font-weight: 600;
 }
 
@@ -332,8 +332,8 @@
 }
 
 .bp-search-input:focus {
-  border-color: #006FBF;
-  box-shadow: 0 0 0 2px rgba(0, 111, 191, 0.15);
+  border-color: #192F47;
+  box-shadow: 0 0 0 2px rgba(25, 47, 71, 0.15);
 }
 
 .bp-search-icon-btn {
@@ -363,8 +363,8 @@
 }
 
 .bp-unit-node.active-unit {
-  border-left: 4px solid #3B1443;
-  background: #FBF9FC;
+  border-left: 4px solid #192F47;
+  background: #F5F7FA;
 }
 
 .bp-unit-header {
@@ -449,18 +449,18 @@
 
 /* EXACT MATCH TO UOPEOPLE SCREENSHOT: Blue rounded outline border for active topic */
 .bp-topic-item.selected {
-  border: 2px solid #006FBF;
+  border: 2px solid #192F47;
   border-radius: 8px;
-  background: #EFF6FC;
+  background: #EEF2F7;
 }
 
 .bp-topic-item.selected .bp-topic-label {
-  color: #006FBF;
+  color: #192F47;
   font-weight: 700;
 }
 
 .bp-topic-item.selected .bp-topic-icon {
-  color: #006FBF;
+  color: #192F47;
 }
 
 .bp-topic-icon {
@@ -621,8 +621,8 @@
 .bp-topic-banner {
   height: 160px;
   position: relative;
-  background: linear-gradient(135deg, #F8F3F9 0%, #F1E9F4 100%);
-  border-bottom: 1px solid #E4D9E8;
+  background: linear-gradient(135deg, #F5F7FA 0%, #E6ECF3 100%);
+  border-bottom: 1px solid #DCE4EE;
   overflow: hidden;
   display: flex;
   align-items: center;
@@ -637,7 +637,7 @@
   right: 0;
   bottom: 0;
   opacity: 0.18;
-  background-image: radial-gradient(#3B1443 1.5px, transparent 1.5px);
+  background-image: radial-gradient(#192F47 1.5px, transparent 1.5px);
   background-size: 18px 18px;
   pointer-events: none;
 }
@@ -664,14 +664,14 @@
 
 /* EXACT MATCH TO UOPEOPLE SCREENSHOT: Amber/Golden Highlight Banner Box */
 .bp-banner-badge {
-  background: #F5A623;
+  background: #670C21;
   color: #FFFFFF;
   font-family: var(--font-heading);
   font-size: 1.7rem;
   font-weight: 800;
   padding: 10px 24px;
   border-radius: 4px;
-  box-shadow: 0 3px 10px rgba(245, 166, 35, 0.35);
+  box-shadow: 0 3px 10px rgba(103, 12, 33, 0.35);
   letter-spacing: -0.3px;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
 }
@@ -698,7 +698,7 @@
 .bp-lesson-body h4 {
   font-size: 1.25rem;
   font-weight: 700;
-  color: #3B1443;
+  color: #192F47;
   margin-top: 28px;
   margin-bottom: 12px;
 }
@@ -719,7 +719,7 @@
 /* Special Boxes for Theology & Scripture */
 .scripture-focus-box {
   background: #FDFBF7;
-  border-left: 5px solid #C69214;
+  border-left: 5px solid #670C21;
   padding: 20px 24px;
   border-radius: 0 8px 8px 0;
   margin: 24px 0;
@@ -727,21 +727,21 @@
 }
 
 .scripture-focus-box h4 {
-  color: #996F06;
+  color: #670C21;
   margin-top: 0;
   margin-bottom: 12px;
 }
 
 .theology-highlight-box {
-  background: #F5EEF7;
-  border: 1.5px solid #D8C3DC;
+  background: #EEF2F7;
+  border: 1.5px solid #CBD6E3;
   border-radius: 8px;
   padding: 20px 24px;
   margin: 24px 0;
 }
 
 .theology-highlight-box h4 {
-  color: #3B1443;
+  color: #192F47;
   margin-top: 0;
 }
 
@@ -773,8 +773,8 @@
 }
 
 .reflection-prompts-box {
-  background: #FDF9E8;
-  border: 1px solid #F3E099;
+  background: #F4F0E7;
+  border: 1px solid #D9C7AA;
   border-radius: 8px;
   padding: 20px 24px;
   margin: 24px 0;
@@ -789,8 +789,8 @@
 }
 
 .due-badge {
-  background: #FEF3C7;
-  color: #92400E;
+  background: #F4F0E7;
+  color: #30383A;
   font-weight: 700;
   padding: 4px 12px;
   border-radius: 20px;
@@ -798,8 +798,8 @@
 }
 
 .points-badge {
-  background: #EDE9FE;
-  color: #5B21B6;
+  background: #F4E6E9;
+  color: #670C21;
   font-weight: 700;
   padding: 4px 12px;
   border-radius: 20px;
@@ -834,7 +834,7 @@
 
 .assignment-textarea:focus {
   outline: none;
-  border-color: #3B1443;
+  border-color: #192F47;
 }
 
 .submission-actions {
@@ -1022,8 +1022,8 @@
 
 /* Admin preview notice on student courses page */
 .admin-course-notice {
-  background: #fbf5ff;
-  border: 1px solid #d8b4fe;
+  background: #EEF2F7;
+  border: 1px solid #CBD6E3;
   border-radius: 10px;
   padding: 12px 18px;
   margin-bottom: 20px;
@@ -1035,7 +1035,7 @@
 }
 
 .admin-course-notice-text {
-  color: #4a154b;
+  color: #192F47;
   font-size: 14px;
   font-weight: 500;
 }

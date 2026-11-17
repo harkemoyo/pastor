@@ -1,18 +1,18 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" width="100%" height="100%">
   <defs>
     <linearGradient id="theoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#240727" />
-      <stop offset="50%" stop-color="#431446" />
-      <stop offset="100%" stop-color="#5E1B63" />
+      <stop offset="0%" stop-color="#0B192C" />
+      <stop offset="50%" stop-color="#192F47" />
+      <stop offset="100%" stop-color="#24405F" />
     </linearGradient>
     <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#FFEAA7" />
-      <stop offset="50%" stop-color="#D4A843" />
-      <stop offset="100%" stop-color="#996E14" />
+      <stop offset="0%" stop-color="#F4F0E7" />
+      <stop offset="50%" stop-color="#D9C7AA" />
+      <stop offset="100%" stop-color="#A69377" />
     </linearGradient>
     <linearGradient id="lightBeam" x1="50%" y1="0%" x2="50%" y2="100%">
-      <stop offset="0%" stop-color="#FFF4D0" stop-opacity="0.3" />
-      <stop offset="100%" stop-color="#FFF4D0" stop-opacity="0" />
+      <stop offset="0%" stop-color="#F4F0E7" stop-opacity="0.3" />
+      <stop offset="100%" stop-color="#F4F0E7" stop-opacity="0" />
     </linearGradient>
     <pattern id="subtleGrid" width="40" height="40" patternUnits="userSpaceOnUse">
       <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
@@ -35,7 +35,7 @@
 
   <!-- Latin Cross at Top -->
   <path d="M400 55 V115 M380 75 H420" stroke="url(#goldGrad)" stroke-width="4.5" stroke-linecap="round"/>
-  <circle cx="400" cy="50" r="3" fill="#FFEAA7"/>
+  <circle cx="400" cy="50" r="3" fill="#F4F0E7"/>
 
   <!-- Open Bible Illustration -->
   <g transform="translate(400, 205)">
@@ -55,18 +55,18 @@
     <path d="M135 68 C105 56 50 54 0 68" fill="none" stroke="#D8CAAF" stroke-width="1.5"/>
     
     <!-- Scripture Text Mock Lines (Left) -->
-    <line x1="-115" y1="2" x2="-20" y2="2" stroke="#4A154B" stroke-width="2.5" stroke-linecap="round" opacity="0.75"/>
-    <line x1="-115" y1="14" x2="-25" y2="14" stroke="#85648A" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
-    <line x1="-115" y1="24" x2="-20" y2="24" stroke="#85648A" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
-    <line x1="-115" y1="34" x2="-35" y2="34" stroke="#85648A" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
-    <line x1="-115" y1="44" x2="-20" y2="44" stroke="#85648A" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
+    <line x1="-115" y1="2" x2="-20" y2="2" stroke="#192F47" stroke-width="2.5" stroke-linecap="round" opacity="0.75"/>
+    <line x1="-115" y1="14" x2="-25" y2="14" stroke="#6F8296" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
+    <line x1="-115" y1="24" x2="-20" y2="24" stroke="#6F8296" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
+    <line x1="-115" y1="34" x2="-35" y2="34" stroke="#6F8296" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
+    <line x1="-115" y1="44" x2="-20" y2="44" stroke="#6F8296" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
 
     <!-- Scripture Text Mock Lines (Right) -->
-    <line x1="20" y1="2" x2="115" y2="2" stroke="#4A154B" stroke-width="2.5" stroke-linecap="round" opacity="0.75"/>
-    <line x1="25" y1="14" x2="115" y2="14" stroke="#85648A" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
-    <line x1="20" y1="24" x2="115" y2="24" stroke="#85648A" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
-    <line x1="20" y1="34" x2="100" y2="34" stroke="#85648A" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
-    <line x1="20" y1="44" x2="115" y2="44" stroke="#85648A" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
+    <line x1="20" y1="2" x2="115" y2="2" stroke="#192F47" stroke-width="2.5" stroke-linecap="round" opacity="0.75"/>
+    <line x1="25" y1="14" x2="115" y2="14" stroke="#6F8296" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
+    <line x1="20" y1="24" x2="115" y2="24" stroke="#6F8296" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
+    <line x1="20" y1="34" x2="100" y2="34" stroke="#6F8296" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
+    <line x1="20" y1="44" x2="115" y2="44" stroke="#6F8296" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
 
     <!-- Bookmark Ribbon -->
     <path d="M0 65 L 12 110 L 22 96 L 32 110 L 25 65 Z" fill="url(#goldGrad)"/>
@@ -77,10 +77,10 @@
   <line x1="0" y1="365" x2="800" y2="365" stroke="url(#goldGrad)" stroke-width="2"/>
   
   <text x="35" y="402" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="20" font-weight="800" fill="#FFFFFF" letter-spacing="0.8">SOUND DOCTRINE &amp; BIBLICAL THEOLOGY</text>
-  <text x="35" y="426" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="600" fill="#D4A843" letter-spacing="1.5">THEO 101 • HERMENEUTICS &amp; EXEGESIS • AY2027-T1</text>
+  <text x="35" y="426" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="600" fill="#D9C7AA" letter-spacing="1.5">THEO 101 • HERMENEUTICS &amp; EXEGESIS • AY2027-T1</text>
   
   <g transform="translate(710, 390)">
-    <rect x="-15" y="-14" width="75" height="30" rx="15" fill="rgba(212,168,67,0.2)" stroke="#D4A843" stroke-width="1"/>
-    <text x="22" y="5" font-family="sans-serif" font-size="11" font-weight="700" fill="#FFEAA7" text-anchor="middle">ACTIVE</text>
+    <rect x="-15" y="-14" width="75" height="30" rx="15" fill="rgba(212,168,67,0.2)" stroke="#D9C7AA" stroke-width="1"/>
+    <text x="22" y="5" font-family="sans-serif" font-size="11" font-weight="700" fill="#F4F0E7" text-anchor="middle">ACTIVE</text>
   </g>
 </svg>

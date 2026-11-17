@@ -114,7 +114,7 @@ function initLoginPortal() {
 
       if (identifier) {
         idInput.value = identifier;
-        idInput.style.borderColor = '#C69214';
+        idInput.style.borderColor = '#670C21';
         setTimeout(() => {
           idInput.style.borderColor = '';
         }, 1500);

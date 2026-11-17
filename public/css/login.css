@@ -5,20 +5,20 @@
    ========================================================================== */
 
 :root {
-  --portal-bg: #F4F1EA;
+  --portal-bg: #F4F0E7;
   --portal-card-bg: #FFFFFF;
-  --portal-primary: #3B0E3C;
-  --portal-primary-hover: #501352;
-  --portal-gold: #C69214;
-  --portal-gold-dark: #9E740B;
-  --portal-gold-light: #FBF4E2;
-  --portal-text: #181522;
-  --portal-text-muted: #5C5868;
+  --portal-primary: #192F47;
+  --portal-primary-hover: #24405F;
+  --portal-accent: #670C21;
+  --portal-accent-dark: #670C21;
+  --portal-accent-light: #F4F0E7;
+  --portal-text: #0B192C;
+  --portal-text-muted: #5B656B;
   --portal-border: #D1CBC0;
-  --portal-border-focus: #3B0E3C;
+  --portal-border-focus: #192F47;
   --portal-radius: 12px;
   --portal-radius-sm: 8px;
-  --portal-shadow: 0 10px 30px rgba(59, 14, 60, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04);
+  --portal-shadow: 0 10px 30px rgba(25, 47, 71, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
 /* Background & Main Viewport */
@@ -28,7 +28,7 @@
   margin: 0;
   padding: 0;
   background-color: var(--portal-bg);
-  background-image: radial-gradient(circle at 50% 0%, #E8E0D2 0%, #F4F1EA 70%);
+  background-image: radial-gradient(circle at 50% 0%, #E4D9C6 0%, #F4F0E7 70%);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -97,8 +97,8 @@
   line-height: 1.1;
 }
 
-.brand-gold {
-  color: var(--portal-gold);
+.brand-accent {
+  color: var(--portal-accent);
 }
 
 .brand-sub {
@@ -149,8 +149,8 @@
   align-items: center;
   gap: 14px;
   padding: 14px 16px;
-  background: #FDF9EE;
-  border: 2px solid var(--portal-gold);
+  background: #F4F0E7;
+  border: 2px solid var(--portal-accent);
   border-radius: var(--portal-radius-sm);
   margin-bottom: 22px;
   flex-wrap: wrap;
@@ -280,7 +280,7 @@
 .form-input:focus {
   outline: none;
   border-color: var(--portal-primary);
-  box-shadow: 0 0 0 3px rgba(59, 14, 60, 0.15);
+  box-shadow: 0 0 0 3px rgba(25, 47, 71, 0.15);
 }
 
 .password-input-wrap {
@@ -298,7 +298,7 @@
   right: 8px;
   top: 50%;
   transform: translateY(-50%);
-  background: #F4F1EA;
+  background: #F4F0E7;
   border: 1px solid var(--portal-border);
   border-radius: 6px;
   padding: 6px 10px;
@@ -347,7 +347,7 @@
 .btn-submit {
   width: 100%;
   height: 56px;
-  background: var(--portal-primary);
+  background: var(--portal-accent);
   color: #FFFFFF;
   border: none;
   border-radius: var(--portal-radius-sm);
@@ -358,13 +358,13 @@
   justify-content: center;
   gap: 10px;
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(59, 14, 60, 0.25);
+  box-shadow: 0 4px 12px rgba(103, 12, 33, 0.28);
   transition: background-color 0.15s ease, transform 0.1s ease;
 }
 
 .btn-primary-large:hover,
 .btn-submit:hover {
-  background: var(--portal-primary-hover);
+  background: #820F2A;
   transform: translateY(-1px);
 }
 
@@ -418,8 +418,8 @@
 }
 
 .pastor-pill-btn:hover {
-  background: var(--portal-gold-light);
-  border-color: var(--portal-gold);
+  background: var(--portal-accent-light);
+  border-color: var(--portal-accent);
   transform: translateY(-1px);
 }
 
@@ -467,10 +467,10 @@
 .btn-demo-instant {
   width: 100%;
   padding: 10px 14px;
-  background: #FFF9E6;
-  border: 1.5px solid var(--portal-gold);
+  background: #F4F0E7;
+  border: 1.5px solid var(--portal-accent);
   border-radius: var(--portal-radius-sm);
-  color: #6B4E00;
+  color: #30383A;
   font-size: 0.88rem;
   cursor: pointer;
   text-align: center;
@@ -478,7 +478,7 @@
 }
 
 .btn-demo-instant:hover {
-  background: #FEEFB3;
+  background: #E6D8C0;
 }
 
 /* WhatsApp Support Card */
@@ -569,7 +569,7 @@
 }
 
 .card-footer-nav a:hover {
-  color: var(--portal-primary-hover, #4A154B);
+  color: var(--portal-primary-hover, #192F47);
 }
 
 .card-scripture-quote {
@@ -588,7 +588,7 @@
   font-style: normal;
   font-weight: 700;
   margin-top: 2px;
-  color: var(--portal-gold-dark);
+  color: var(--portal-accent-dark);
 }
 
 /* Compatibility classes for register.ejs */
@@ -617,7 +617,7 @@
 }
 
 .login-brand-accent {
-  color: var(--portal-gold);
+  color: var(--portal-accent);
 }
 
 .login-brand-tagline {
@@ -652,7 +652,7 @@
   right: 8px;
   top: 50%;
   transform: translateY(-50%);
-  background: #F4F1EA;
+  background: #F4F0E7;
   border: 1px solid var(--portal-border, #d1d5db);
   border-radius: 6px;
   padding: 6px 10px;
@@ -754,7 +754,7 @@
 .login-body,
 .login-viewport {
   background-image:
-    linear-gradient(135deg, rgba(43, 9, 44, 0.55), rgba(74, 21, 75, 0.42) 55%, rgba(126, 42, 128, 0.32)),
+    linear-gradient(135deg, rgba(11, 25, 44, 0.55), rgba(25, 47, 71, 0.42) 55%, rgba(46, 77, 112, 0.32)),
     url('/images/Ps-Imgs/IMG_20261001_162109.webp');
   background-size: cover;
   background-position: center;
@@ -765,7 +765,7 @@
 .login-card-container,
 .login-card {
   border: none;
-  border-top: 6px solid var(--portal-gold);
+  border-top: 6px solid var(--portal-accent);
   border-radius: 20px;
   box-shadow: 0 30px 70px rgba(0, 0, 0, 0.35);
 }
@@ -777,3 +777,157 @@
 .login-top-brand .brand-sub { color: rgba(255, 255, 255, 0.8); }
 .main-portal-logo { height: 140px; }
 .field-input, .form-input { font-size: 1.05rem; }
+
+/* Profile Picture Upload (Transcript Photo) */
+.profile-upload-box {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 14px 16px;
+  background: var(--portal-bg);
+  border: 2px dashed var(--portal-border);
+  border-radius: var(--portal-radius-sm);
+}
+
+.profile-preview-circle {
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  background: #FFFFFF;
+  border: 2px solid var(--portal-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+  color: var(--portal-primary);
+}
+
+.profile-preview-circle img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profile-upload-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.profile-file-input {
+  font-size: 0.92rem;
+  color: var(--portal-text);
+  max-width: 100%;
+}
+
+.profile-upload-hint {
+  font-size: 0.82rem;
+  color: var(--portal-text-muted);
+  margin: 0;
+}
+
+/* Custom Accessible Dropdown (Matches Pastors LMS Navy/Burgundy UI) */
+.custom-select-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.custom-select-trigger {
+  width: 100%;
+  height: 52px;
+  padding: 12px 16px;
+  font-size: 1.05rem;
+  font-family: inherit;
+  color: var(--portal-text);
+  background-color: #FFFFFF;
+  border: 2px solid var(--portal-border);
+  border-radius: var(--portal-radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.custom-select-trigger.is-placeholder {
+  color: var(--portal-text-muted);
+}
+
+.custom-select-trigger:hover {
+  border-color: var(--portal-primary);
+}
+
+.custom-select-trigger:focus,
+.custom-select-wrapper.open .custom-select-trigger {
+  outline: none;
+  border-color: var(--portal-primary);
+  box-shadow: 0 0 0 3px rgba(25, 47, 71, 0.15);
+}
+
+.custom-select-arrow {
+  flex-shrink: 0;
+  color: var(--portal-primary);
+  transition: transform 0.2s ease;
+  display: flex;
+  align-items: center;
+}
+
+.custom-select-wrapper.open .custom-select-arrow {
+  transform: rotate(180deg);
+  color: var(--portal-accent);
+}
+
+.custom-select-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  background: #FFFFFF;
+  border: 2px solid var(--portal-primary);
+  border-radius: var(--portal-radius-sm);
+  box-shadow: 0 12px 28px rgba(11, 25, 44, 0.16);
+  list-style: none;
+  margin: 0;
+  padding: 6px;
+  z-index: 50;
+  display: none;
+}
+
+.custom-select-wrapper.open .custom-select-menu {
+  display: block;
+}
+
+.custom-select-option {
+  padding: 12px 14px;
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--portal-text);
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.custom-select-option:hover,
+.custom-select-option:focus {
+  background-color: #EEF2F7;
+  color: var(--portal-primary);
+  outline: none;
+}
+
+.custom-select-option.selected {
+  background-color: var(--portal-primary);
+  color: #FFFFFF;
+  font-weight: 700;
+}
+
+.custom-select-option.selected::after {
+  content: '✓';
+  font-size: 0.95rem;
+  font-weight: 800;
+}

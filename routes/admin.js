@@ -139,7 +139,7 @@ function normalizeCourseStatus(status) {
 function generateStudentId(users) {
   let counter = 1001;
   while (true) {
-    const candidate = `STU-${counter}`;
+    const candidate = `IDA-${counter}`;
     const exists = users.some(user => (user.student_id || '').toUpperCase() === candidate.toUpperCase());
     if (!exists) return candidate;
     counter += 1;

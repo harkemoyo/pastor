@@ -3,7 +3,7 @@
    ========================================================================== */
 
 .library-hero {
-  background: linear-gradient(135deg, #4A154B 0%, #320B34 100%);
+  background: linear-gradient(135deg, #192F47 0%, #0B192C 100%);
   color: #FFFFFF;
   border-radius: var(--radius-xl);
   padding: 32px;
@@ -20,7 +20,7 @@
 }
 
 .library-subtitle {
-  color: #E6D4EB;
+  color: #E3E9F0;
   font-size: 1.05rem;
 }
 

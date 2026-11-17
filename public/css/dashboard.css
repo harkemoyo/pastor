@@ -4,8 +4,8 @@
 
 /* Top Navigation Bar */
 .top-navbar {
-  background: linear-gradient(180deg, #2B0A2D 0%, #3B0E3E 100%);
-  border-bottom: 2.5px solid var(--gold);
+  background: linear-gradient(180deg, #0B192C 0%, #192F47 100%);
+  border-bottom: 2.5px solid var(--accent);
   color: #FFFFFF;
   position: sticky;
   top: 0;
@@ -46,7 +46,7 @@
 }
 
 .mobile-menu-toggle:focus {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
@@ -80,7 +80,7 @@
   .mobile-menu-toggle:hover,
   .mobile-menu-toggle:focus {
     background: rgba(255, 255, 255, 0.2);
-    border-color: var(--gold);
+    border-color: var(--accent);
     outline: none;
   }
 
@@ -90,7 +90,7 @@
 
   .mobile-menu-toggle[aria-expanded="true"] {
     background: rgba(255, 255, 255, 0.22);
-    border-color: var(--gold);
+    border-color: var(--accent);
   }
 
   .mobile-menu-toggle[aria-expanded="true"] .icon-hamburger {
@@ -194,10 +194,10 @@
   .nav-item a:hover,
   .nav-item.active a {
     background: rgba(255, 255, 255, 0.18);
-    color: var(--gold);
+    color: var(--accent);
   }
 
-  .nav-right .btn.btn-gold {
+  .nav-right .btn.btn-accent {
     padding: 8px 16px;
     font-size: 0.95rem;
     min-height: 42px;
@@ -277,14 +277,14 @@
 }
 
 .nav-brand-accent {
-  color: var(--gold);
+  color: var(--accent);
 }
 
 .nav-brand-tagline {
   font-family: var(--font-heading);
   font-size: 0.65rem;
   font-weight: 600;
-  color: #D6B8E0;
+  color: #C5D0DD;
   letter-spacing: 1.1px;
   text-transform: uppercase;
   white-space: nowrap;
@@ -318,7 +318,7 @@
   gap: 8px;
   padding: 10px 16px;
   border-radius: 8px;
-  color: #E6D4EB;
+  color: #E3E9F0;
   font-family: var(--font-heading);
   font-size: 0.95rem;
   font-weight: 600;
@@ -338,11 +338,11 @@
 }
 
 .nav-item.active a {
-  border-bottom: 2px solid var(--gold);
+  border-bottom: 2px solid var(--accent);
 }
 
 .nav-item a:focus {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
@@ -366,15 +366,15 @@
   background: rgba(0, 0, 0, 0.25);
   padding: 6px 12px;
   border-radius: 20px;
-  border: 1px solid rgba(212, 168, 67, 0.25);
+  border: 1px solid rgba(217, 199, 170, 0.25);
   font-size: 0.85rem;
-  color: #F7E4B6;
+  color: #E6D8C0;
   font-weight: 600;
   white-space: nowrap;
 }
 
 .nav-clock svg {
-  color: var(--gold);
+  color: var(--accent);
 }
 
 .user-profile-btn {
@@ -396,7 +396,7 @@
 }
 
 .user-profile-btn:focus {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
@@ -404,8 +404,8 @@
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--gold-hover), var(--gold-dark));
-  color: #1A071C;
+  background: linear-gradient(135deg, var(--accent-hover), var(--accent-dark));
+  color: #0B192C;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -434,13 +434,13 @@
 
 .user-role {
   font-size: 0.78rem;
-  color: #D6B8E0;
+  color: #C5D0DD;
   text-transform: capitalize;
 }
 
 .user-handle {
   font-size: 0.76rem;
-  color: #F1D487;
+  color: #D9C7AA;
   font-weight: 600;
   letter-spacing: 0.2px;
 }
@@ -454,9 +454,9 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  background: rgba(212, 168, 67, 0.15);
-  border: 1.5px solid rgba(212, 168, 67, 0.3);
-  color: #F5D78E;
+  background: rgba(217, 199, 170, 0.15);
+  border: 1.5px solid rgba(217, 199, 170, 0.3);
+  color: #D9C7AA;
   padding: 8px 12px;
   border-radius: 8px;
   cursor: pointer;
@@ -468,12 +468,12 @@
 }
 
 .admin-menu-toggle:hover {
-  background: rgba(212, 168, 67, 0.25);
-  border-color: rgba(212, 168, 67, 0.4);
+  background: rgba(217, 199, 170, 0.25);
+  border-color: rgba(217, 199, 170, 0.4);
 }
 
 .admin-menu-toggle:focus {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
@@ -522,7 +522,7 @@
 }
 
 .admin-dropdown-item:focus {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--accent);
   outline-offset: -2px;
 }
 
@@ -534,7 +534,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #D6B8E0;
+  color: #C5D0DD;
   font-size: 0.9rem;
   padding: 8px 14px;
   border-radius: 8px;
@@ -550,7 +550,7 @@
 }
 
 .btn-logout-link:focus {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
@@ -559,22 +559,22 @@
 }
 
 .btn-admin-link {
-  color: #D6B8E0;
+  color: #C5D0DD;
   font-size: 0.82rem;
   padding: 6px 10px;
   border-radius: var(--radius-sm);
-  background: rgba(212, 168, 67, 0.15);
+  background: rgba(217, 199, 170, 0.15);
   margin-right: 8px;
 }
 
 .btn-admin-link:hover {
-  background: rgba(212, 168, 67, 0.3);
-  color: #F5D78E;
+  background: rgba(217, 199, 170, 0.3);
+  color: #D9C7AA;
 }
 
 /* Dashboard Hero Greeting */
 .dashboard-hero {
-  background: linear-gradient(135deg, #4A154B 0%, #320B34 100%);
+  background: linear-gradient(135deg, #192F47 0%, #0B192C 100%);
   border-radius: var(--radius-xl);
   padding: 30px 36px;
   color: #FFFFFF;
@@ -582,7 +582,7 @@
   position: relative;
   overflow: hidden;
   box-shadow: var(--shadow-md);
-  border: 1px solid rgba(212, 168, 67, 0.2);
+  border: 1px solid rgba(217, 199, 170, 0.2);
 }
 
 @media (max-width: 768px) {
@@ -623,9 +623,9 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: rgba(212, 168, 67, 0.2);
-  border: 1px solid var(--gold);
-  color: #FFEAA7;
+  background: rgba(217, 199, 170, 0.2);
+  border: 1px solid var(--accent);
+  color: #E6D8C0;
   padding: 4px 12px;
   border-radius: 20px;
   font-size: 0.78rem;
@@ -657,7 +657,7 @@
 
 .hero-verse {
   font-size: 0.95rem;
-  color: #E7D8EB;
+  color: #E3E9F0;
   max-width: 700px;
   font-style: italic;
   line-height: 1.5;
@@ -680,7 +680,7 @@
 
 .hero-verse-ref {
   display: inline-block;
-  color: var(--gold);
+  color: var(--accent);
   font-style: normal;
   font-weight: 700;
   margin-left: 6px;
@@ -775,9 +775,9 @@
   color: var(--primary);
 }
 
-.stat-icon-box.gold {
-  background: var(--gold-light);
-  color: var(--gold-dark);
+.stat-icon-box.accent {
+  background: var(--accent-light);
+  color: var(--accent-dark);
 }
 
 .stat-icon-box.green {
@@ -904,7 +904,7 @@
 .course-card:hover {
   transform: translateY(-4px);
   box-shadow: var(--shadow-hover);
-  border-color: rgba(74, 21, 75, 0.3);
+  border-color: rgba(25, 47, 71, 0.3);
 }
 
 .course-card-thumb {
@@ -912,7 +912,7 @@
   aspect-ratio: 16 / 9;
   width: 100%;
   overflow: hidden;
-  background: #2A092B;
+  background: #0B192C;
 }
 
 .course-card-thumb img {
@@ -1005,9 +1005,9 @@
 
 /* Announcement Card */
 .announcement-box {
-  background: linear-gradient(135deg, #FFFDF7 0%, #FAF4E4 100%);
-  border: 1px solid #E5CE93;
-  border-left: 4px solid var(--gold);
+  background: linear-gradient(135deg, #FCFDFD 0%, #F4F0E7 100%);
+  border: 1px solid #D9C7AA;
+  border-left: 4px solid var(--accent);
   border-radius: var(--radius-md);
   padding: 16px 20px;
   margin-bottom: 24px;
@@ -1024,7 +1024,7 @@
   font-family: var(--font-heading);
   font-size: 0.95rem;
   font-weight: 700;
-  color: #4C3707;
+  color: #30383A;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -1032,13 +1032,13 @@
 
 .announcement-date {
   font-size: 0.76rem;
-  color: #8C6A1D;
+  color: #30383A;
   font-weight: 600;
 }
 
 .announcement-text {
   font-size: 0.875rem;
-  color: #55441E;
+  color: #30383A;
   line-height: 1.5;
 }
 
@@ -1048,19 +1048,19 @@
   align-items: center;
   justify-content: space-between;
   gap: 20px;
-  background: linear-gradient(135deg, #3B0E3C 0%, #4A154B 100%);
+  background: linear-gradient(135deg, #192F47 0%, #192F47 100%);
   color: #FFFFFF;
   border-radius: var(--radius-lg, 12px);
   padding: 22px 26px;
   margin-bottom: 28px;
-  box-shadow: 0 8px 24px rgba(59, 14, 60, 0.2);
+  box-shadow: 0 8px 24px rgba(25, 47, 71, 0.2);
   flex-wrap: wrap;
 }
 
 .resume-badge {
   display: inline-block;
-  background: var(--gold, #C69214);
-  color: #2A1702;
+  background: var(--accent, #670C21);
+  color: #30383A;
   font-size: 0.74rem;
   font-weight: 800;
   letter-spacing: 1px;
@@ -1079,7 +1079,7 @@
 .resume-course-desc {
   margin: 0;
   font-size: 0.95rem;
-  color: #E2D9E2;
+  color: #E3E9F0;
 }
 
 .resume-course-desc strong {
@@ -1090,20 +1090,20 @@
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  background: var(--gold, #C69214);
-  color: #1A0E01;
+  background: var(--accent, #670C21);
+  color: #30383A;
   font-weight: 800;
   font-size: 1.05rem;
   padding: 14px 24px;
   border-radius: 8px;
   text-decoration: none;
-  box-shadow: 0 4px 14px rgba(198, 146, 20, 0.35);
+  box-shadow: 0 4px 14px rgba(217, 199, 170, 0.35);
   transition: all 0.15s ease;
   white-space: nowrap;
 }
 
 .btn-resume-study:hover {
-  background: #E5A91E;
+  background: #D9C7AA;
   transform: translateY(-2px);
   color: #000000;
 }
@@ -1117,14 +1117,14 @@
   font-size: 0.95rem;
   font-weight: 700;
   border-radius: 6px;
-  background: var(--primary, #3B0E3C);
+  background: var(--primary, #192F47);
   color: #FFFFFF;
   text-decoration: none;
   transition: all 0.15s ease;
 }
 
 .btn-open-course:hover {
-  background: #5A175B;
+  background: #24405F;
   transform: translateY(-1px);
 }
 

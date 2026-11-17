@@ -336,11 +336,11 @@ function updateMarkCompleteBtnState(isCompleted) {
 
   if (isCompleted) {
     btn.classList.add('is-completed');
-    btn.classList.remove('btn-gold');
+    btn.classList.remove('btn-accent');
     label.textContent = 'Completed ✓';
   } else {
     btn.classList.remove('is-completed');
-    btn.classList.add('btn-gold');
+    btn.classList.add('btn-accent');
     label.textContent = 'Mark as Completed';
   }
 }
