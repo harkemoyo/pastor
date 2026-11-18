@@ -57,8 +57,8 @@
     </nav>
 
     <div class="nav-right">
-      <div class="nav-clock" id="navClock" title="Local time">
-        <span class="nav-flag" id="navFlag" role="img" aria-label="Country flag">🌍</span>
+      <div class="nav-clock" id="navClock" title="Local time" data-user-country="<%= (locals.user && user.country_code) ? user.country_code : (locals.registeredCountryCode || '') %>">
+        <span class="nav-flag" id="navFlag" role="img" aria-label="Country flag"></span>
         <span id="liveClock">Loading...</span>
       </div>
 

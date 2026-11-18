@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const bcrypt = require('bcrypt');
 const { supabase, supabaseAdmin } = require('../config/supabase');
+const { resolveUserCountryCode } = require('../middleware/auth');
 
 let sharp = null;
 try {
@@ -165,7 +166,8 @@ router.get('/login', (req, res) => {
       email: u.email || '',
       phone: u.phone || '',
       church_name: u.church_name || '',
-      role: u.role || 'student'
+      role: u.role || 'student',
+      country_code: resolveUserCountryCode(u) || 'KE'
     }));
   
   res.render('login', {
@@ -309,6 +311,7 @@ router.post('/register', async (req, res) => {
     cohort,
     email,
     phone,
+    country,
     county,
     town,
     physical_address,
@@ -332,6 +335,7 @@ router.post('/register', async (req, res) => {
   const cleanCohort = (cohort || '').trim();
   const cleanEmail = (email || '').trim().toLowerCase();
   const cleanPhone = (phone || '').trim();
+  const cleanCountry = (country || '').trim();
   const cleanCounty = (county || '').trim();
   const cleanTown = (town || '').trim();
   const cleanPhysicalAddress = (physical_address || '').trim();
@@ -344,6 +348,15 @@ router.post('/register', async (req, res) => {
   const cleanRelationship = (relationship || '').trim();
   const cleanPass = (password || '').trim();
   const cleanConfirmPass = (confirm_password || '').trim();
+  const registeredCountryCode = resolveUserCountryCode({
+    country: cleanCountry,
+    phone: cleanPhone,
+    county: cleanCounty,
+    town: cleanTown,
+    cohort: cleanCohort,
+    physical_address: cleanPhysicalAddress
+  }) || 'KE';
+  res.locals.registeredCountryCode = registeredCountryCode;
 
   const formData = {
     first_name: cleanFirstName,
@@ -352,6 +365,7 @@ router.post('/register', async (req, res) => {
     cohort: cleanCohort,
     email: cleanEmail,
     phone: cleanPhone,
+    country: cleanCountry,
     county: cleanCounty,
     town: cleanTown,
     physical_address: cleanPhysicalAddress,
@@ -413,6 +427,8 @@ router.post('/register', async (req, res) => {
         username,
         student_id: studentId,
         phone: cleanPhone,
+        country: cleanCountry || undefined,
+        country_code: registeredCountryCode,
         cohort: cleanCohort,
         church_size: cleanChurchSize,
         age: cleanAge,
@@ -516,7 +532,8 @@ router.post('/login', async (req, res) => {
         email: u.email || '',
         phone: u.phone || '',
         church_name: u.church_name || '',
-        role: u.role || 'student'
+        role: u.role || 'student',
+        country_code: resolveUserCountryCode(u) || 'KE'
       }));
   };
 
@@ -694,6 +711,11 @@ router.post('/login', async (req, res) => {
 
           const fullName = profileRow?.full_name || localMatched?.full_name || data.user.user_metadata?.full_name || cleanUsername;
           const resolvedUsername = profileRow?.username || localMatched?.username || data.user.user_metadata?.username || cleanUsername;
+          const countryCode =
+            resolveUserCountryCode(profileRow) ||
+            resolveUserCountryCode(localMatched) ||
+            resolveUserCountryCode(data.user.user_metadata) ||
+            'KE';
 
           req.session.user = {
             id: data.user.id,
@@ -701,6 +723,7 @@ router.post('/login', async (req, res) => {
             email: data.user.email,
             full_name: fullName,
             role,
+            country_code: countryCode,
             initials: (fullName || 'Pastor').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
           };
 
@@ -770,6 +793,7 @@ router.post('/login', async (req, res) => {
       email: matchedUser.email,
       full_name: matchedUser.full_name,
       role: matchedUser.role || 'student',
+      country_code: resolveUserCountryCode(matchedUser) || 'KE',
       initials: initials || 'P'
     };
 

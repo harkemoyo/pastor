@@ -131,7 +131,17 @@
             </div>
 
             <div class="form-group">
-              <label class="form-label" for="county">County</label>
+              <label class="form-label" for="registerCountry">Country</label>
+              <% const selectedCountry = (typeof formData !== 'undefined' && formData && formData.country) ? formData.country : 'Kenya'; %>
+              <select id="registerCountry" name="country" class="form-input">
+                <% ['Kenya', 'Uganda', 'Tanzania', 'Rwanda', 'Burundi', 'South Sudan', 'DR Congo', 'Ethiopia'].forEach(cOpt => { %>
+                  <option value="<%= cOpt %>" <%= selectedCountry === cOpt ? 'selected' : '' %>><%= cOpt %></option>
+                <% }) %>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="county">County / Region</label>
               <input type="text" id="county" name="county" class="form-input" placeholder="Nairobi"
                 value="<%= typeof formData !== 'undefined' && formData ? formData.county || '' : '' %>">
             </div>

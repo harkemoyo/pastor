@@ -222,12 +222,119 @@ const TIMEZONE_COUNTRIES = {
 };
 const EAST_AFRICA_ZONES = ['Africa/Kampala', 'Africa/Nairobi', 'Africa/Dar_es_Salaam', 'Africa/Kigali', 'Africa/Bujumbura', 'Africa/Juba', 'Africa/Addis_Ababa', 'Africa/Mogadishu'];
 
-function countryToFlag(code) {
-  // Regional indicator symbols turn an ISO country code into a flag emoji
-  return code.toUpperCase().replace(/./g, ch => String.fromCodePoint(127397 + ch.charCodeAt(0)));
+const COUNTRY_TO_ZONE = {
+  KE: 'Africa/Nairobi',
+  UG: 'Africa/Kampala',
+  TZ: 'Africa/Dar_es_Salaam',
+  RW: 'Africa/Kigali',
+  BI: 'Africa/Bujumbura',
+  SS: 'Africa/Juba',
+  ET: 'Africa/Addis_Ababa',
+  SO: 'Africa/Mogadishu',
+  CD: 'Africa/Kinshasa',
+  NG: 'Africa/Lagos',
+  GH: 'Africa/Accra',
+  ZA: 'Africa/Johannesburg',
+  ZM: 'Africa/Lusaka',
+  ZW: 'Africa/Harare',
+  MW: 'Africa/Blantyre',
+  MZ: 'Africa/Maputo',
+  EG: 'Africa/Cairo',
+  GB: 'Europe/London',
+  US: 'America/New_York'
+};
+
+const NAME_TO_COUNTRY_CODE = {
+  kenya: 'KE',
+  uganda: 'UG',
+  tanzania: 'TZ',
+  rwanda: 'RW',
+  burundi: 'BI',
+  'south sudan': 'SS',
+  'dr congo': 'CD',
+  ethiopia: 'ET',
+  somalia: 'SO',
+  nigeria: 'NG',
+  ghana: 'GH',
+  'south africa': 'ZA',
+  zambia: 'ZM',
+  zimbabwe: 'ZW',
+  malawi: 'MW',
+  mozambique: 'MZ'
+};
+
+function buildFlagElement(code, className) {
+  const upper = (code || 'KE').toUpperCase();
+  const lower = upper.toLowerCase();
+  const img = document.createElement('img');
+  img.src = `https://flagcdn.com/w40/${lower}.png`;
+  img.srcset = `https://flagcdn.com/w80/${lower}.png 2x`;
+  img.alt = `${upper} flag`;
+  if (className) img.className = className;
+  return img;
+}
+
+function inferCountryFromInput(value) {
+  if (!value) return null;
+  const clean = String(value).trim();
+  const lower = clean.toLowerCase();
+  if (NAME_TO_COUNTRY_CODE[lower]) return NAME_TO_COUNTRY_CODE[lower];
+
+  if (Array.isArray(window.PASTORS_REGISTERED_USERS)) {
+    const digitsInput = clean.replace(/\D/g, '');
+    const normInput = (digitsInput.startsWith('254') && digitsInput.length === 12) ? '0' + digitsInput.slice(3) : digitsInput;
+    const matched = window.PASTORS_REGISTERED_USERS.find(u => {
+      if (u.username && u.username.toLowerCase() === lower) return true;
+      if (u.email && u.email.toLowerCase() === lower) return true;
+      if (normInput && u.phone) {
+        const uDigits = String(u.phone).replace(/\D/g, '');
+        const uNorm = (uDigits.startsWith('254') && uDigits.length === 12) ? '0' + uDigits.slice(3) : uDigits;
+        if (uNorm === normInput) return true;
+      }
+      return false;
+    });
+    if (matched && matched.country_code) return matched.country_code.toUpperCase();
+  }
+
+  const digits = clean.replace(/\D/g, '');
+  if (clean.startsWith('+') || digits.length >= 11) {
+    const prefixes = [
+      ['254', 'KE'], ['256', 'UG'], ['255', 'TZ'], ['250', 'RW'],
+      ['257', 'BI'], ['211', 'SS'], ['251', 'ET'], ['243', 'CD'],
+      ['252', 'SO'], ['234', 'NG'], ['233', 'GH'], ['260', 'ZM'],
+      ['263', 'ZW'], ['265', 'MW'], ['258', 'MZ'], ['27', 'ZA']
+    ];
+    for (const [pref, c] of prefixes) {
+      if (digits.startsWith(pref)) return c;
+    }
+  }
+  return null;
 }
 
 function detectCountry() {
+  const wrapEl = document.getElementById('navClock');
+  const serverUserCountry = wrapEl ? (wrapEl.getAttribute('data-user-country') || '').trim().toUpperCase() : '';
+
+  if (serverUserCountry && /^[A-Z]{2}$/.test(serverUserCountry)) {
+    try {
+      localStorage.setItem('pastors_registered_country', serverUserCountry);
+    } catch (e) {}
+    return {
+      code: serverUserCountry,
+      zone: COUNTRY_TO_ZONE[serverUserCountry] || 'Africa/Nairobi'
+    };
+  }
+
+  try {
+    const savedCountry = (localStorage.getItem('pastors_registered_country') || '').trim().toUpperCase();
+    if (savedCountry && /^[A-Z]{2}$/.test(savedCountry)) {
+      return {
+        code: savedCountry,
+        zone: COUNTRY_TO_ZONE[savedCountry] || 'Africa/Nairobi'
+      };
+    }
+  } catch (e) {}
+
   let zone = 'Africa/Nairobi';
   try {
     zone = Intl.DateTimeFormat().resolvedOptions().timeZone || zone;
@@ -235,49 +342,83 @@ function detectCountry() {
 
   let code = TIMEZONE_COUNTRIES[zone];
   if (!code) {
-    // Fall back to the region in the browser language (e.g. en-UG)
     const region = (navigator.language || '').split('-')[1];
-    if (region && /^[A-Za-z]{2}$/.test(region)) code = region;
+    if (region && /^[A-Za-z]{2}$/.test(region)) code = region.toUpperCase();
   }
-  return { zone, code };
+  return { zone, code: code || 'KE' };
+}
+
+function applyCountryFlagUI(code, zoneOverride) {
+  const upper = (code || 'KE').toUpperCase();
+  const zone = zoneOverride || COUNTRY_TO_ZONE[upper] || 'Africa/Nairobi';
+  const flagEl = document.getElementById('navFlag');
+  const wrapEl = document.getElementById('navClock');
+
+  let countryName = upper;
+  try {
+    countryName = new Intl.DisplayNames(['en'], { type: 'region' }).of(upper) || upper;
+  } catch (e) {}
+
+  if (flagEl) {
+    flagEl.innerHTML = '';
+    flagEl.appendChild(buildFlagElement(upper));
+    flagEl.setAttribute('aria-label', countryName);
+    if (wrapEl) wrapEl.setAttribute('title', `${countryName} (${zone.replace('_', ' ')})`);
+  }
+
+  const cohortBadge = document.getElementById('cohortBadge');
+  if (cohortBadge) {
+    let regionName = countryName || 'East Africa';
+    if (upper === 'UG') regionName = 'Uganda';
+    else if (upper === 'KE') regionName = 'Kenya';
+    else if (upper === 'TZ') regionName = 'Tanzania';
+    else if (upper === 'RW') regionName = 'Rwanda';
+    cohortBadge.innerHTML = '';
+    cohortBadge.appendChild(buildFlagElement(upper, 'cohort-flag-icon'));
+    cohortBadge.appendChild(document.createTextNode(`${regionName} Pastoral Cohort • AY2027`));
+  }
 }
 
 function initClock() {
   const clockEl = document.getElementById('liveClock');
   if (!clockEl) return;
 
-  const flagEl = document.getElementById('navFlag');
-  const wrapEl = document.getElementById('navClock');
-  const { zone, code } = detectCountry();
-  const label = EAST_AFRICA_ZONES.includes(zone) ? 'EAT' : '';
+  let current = detectCountry();
+  applyCountryFlagUI(current.code, current.zone);
 
-  if (flagEl && code) {
-    flagEl.textContent = countryToFlag(code);
-    let countryName = code;
-    try {
-      countryName = new Intl.DisplayNames(['en'], { type: 'region' }).of(code.toUpperCase()) || code;
-    } catch (e) {}
-    flagEl.setAttribute('aria-label', countryName);
-    if (wrapEl) wrapEl.setAttribute('title', `${countryName} (${zone.replace('_', ' ')})`);
+  // Update flag live when selecting country or typing phone on /register or /login
+  const regCountrySelect = document.getElementById('registerCountry');
+  if (regCountrySelect) {
+    const updateFromSelect = () => {
+      const c = inferCountryFromInput(regCountrySelect.value);
+      if (c) {
+        current = { code: c, zone: COUNTRY_TO_ZONE[c] || current.zone };
+        try { localStorage.setItem('pastors_registered_country', c); } catch (e) {}
+        applyCountryFlagUI(current.code, current.zone);
+      }
+    };
+    regCountrySelect.addEventListener('change', updateFromSelect);
   }
 
-  const cohortBadge = document.getElementById('cohortBadge');
-  if (cohortBadge && code) {
-    const flag = countryToFlag(code);
-    let regionName = 'East Africa';
-    if (code === 'UG') regionName = 'Uganda';
-    else if (code === 'KE') regionName = 'Kenya';
-    else if (code === 'TZ') regionName = 'Tanzania';
-    else if (code === 'RW') regionName = 'Rwanda';
-    else {
-      try {
-        regionName = new Intl.DisplayNames(['en'], { type: 'region' }).of(code.toUpperCase()) || regionName;
-      } catch (e) {}
-    }
-    cohortBadge.textContent = `${flag} ${regionName} Pastoral Cohort • AY2027`;
-  }
+  const phoneOrLoginInputs = [
+    document.getElementById('phone'),
+    document.getElementById('loginIdentifier')
+  ].filter(Boolean);
+
+  phoneOrLoginInputs.forEach(inp => {
+    inp.addEventListener('input', () => {
+      const c = inferCountryFromInput(inp.value);
+      if (c) {
+        current = { code: c, zone: COUNTRY_TO_ZONE[c] || current.zone };
+        try { localStorage.setItem('pastors_registered_country', c); } catch (e) {}
+        applyCountryFlagUI(current.code, current.zone);
+      }
+    });
+  });
 
   function update() {
+    const zone = current.zone || 'Africa/Nairobi';
+    const label = EAST_AFRICA_ZONES.includes(zone) ? 'EAT' : '';
     try {
       const timeStr = new Date().toLocaleTimeString('en-US', {
         timeZone: zone,
