@@ -94,7 +94,7 @@ function initLoginPortal() {
 
         if (useBtn) {
           useBtn.addEventListener('click', () => {
-            idInput.value = user.identifier;
+            idInput.value = String(user.identifier).trim().replace(/^@+/, '');
             passInput.focus();
             idInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
           });
@@ -173,7 +173,7 @@ function initLoginPortal() {
           }
           localStorage.setItem('pastors_remembered_account', JSON.stringify({
             name: nameToSave,
-            identifier: idInput.value.trim()
+            identifier: idInput.value.trim().replace(/^@+/, '')
           }));
         } catch (e) {}
       }

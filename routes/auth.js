@@ -224,7 +224,7 @@ router.get('/forgot-password', (req, res) => {
 // POST /forgot-password (Identity-Verified Password Reset)
 router.post('/forgot-password', async (req, res) => {
   const { identifier, phone, new_password, confirm_password } = req.body;
-  const cleanId = (identifier || '').trim();
+  const cleanId = (identifier || '').trim().replace(/^@+/, '');
   const cleanPhone = (phone || '').trim();
   const cleanNewPass = (new_password || '').trim();
   const cleanConfirmPass = (confirm_password || '').trim();
@@ -635,7 +635,8 @@ router.post('/register', async (req, res) => {
 // POST /login
 router.post('/login', async (req, res) => {
   const { username, password, remember_me } = req.body;
-  const cleanUsername = (username || '').trim();
+  // Strip any leading '@' in case a user types their handle as '@p1000000'
+  const cleanUsername = (username || '').trim().replace(/^@+/, '');
   const cleanPass = (password || '').trim();
 
   // Helper to re-fetch registered pastors for template
@@ -674,7 +675,7 @@ router.post('/login', async (req, res) => {
   // 1. Try Supabase Auth if configured
   if (supabase) {
     try {
-      const isEmail = cleanUsername.includes('@');
+      const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanUsername);
       let emailToUse = cleanUsername;
       
       // If it's a username or phone number, check Supabase FIRST (source of truth), then local users.json
@@ -707,9 +708,15 @@ router.post('/login', async (req, res) => {
           }
         }
 
-        // 3. Try phone number (both raw and normalized) if not found
-        if (!studentData) {
-          for (const phoneVal of [cleanUsername, inputPhone].filter(Boolean)) {
+        // 3. Try phone number (raw, 07..., +2547..., 2547...) if not found
+        if (!studentData && inputPhone) {
+          const phoneVariants = new Set([cleanUsername, inputPhone]);
+          if (inputPhone.startsWith('0') && inputPhone.length === 10) {
+            phoneVariants.add('+254' + inputPhone.slice(1));
+            phoneVariants.add('254' + inputPhone.slice(1));
+          }
+          for (const phoneVal of phoneVariants) {
+            if (!phoneVal) continue;
             const phoneRes = await lookupClient
               .from('students')
               .select('email')
