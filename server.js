@@ -1,7 +1,9 @@
 require('dotenv').config();
 const express = require('express');
 const session = require('express-session');
+const crypto = require('crypto');
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const { attachUser } = require('./middleware/auth');
 const authRoutes = require('./routes/auth');
@@ -24,31 +26,109 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.urlencoded({ extended: true, limit: '5mb' }));
 app.use(express.json({ limit: '5mb' }));
 
+const SESSION_SECRET = process.env.SESSION_SECRET || 'pastors-lms-secure-key-nairobi-2026';
+const AUTH_COOKIE_NAME = 'pastors_auth';
+const DEFAULT_SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 7; // 7 days
+
+// Sign & verify a compact stateless auth token so logins survive across
+// Vercel serverless instances, cold starts, and read-only filesystems.
+function signAuthToken(user, maxAgeMs = DEFAULT_SESSION_TTL_MS) {
+  const payload = Buffer.from(JSON.stringify({
+    user,
+    exp: Date.now() + maxAgeMs
+  }), 'utf8').toString('base64url');
+  const sig = crypto.createHmac('sha256', SESSION_SECRET).update(payload).digest('base64url');
+  return `${payload}.${sig}`;
+}
+
+function verifyAuthToken(token) {
+  if (!token || typeof token !== 'string') return null;
+  const dotIndex = token.indexOf('.');
+  if (dotIndex <= 0) return null;
+  const payload = token.slice(0, dotIndex);
+  const sig = token.slice(dotIndex + 1);
+  const expectedSig = crypto.createHmac('sha256', SESSION_SECRET).update(payload).digest('base64url');
+  const sigBuf = Buffer.from(sig);
+  const expBuf = Buffer.from(expectedSig);
+  if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) {
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+    if (!parsed || !parsed.user || (parsed.exp && Date.now() > parsed.exp)) {
+      return null;
+    }
+    return parsed.user;
+  } catch {
+    return null;
+  }
+}
+
+function parseCookies(cookieHeader) {
+  const out = {};
+  if (!cookieHeader) return out;
+  cookieHeader.split(';').forEach(part => {
+    const idx = part.indexOf('=');
+    if (idx > 0) {
+      const k = part.slice(0, idx).trim();
+      const v = part.slice(idx + 1).trim();
+      try {
+        out[k] = decodeURIComponent(v);
+      } catch {
+        out[k] = v;
+      }
+    }
+  });
+  return out;
+}
+
+function appendSetCookie(res, cookieStr) {
+  const prev = res.getHeader('Set-Cookie');
+  if (!prev) {
+    res.setHeader('Set-Cookie', [cookieStr]);
+  } else if (Array.isArray(prev)) {
+    res.setHeader('Set-Cookie', [...prev, cookieStr]);
+  } else {
+    res.setHeader('Set-Cookie', [String(prev), cookieStr]);
+  }
+}
+
 // Persistent session store so active logins survive restarts & file edits in dev
 class FileSessionStore extends session.Store {
   constructor(filePath) {
     super();
     this.filePath = filePath;
+    this.fallbackPath = path.join(os.tmpdir(), 'pastors-lms-sessions.json');
     this.sessions = {};
     this.load();
   }
 
   load() {
-    try {
-      if (fs.existsSync(this.filePath)) {
-        const raw = fs.readFileSync(this.filePath, 'utf8');
-        this.sessions = JSON.parse(raw) || {};
+    for (const target of [this.filePath, this.fallbackPath]) {
+      try {
+        if (fs.existsSync(target)) {
+          const raw = fs.readFileSync(target, 'utf8');
+          const parsed = JSON.parse(raw);
+          if (parsed && typeof parsed === 'object') {
+            this.sessions = { ...this.sessions, ...parsed };
+          }
+        }
+      } catch {
+        // Ignore corrupt/unreadable session cache
       }
-    } catch {
-      this.sessions = {};
     }
   }
 
   save() {
+    const serialized = JSON.stringify(this.sessions);
     try {
-      fs.writeFileSync(this.filePath, JSON.stringify(this.sessions), 'utf8');
+      fs.writeFileSync(this.filePath, serialized, 'utf8');
     } catch {
-      // In read-only filesystems (e.g. Vercel lambda), keep in-memory only
+      try {
+        fs.writeFileSync(this.fallbackPath, serialized, 'utf8');
+      } catch {
+        // In strictly read-only environments, signed auth cookie maintains session state
+      }
     }
   }
 
@@ -97,20 +177,67 @@ class FileSessionStore extends session.Store {
 const sessionFilePath = path.join(__dirname, 'data/.sessions.json');
 
 // Session configuration
-// Vercel terminates TLS at a proxy, so trust it for secure cookies to work
-app.set('trust proxy', 1);
+// Trust reverse proxies (Vercel / Cloudflare) so HTTPS detection works across hops
+app.set('trust proxy', true);
 app.use(session({
   store: new FileSessionStore(sessionFilePath),
-  secret: process.env.SESSION_SECRET || 'pastors-lms-secure-key-nairobi-2026',
+  secret: SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
   cookie: {
-    maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
+    maxAge: DEFAULT_SESSION_TTL_MS,
     httpOnly: true,
     sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production' // HTTPS-only cookies in production (Vercel)
+    secure: 'auto'
   }
 }));
+
+// Stateless signed auth cookie sync middleware (prevents random logouts on Vercel serverless)
+app.use((req, res, next) => {
+  const cookies = parseCookies(req.headers.cookie);
+  const incomingToken = cookies[AUTH_COOKIE_NAME];
+  const cookieUser = verifyAuthToken(incomingToken);
+
+  // Restore session user if this request hit a different serverless instance or cold start
+  if (req.session && !req.session.user && cookieUser) {
+    req.session.user = cookieUser;
+  }
+
+  let sessionDestroyed = false;
+  if (req.session && typeof req.session.destroy === 'function') {
+    const origDestroy = req.session.destroy.bind(req.session);
+    req.session.destroy = function (cb) {
+      sessionDestroyed = true;
+      return origDestroy(cb);
+    };
+  }
+
+  const origWriteHead = res.writeHead;
+  res.writeHead = function (...args) {
+    try {
+      const isHttps = req.secure || (req.headers['x-forwarded-proto'] || '').split(',')[0].trim() === 'https';
+      const secureFlag = isHttps ? '; Secure' : '';
+
+      if (sessionDestroyed) {
+        appendSetCookie(res, `${AUTH_COOKIE_NAME}=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax${secureFlag}`);
+      } else if (req.session && req.session.user) {
+        const currentUserJson = JSON.stringify(req.session.user);
+        const cookieUserJson = cookieUser ? JSON.stringify(cookieUser) : null;
+        if (currentUserJson !== cookieUserJson) {
+          const maxAgeMs = (req.session.cookie && req.session.cookie.maxAge) || DEFAULT_SESSION_TTL_MS;
+          const maxAgeSec = Math.floor(maxAgeMs / 1000);
+          const token = signAuthToken(req.session.user, maxAgeMs);
+          appendSetCookie(res, `${AUTH_COOKIE_NAME}=${encodeURIComponent(token)}; Path=/; Max-Age=${maxAgeSec}; HttpOnly; SameSite=Lax${secureFlag}`);
+        }
+      }
+    } catch {
+      // Never block response headers
+    }
+    return origWriteHead.apply(this, args);
+  };
+
+  next();
+});
 
 // User local attachment middleware
 app.use(attachUser);

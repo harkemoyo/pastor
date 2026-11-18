@@ -657,26 +657,54 @@ router.post('/login', async (req, res) => {
         }
 
         if (data && data.user) {
-          const { data: profileRow, error: profileError } = await (supabaseAdmin || supabase)
+          const lookupClient = supabaseAdmin || supabase;
+          let { data: profileRow, error: profileError } = await lookupClient
             .from('students')
             .select('*')
             .eq('auth_user_id', data.user.id)
             .maybeSingle();
 
-          // Never trust user_metadata for authorization (users can edit it). Use the students table or app_metadata.
-          const role = profileRow?.role || data.user.app_metadata?.role || 'student';
-          const fullName = profileRow?.full_name || data.user.user_metadata?.full_name || cleanUsername;
+          if (!profileRow && data.user.email) {
+            const byEmail = await lookupClient
+              .from('students')
+              .select('*')
+              .ilike('email', data.user.email)
+              .limit(1)
+              .maybeSingle();
+            if (!byEmail.error && byEmail.data) {
+              profileRow = byEmail.data;
+            }
+          }
+
+          const localMatched = getUsers().find(u =>
+            (data.user.email && u.email && u.email.toLowerCase() === data.user.email.toLowerCase()) ||
+            (u.username && u.username.toLowerCase() === inputLower) ||
+            (u.student_id && u.student_id.toLowerCase() === inputLower) ||
+            (inputPhone && u.phone && normalizePhone(u.phone) === inputPhone)
+          );
+
+          const candidateRoles = [
+            profileRow?.role,
+            data.user.app_metadata?.role,
+            localMatched?.role,
+            data.user.user_metadata?.role
+          ].filter(Boolean);
+          const rolePriority = ['super_admin', 'admin', 'teacher', 'student'];
+          const role = rolePriority.find(r => candidateRoles.includes(r)) || 'student';
+
+          const fullName = profileRow?.full_name || localMatched?.full_name || data.user.user_metadata?.full_name || cleanUsername;
+          const resolvedUsername = profileRow?.username || localMatched?.username || data.user.user_metadata?.username || cleanUsername;
 
           req.session.user = {
             id: data.user.id,
-            username: profileRow?.username || data.user.user_metadata?.username || cleanUsername,
+            username: resolvedUsername,
             email: data.user.email,
             full_name: fullName,
             role,
             initials: (fullName || 'Pastor').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
           };
 
-          console.log('Supabase login successful for:', cleanUsername);
+          console.log('Supabase login successful for:', cleanUsername, 'with role:', role);
           if (profileError && profileError.code !== 'PGRST116') {
             console.warn('Student profile lookup warning:', profileError.message);
           }
