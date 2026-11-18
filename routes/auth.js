@@ -663,7 +663,8 @@ router.post('/login', async (req, res) => {
     });
   }
 
-  console.log('Login attempt for:', cleanUsername);
+  console.log('=== LOGIN DEBUG ===');
+  console.log('[LOGIN] Raw input:', JSON.stringify(username), '-> Clean:', JSON.stringify(cleanUsername), '| Supabase configured:', !!supabase, '| SupabaseAdmin configured:', !!supabaseAdmin);
   const inputLower = cleanUsername.toLowerCase();
   const inputPhone = normalizePhone(cleanUsername);
 
@@ -677,6 +678,7 @@ router.post('/login', async (req, res) => {
     try {
       const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanUsername);
       let emailToUse = cleanUsername;
+      console.log('[LOGIN] Step 1 Supabase Auth | isEmail:', isEmail);
       
       // If it's a username or phone number, check Supabase FIRST (source of truth), then local users.json
       if (!isEmail) {
@@ -691,6 +693,7 @@ router.post('/login', async (req, res) => {
           .limit(1)
           .maybeSingle();
 
+        console.log('[LOGIN] Supabase username lookup:', { found: !!userRes.data?.email, error: userRes.error?.message || null });
         if (!userRes.error && userRes.data && userRes.data.email) {
           studentData = userRes.data;
         }
@@ -703,6 +706,7 @@ router.post('/login', async (req, res) => {
             .ilike('student_id', cleanUsername)
             .limit(1)
             .maybeSingle();
+          console.log('[LOGIN] Supabase student_id lookup:', { found: !!idRes.data?.email, error: idRes.error?.message || null });
           if (!idRes.error && idRes.data && idRes.data.email) {
             studentData = idRes.data;
           }
@@ -725,6 +729,7 @@ router.post('/login', async (req, res) => {
               .maybeSingle();
             if (!phoneRes.error && phoneRes.data && phoneRes.data.email) {
               studentData = phoneRes.data;
+              console.log('[LOGIN] Supabase phone lookup matched:', phoneVal, '->', studentData.email);
               break;
             }
           }
@@ -740,6 +745,7 @@ router.post('/login', async (req, res) => {
             .maybeSingle();
           if (!nameRes.error && nameRes.data && nameRes.data.email) {
             studentData = nameRes.data;
+            console.log('[LOGIN] Supabase full_name lookup matched:', studentData.email);
           }
         }
 
@@ -757,17 +763,17 @@ router.post('/login', async (req, res) => {
               });
               if (found && found.email) {
                 studentData = { email: found.email };
-                console.log('Found email from Supabase Auth admin metadata:', found.email);
+                console.log('[LOGIN] Found email from Supabase Auth admin metadata:', found.email);
               }
             }
           } catch (errList) {
-            console.warn('Supabase auth.admin.listUsers error:', errList.message);
+            console.warn('[LOGIN] Supabase auth.admin.listUsers error:', errList.message);
           }
         }
 
         if (studentData && studentData.email) {
           emailToUse = studentData.email;
-          console.log('Found email for identifier from Supabase:', emailToUse);
+          console.log('[LOGIN] Resolved identifier to Supabase email:', emailToUse);
         } else {
           // 6. Fallback to local users.json only if not found in Supabase
           const users = getUsers();
@@ -779,18 +785,22 @@ router.post('/login', async (req, res) => {
           });
           if (localUser && localUser.email) {
             emailToUse = localUser.email;
-            console.log('Found email for identifier from local users fallback:', emailToUse);
+            console.log('[LOGIN] Resolved identifier from local users.json fallback:', emailToUse);
+          } else {
+            console.log('[LOGIN] Could not resolve identifier to any email in Supabase or local users.json');
           }
         }
       }
       
       if (emailToUse && emailToUse.includes('@')) {
+        console.log('[LOGIN] Calling supabase.auth.signInWithPassword for email:', emailToUse);
         const { data, error } = await supabase.auth.signInWithPassword({
           email: emailToUse,
           password: cleanPass
         });
 
         if (error) {
+          console.warn('[LOGIN] Supabase signInWithPassword error:', error.message, '| status:', error.status);
           throw error;
         }
 
@@ -917,7 +927,7 @@ router.post('/login', async (req, res) => {
     }
   });
 
-  console.log('Matched user:', matchedUser ? matchedUser.username : 'none');
+  console.log('[LOGIN] Local fallback matched user:', matchedUser ? `${matchedUser.username} (role: ${matchedUser.role})` : 'none');
 
   if (!matchedUser) {
     // Explain the failure without logging the password itself
@@ -928,11 +938,11 @@ router.post('/login', async (req, res) => {
       (inputPhone && u.phone && normalizePhone(u.phone) === inputPhone)
     );
     if (!knownUser) {
-      console.log('Login diagnosis: no local account matches that username, email, or phone.');
+      console.log('[LOGIN DIAGNOSIS] No local account matches:', cleanUsername);
     } else if (!knownUser.password) {
-      console.log('Login diagnosis: account found but it has no local password set.');
+      console.log('[LOGIN DIAGNOSIS] Account found but has no local password set:', knownUser.username);
     } else {
-      console.log(`Login diagnosis: account "${knownUser.username}" found but password did not match (typed length: ${cleanPass.length}).`);
+      console.log(`[LOGIN DIAGNOSIS] Account "${knownUser.username}" (${knownUser.email}) found in users.json, but password did not match local hash (typed length: ${cleanPass.length}). NOTE: If password was set in Supabase, ensure .env has SUPABASE_URL, SUPABASE_ANON_KEY, and SUPABASE_SERVICE_ROLE_KEY.`);
     }
   }
 
