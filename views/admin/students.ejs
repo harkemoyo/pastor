@@ -144,8 +144,9 @@
                   <td>
                     <div class="action-stack" style="display: flex; gap: 6px; flex-wrap: wrap; align-items: center;">
                       <% const isSuperAdmin = locals.user && locals.user.role === 'super_admin'; %>
+                      <% const rowKey = student.username || student.student_id; %>
                       <% if (isSuperAdmin || (student.role !== 'super_admin' && student.role !== 'admin')) { %>
-                        <form method="POST" action="/admin/students/<%= student.student_id || student.username %>/role" style="display: inline;">
+                        <form method="POST" action="/admin/students/<%= rowKey %>/role" style="display: inline;">
                           <select name="role" aria-label="Change account role" onchange="this.form.submit()" style="padding: 4px 8px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.8rem; font-weight: 600;">
                             <option value="student" <%= (!student.role || student.role === 'student') ? 'selected' : '' %>>🎓 Student</option>
                             <option value="teacher" <%= student.role === 'teacher' ? 'selected' : '' %>>📖 Teacher</option>
@@ -157,15 +158,15 @@
                         </form>
                       <% } %>
                       <% if (student.status === 'pending' || student.approval_status === 'pending') { %>
-                        <form method="POST" action="/admin/students/<%= student.student_id || student.username %>/approve" style="display: inline;">
+                        <form method="POST" action="/admin/students/<%= rowKey %>/approve" style="display: inline;">
                           <input type="hidden" name="redirect_to" value="/admin/students">
                           <button type="submit" class="btn btn-sm btn-success" style="background: #166534; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-weight: 600; cursor: pointer;">
                             ✓ Approve
                           </button>
                         </form>
                       <% } %>
-                      <a href="/admin/students/<%= student.student_id || student.username %>" class="btn btn-sm btn-secondary">View</a>
-                      <a href="/admin/students/<%= student.student_id || student.username %>/edit" class="btn btn-sm btn-secondary">Edit</a>
+                      <a href="/admin/students/<%= rowKey %>" class="btn btn-sm btn-secondary">View</a>
+                      <a href="/admin/students/<%= rowKey %>/edit" class="btn btn-sm btn-secondary">Edit</a>
                     </div>
                   </td>
                 </tr>

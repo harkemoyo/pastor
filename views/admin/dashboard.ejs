@@ -87,7 +87,7 @@
                       </span>
                     </td>
                     <td>
-                      <a href="/admin/students/<%= student.student_id || student.username %>" class="btn btn-sm btn-secondary">Manage</a>
+                      <a href="/admin/students/<%= student.username || student.student_id %>" class="btn btn-sm btn-secondary">Manage</a>
                     </td>
                   </tr>
                 <% }) %>

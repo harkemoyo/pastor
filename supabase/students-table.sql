@@ -25,7 +25,7 @@ create table if not exists public.students (
   emergency_contact_phone text,
   relationship text,
   student_id text unique,
-  role text not null default 'student' check (role in ('student', 'admin', 'super_admin')),
+  role text not null default 'student' check (role in ('student', 'teacher', 'admin', 'super_admin')),
   status text not null default 'pending' check (status in ('pending', 'active', 'inactive', 'suspended', 'graduated', 'rejected')),
   approval_status text not null default 'pending' check (approval_status in ('pending', 'approved', 'rejected')),
   approved_by text,

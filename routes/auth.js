@@ -822,9 +822,10 @@ router.post('/login', async (req, res) => {
             data.user.app_metadata?.role,
             localMatched?.role,
             data.user.user_metadata?.role,
+            (data.user.email && data.user.email.toLowerCase() === 'info@intendiscafrica.org') ? 'super_admin' : null,
+            /\b(ida\s+office\s+admin|system\s+admin)\b/i.test(`${fullName} ${profileRow?.ministry_role || ''}`) ? 'super_admin' : null,
             /^a\d{6,}$/i.test(resolvedUsername) ? 'admin' : null,
-            /^t\d{6,}$/i.test(resolvedUsername) ? 'teacher' : null,
-            /\b(ida\s+office\s+admin|system\s+admin)\b/i.test(`${fullName} ${profileRow?.ministry_role || ''}`) ? 'admin' : null
+            /^t\d{6,}$/i.test(resolvedUsername) ? 'teacher' : null
           ].filter(Boolean);
           const rolePriority = ['super_admin', 'admin', 'teacher', 'student'];
           const role = rolePriority.find(r => candidateRoles.includes(r)) || 'student';

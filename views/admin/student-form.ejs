@@ -27,7 +27,7 @@
     <% } %>
 
     <section class="admin-surface">
-      <form method="POST" action="<%= mode === 'edit' ? `/admin/students/${formData.student_id || formData.username}/edit` : '/admin/students/new' %>">
+      <form method="POST" action="<%= mode === 'edit' ? `/admin/students/${formData.username || formData.student_id}/edit` : '/admin/students/new' %>">
         <div class="admin-form-grid">
           <div class="form-field">
             <label>First Name *</label>

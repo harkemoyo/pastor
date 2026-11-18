@@ -37,6 +37,11 @@ function getUsers() {
   return readJson(USERS_FILE, []);
 }
 
+function normalizeStudentIdFormat(id) {
+  if (!id) return '';
+  return String(id).trim().replace(/^STU-/i, 'IDA-');
+}
+
 // Read students from Supabase (source of truth for signups) and mirror into data/users.json
 // so both stores stay matched; fall back to users.json when Supabase is not configured.
 async function getStudents() {
@@ -51,16 +56,70 @@ async function getStudents() {
           const localUsers = getUsers();
           let changed = false;
           for (const s of data) {
-            const idx = localUsers.findIndex(u =>
-              (s.email && u.email && u.email.toLowerCase() === s.email.toLowerCase()) ||
-              (s.username && u.username && u.username.toLowerCase() === s.username.toLowerCase())
-            );
-            const merged = {
-              ...(idx >= 0 ? localUsers[idx] : {}),
-              ...s,
-              role: s.role || (idx >= 0 ? localUsers[idx].role : 'student') || 'student',
-              password: (idx >= 0 && localUsers[idx].password) ? localUsers[idx].password : '$2b$10$IFeR81mpSAzXDcSVYRoso.WqE/pxE.dsHCeLDjpWiEmcA5Kdz/tam'
-            };
+            // Normalize STU- to IDA- automatically
+            const cleanSid = normalizeStudentIdFormat(s.student_id);
+            const supabaseUpdates = {};
+            if (s.student_id && cleanSid !== s.student_id) {
+              s.student_id = cleanSid;
+              supabaseUpdates.student_id = cleanSid;
+            }
+
+            // Match by email first so a username reuse never merges two different people
+            let idx = s.email
+              ? localUsers.findIndex(u => u.email && u.email.toLowerCase() === s.email.toLowerCase())
+              : -1;
+            if (idx < 0 && s.username) {
+              idx = localUsers.findIndex(u =>
+                u.username && u.username.toLowerCase() === s.username.toLowerCase() &&
+                (!u.email || !s.email || u.email.toLowerCase() === s.email.toLowerCase())
+              );
+            }
+
+            const localExisting = idx >= 0 ? localUsers[idx] : null;
+            const localIsNewer = localExisting && localExisting.updated_at && s.updated_at
+              ? new Date(localExisting.updated_at) > new Date(s.updated_at)
+              : Boolean(localExisting && localExisting.updated_at && !s.updated_at);
+
+            const isIdaOfficeAdmin =
+              (s.email && s.email.toLowerCase() === 'info@intendiscafrica.org') ||
+              /\bida\s+office\s+admin\b/i.test(s.full_name || '');
+
+            let resolvedRole = 'student';
+            if (isIdaOfficeAdmin) {
+              resolvedRole = 'super_admin';
+            } else if (localIsNewer && localExisting.role) {
+              resolvedRole = localExisting.role;
+            } else {
+              const rolePriority = ['super_admin', 'admin', 'teacher', 'student'];
+              const candidateRoles = [s.role, localExisting?.role].filter(Boolean);
+              resolvedRole = rolePriority.find(r => candidateRoles.includes(r)) || 'student';
+            }
+
+            if (s.role !== resolvedRole && ['student', 'admin', 'super_admin'].includes(resolvedRole)) {
+              supabaseUpdates.role = resolvedRole;
+            }
+
+            if (s.id && Object.keys(supabaseUpdates).length > 0) {
+              supabaseAdmin.from('students').update(supabaseUpdates).eq('id', s.id).then(() => {}).catch(() => {});
+            }
+
+            const merged = localIsNewer
+              ? {
+                  ...s,
+                  ...localExisting,
+                  id: s.id,
+                  auth_user_id: s.auth_user_id || localExisting.auth_user_id,
+                  student_id: normalizeStudentIdFormat(localExisting.student_id || s.student_id),
+                  role: resolvedRole
+                }
+              : {
+                  ...(localExisting || {}),
+                  ...s,
+                  student_id: cleanSid || normalizeStudentIdFormat(localExisting?.student_id),
+                  role: resolvedRole,
+                  password: (localExisting && localExisting.password) ? localExisting.password : '$2b$10$IFeR81mpSAzXDcSVYRoso.WqE/pxE.dsHCeLDjpWiEmcA5Kdz/tam'
+                };
+
             if (idx >= 0) {
               localUsers[idx] = merged;
             } else {
@@ -90,39 +149,97 @@ function isStudentRecord(user) {
 }
 
 function matchesStudentId(user, id) {
-  return user.student_id === id || user.username === id || user.email === id;
+  if (!id || !user) return false;
+  const target = String(id).trim().toLowerCase();
+  const normTarget = normalizeStudentIdFormat(id).toLowerCase();
+  const userSid = normalizeStudentIdFormat(user.student_id).toLowerCase();
+  return (
+    (user.username && user.username.toLowerCase() === target) ||
+    (user.email && user.email.toLowerCase() === target) ||
+    (userSid && (userSid === target || userSid === normTarget))
+  );
 }
 
-// Find one student by student_id, username or email (Supabase first, local fallback).
+// Find one student by username, email, or student_id (prioritizing unique username/email first).
 async function findStudent(id) {
+  if (!id) return null;
+  const target = String(id).trim().toLowerCase();
+  const normTarget = normalizeStudentIdFormat(id).toLowerCase();
   const students = await getStudents();
-  return students.find(user => matchesStudentId(user, id)) || null;
+  return (
+    students.find(user => (user.username && user.username.toLowerCase() === target) || (user.email && user.email.toLowerCase() === target)) ||
+    students.find(user => normalizeStudentIdFormat(user.student_id).toLowerCase() === normTarget) ||
+    null
+  );
 }
 
 // Persist field changes for a student in BOTH Supabase and local data/users.json so they always match.
 async function updateStudent(student, fields) {
+  const stampedFields = {
+    ...fields,
+    ...(fields.student_id ? { student_id: normalizeStudentIdFormat(fields.student_id) } : {}),
+    updated_at: new Date().toISOString()
+  };
+
   let supabaseOk = false;
-  if (supabaseAdmin && student.id) {
-    const { error } = await supabaseAdmin.from('students').update(fields).eq('id', student.id);
-    if (error) {
-      console.error('Supabase student update failed:', error.message);
-    } else {
-      Object.assign(student, fields);
-      supabaseOk = true;
+  if (supabaseAdmin) {
+    try {
+      const dbPayload = { ...stampedFields };
+      let query = supabaseAdmin.from('students').update(dbPayload);
+      if (student.id && String(student.id).includes('-')) {
+        query = query.eq('id', student.id);
+      } else if (student.email) {
+        query = query.ilike('email', student.email);
+      } else {
+        query = query.eq('username', student.username);
+      }
+
+      let { error } = await query;
+      // If Postgres check constraint rejects 'teacher' in students.role, retry without role column
+      if (error && dbPayload.role === 'teacher') {
+        const { role: _omitted, ...restPayload } = dbPayload;
+        let retryQuery = supabaseAdmin.from('students').update(restPayload);
+        if (student.id && String(student.id).includes('-')) {
+          retryQuery = retryQuery.eq('id', student.id);
+        } else if (student.email) {
+          retryQuery = retryQuery.ilike('email', student.email);
+        } else {
+          retryQuery = retryQuery.eq('username', student.username);
+        }
+        const retryRes = await retryQuery;
+        error = retryRes.error;
+      }
+
+      if (error) {
+        console.error('Supabase student update failed:', error.message);
+      } else {
+        Object.assign(student, stampedFields);
+        supabaseOk = true;
+      }
+    } catch (e) {
+      console.error('Supabase student update exception:', e.message);
     }
   }
+
   const users = getUsers();
-  const local = users.find(user =>
-    matchesStudentId(user, student.student_id || student.username) ||
-    (student.email && user.email && user.email.toLowerCase() === student.email.toLowerCase())
+  let local = users.find(user =>
+    (student.email && user.email && user.email.toLowerCase() === student.email.toLowerCase()) ||
+    (student.username && user.username && user.username.toLowerCase() === student.username.toLowerCase())
   );
+  if (!local) {
+    local = users.find(user => matchesStudentId(user, student.student_id || student.username));
+  }
   if (local) {
-    Object.assign(local, fields);
-    Object.assign(student, fields);
+    Object.assign(local, stampedFields);
+    Object.assign(student, stampedFields);
+    const localOk = saveUsers(users);
+    return supabaseOk || localOk;
+  } else {
+    Object.assign(student, stampedFields);
+    users.push({ ...student });
     const localOk = saveUsers(users);
     return supabaseOk || localOk;
   }
-  return supabaseOk;
 }
 
 function saveUsers(users) {
@@ -173,10 +290,10 @@ function normalizeCourseStatus(status) {
 }
 
 function generateStudentId(users) {
-  let counter = 1001;
+  let counter = 1002;
   while (true) {
     const candidate = `IDA-${counter}`;
-    const exists = users.some(user => (user.student_id || '').toUpperCase() === candidate.toUpperCase());
+    const exists = users.some(user => normalizeStudentIdFormat(user.student_id).toUpperCase() === candidate.toUpperCase());
     if (!exists) return candidate;
     counter += 1;
   }
@@ -506,20 +623,20 @@ router.post('/students/:studentId/edit', requireAdmin, async (req, res) => {
       gender: gender || '',
       profile_photo: profile_photo || '',
       address: address || '',
-      years_in_ministry: years_in_ministry || '',
-      username: email.trim().toLowerCase()
+      years_in_ministry: years_in_ministry || ''
     });
   }
 
+  const targetId = student.username || student.student_id;
   if (await updateStudent(student, updates)) {
     appendActivity({
       adminUsername: req.session.user.username,
       adminName: req.session.user.full_name,
       action: `Admin updated student ${student.full_name}`,
       targetType: 'student',
-      targetId: student.student_id
+      targetId
     });
-    res.redirect(`/admin/students/${student.student_id}?success=${encodeURIComponent('Student record updated successfully.')}`);
+    res.redirect(`/admin/students/${targetId}?success=${encodeURIComponent('Student record updated successfully.')}`);
     return;
   }
 
@@ -750,7 +867,7 @@ router.post('/students/:studentId/role', requireAdmin, async (req, res) => {
     return res.redirect('/admin/students');
   }
 
-  const targetId = student.student_id || student.username;
+  const targetId = student.username || student.student_id;
   const assignableRoles = req.session.user.role === 'super_admin' ? ['super_admin', 'admin', 'teacher', 'student'] : ['teacher', 'student'];
   if (!assignableRoles.includes(req.body.role) || (student.role === 'super_admin' && req.session.user.role !== 'super_admin')) {
     return res.redirect(`/admin/students/${targetId}?error=${encodeURIComponent('Only a Super Admin can assign or modify Admin / Super Admin roles.')}`);
@@ -790,17 +907,18 @@ router.post('/students/:studentId/status', requireAdmin, async (req, res) => {
 
   const newStatus = normalizeStudentStatus(req.body.status);
 
+  const targetId = student.username || student.student_id;
   if (await updateStudent(student, { status: newStatus })) {
     appendActivity({
       adminUsername: req.session.user.username,
       adminName: req.session.user.full_name,
       action: `Admin changed ${buildFullName(student)} status to ${newStatus}`,
       targetType: 'student',
-      targetId: student.student_id
+      targetId
     });
   }
 
-  res.redirect(`/admin/students/${student.student_id}`);
+  res.redirect(`/admin/students/${targetId}`);
 });
 
 router.post('/students/:studentId/reset-password', requireAdmin, async (req, res) => {
@@ -876,19 +994,20 @@ router.post('/students/:studentId/reset-password', requireAdmin, async (req, res
     }
   }
 
+  const targetId = student.username || student.student_id;
   if (saved) {
     appendActivity({
       adminUsername: req.session.user.username,
       adminName: req.session.user.full_name,
       action: `Admin reset ${buildFullName(student)} password`,
       targetType: 'student',
-      targetId: student.student_id
+      targetId
     });
-    res.redirect(`/admin/students/${student.student_id}?success=${encodeURIComponent(`Password reset successful. Temporary password: ${tempPassword}`)}`);
+    res.redirect(`/admin/students/${targetId}?success=${encodeURIComponent(`Password reset successful. Temporary password: ${tempPassword}`)}`);
     return;
   }
 
-  res.redirect(`/admin/students/${student.student_id}?error=${encodeURIComponent('Failed to reset password. Please try again.')}`);
+  res.redirect(`/admin/students/${targetId}?error=${encodeURIComponent('Failed to reset password. Please try again.')}`);
 });
 
 router.post('/students/:studentId/archive', requireAdmin, async (req, res) => {
@@ -898,6 +1017,7 @@ router.post('/students/:studentId/archive', requireAdmin, async (req, res) => {
     return res.redirect('/admin/students');
   }
 
+  const targetId = student.username || student.student_id;
   const archiveFields = supabaseAdmin && student.id
     ? { status: 'inactive' }
     : { status: 'inactive', archived: true };
@@ -908,11 +1028,11 @@ router.post('/students/:studentId/archive', requireAdmin, async (req, res) => {
       adminName: req.session.user.full_name,
       action: `Admin archived ${buildFullName(student)}`,
       targetType: 'student',
-      targetId: student.student_id
+      targetId
     });
   }
 
-  res.redirect(`/admin/students/${student.student_id}`);
+  res.redirect(`/admin/students/${targetId}`);
 });
 
 router.post('/students/:studentId/courses', requireAdmin, (req, res) => {

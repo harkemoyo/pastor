@@ -46,7 +46,8 @@
 
           <div class="action-stack">
             <% const isSuperAdmin = locals.user && locals.user.role === 'super_admin'; %>
-            <form method="POST" action="/admin/students/<%= student.student_id || student.username %>/role" style="display:inline;">
+            <% const detailKey = student.username || student.student_id; %>
+            <form method="POST" action="/admin/students/<%= detailKey %>/role" style="display:inline;">
               <select name="role" style="padding:0.6rem; border-radius:8px; border:1px solid #d1d5db; margin-right:0.5rem;">
                 <option value="student" <%= (student.role || 'student') === 'student' ? 'selected' : '' %>>🎓 Student</option>
                 <option value="teacher" <%= student.role === 'teacher' ? 'selected' : '' %>>📖 Teacher</option>
@@ -57,7 +58,7 @@
               </select>
               <button type="submit" class="btn btn-primary btn-sm">Update Role</button>
             </form>
-            <form method="POST" action="/admin/students/<%= student.student_id || student.username %>/status" style="display:inline;">
+            <form method="POST" action="/admin/students/<%= detailKey %>/status" style="display:inline;">
               <select name="status" style="padding:0.6rem; border-radius:8px; border:1px solid #d1d5db; margin-right:0.5rem;">
                 <option value="active" <%= student.status === 'active' ? 'selected' : '' %>>Active</option>
                 <option value="inactive" <%= student.status === 'inactive' ? 'selected' : '' %>>Inactive</option>
@@ -66,11 +67,11 @@
               </select>
               <button type="submit" class="btn btn-primary btn-sm">Update Status</button>
             </form>
-            <form method="POST" action="/admin/students/<%= student.student_id %>/reset-password" style="display:inline;">
+            <form method="POST" action="/admin/students/<%= detailKey %>/reset-password" style="display:inline;">
               <input type="hidden" name="new_password" value="Pastor@2026">
               <button type="submit" class="btn btn-warning btn-sm">Reset Password</button>
             </form>
-            <form method="POST" action="/admin/students/<%= student.student_id %>/archive" style="display:inline;">
+            <form method="POST" action="/admin/students/<%= detailKey %>/archive" style="display:inline;">
               <button type="submit" class="btn btn-danger btn-sm">Archive Student</button>
             </form>
           </div>
