@@ -37,8 +37,8 @@ function getUsers() {
   return readJson(USERS_FILE, []);
 }
 
-// Read students from Supabase (source of truth for signups); fall back to users.json
-// when Supabase admin credentials are not configured or the query fails.
+// Read students from Supabase (source of truth for signups) and mirror into data/users.json
+// so both stores stay matched; fall back to users.json when Supabase is not configured.
 async function getStudents() {
   if (supabaseAdmin) {
     try {
@@ -46,7 +46,36 @@ async function getStudents() {
         .from('students')
         .select('*')
         .order('created_at', { ascending: false });
-      if (!error && Array.isArray(data)) return data;
+      if (!error && Array.isArray(data)) {
+        try {
+          const localUsers = getUsers();
+          let changed = false;
+          for (const s of data) {
+            const idx = localUsers.findIndex(u =>
+              (s.email && u.email && u.email.toLowerCase() === s.email.toLowerCase()) ||
+              (s.username && u.username && u.username.toLowerCase() === s.username.toLowerCase())
+            );
+            const merged = {
+              ...(idx >= 0 ? localUsers[idx] : {}),
+              ...s,
+              role: s.role || (idx >= 0 ? localUsers[idx].role : 'student') || 'student',
+              password: (idx >= 0 && localUsers[idx].password) ? localUsers[idx].password : '$2b$10$IFeR81mpSAzXDcSVYRoso.WqE/pxE.dsHCeLDjpWiEmcA5Kdz/tam'
+            };
+            if (idx >= 0) {
+              localUsers[idx] = merged;
+            } else {
+              localUsers.push(merged);
+              changed = true;
+            }
+          }
+          if (changed || data.length > 0) {
+            saveUsers(localUsers);
+          }
+        } catch (syncErr) {
+          console.warn('Auto-sync Supabase students to users.json warning:', syncErr.message);
+        }
+        return data;
+      }
       console.warn('Supabase students read failed, using local users.json:', error && error.message);
     } catch (err) {
       console.warn('Supabase students read error, using local users.json:', err.message);
@@ -69,24 +98,30 @@ async function findStudent(id) {
   return students.find(user => matchesStudentId(user, id)) || null;
 }
 
-// Persist field changes for a student. Supabase rows (have a uuid `id`) are updated in the
-// database; local fallback records are updated in users.json. Returns true on success.
+// Persist field changes for a student in BOTH Supabase and local data/users.json so they always match.
 async function updateStudent(student, fields) {
+  let supabaseOk = false;
   if (supabaseAdmin && student.id) {
     const { error } = await supabaseAdmin.from('students').update(fields).eq('id', student.id);
     if (error) {
       console.error('Supabase student update failed:', error.message);
-      return false;
+    } else {
+      Object.assign(student, fields);
+      supabaseOk = true;
     }
-    Object.assign(student, fields);
-    return true;
   }
   const users = getUsers();
-  const local = users.find(user => matchesStudentId(user, student.student_id || student.username));
-  if (!local) return false;
-  Object.assign(local, fields);
-  Object.assign(student, fields);
-  return saveUsers(users);
+  const local = users.find(user =>
+    matchesStudentId(user, student.student_id || student.username) ||
+    (student.email && user.email && user.email.toLowerCase() === student.email.toLowerCase())
+  );
+  if (local) {
+    Object.assign(local, fields);
+    Object.assign(student, fields);
+    const localOk = saveUsers(users);
+    return supabaseOk || localOk;
+  }
+  return supabaseOk;
 }
 
 function saveUsers(users) {
@@ -620,6 +655,11 @@ router.post('/students/new', requireAdmin, async (req, res) => {
       return renderError(`Could not save the student profile: ${insertError.message}`);
     }
 
+    // Also save to local data/users.json so both stores stay matched
+    newUser.username = username;
+    newUser.auth_user_id = authData.user.id;
+    saveUsers([...getUsers(), newUser]);
+
     appendActivity({
       adminUsername: req.session.user.username,
       adminName: req.session.user.full_name,
@@ -713,15 +753,69 @@ router.post('/students/:studentId/reset-password', requireAdmin, async (req, res
   }
 
   const tempPassword = (req.body.new_password || 'Pastor@2026').trim();
+  const hashedPassword = bcrypt.hashSync(tempPassword, 10);
   let saved = false;
 
-  if (supabaseAdmin && student.auth_user_id) {
-    // Supabase students sign in through Supabase Auth, so the password must change there
-    const { error } = await supabaseAdmin.auth.admin.updateUserById(student.auth_user_id, { password: tempPassword });
-    if (error) console.error('Supabase password reset failed:', error.message);
-    saved = !error;
-  } else {
-    saved = await updateStudent(student, { password: bcrypt.hashSync(tempPassword, 10) });
+  if (supabaseAdmin) {
+    let authUserId = student.auth_user_id || null;
+    if (!authUserId && student.email) {
+      try {
+        const { data: listData } = await supabaseAdmin.auth.admin.listUsers({ perPage: 200 });
+        const existingAuth = (listData?.users || []).find(
+          u => u.email && u.email.toLowerCase() === student.email.toLowerCase()
+        );
+        if (existingAuth) {
+          authUserId = existingAuth.id;
+        }
+      } catch (e) {
+        console.warn('Admin reset password - listUsers warning:', e.message);
+      }
+    }
+
+    if (authUserId) {
+      const { error } = await supabaseAdmin.auth.admin.updateUserById(authUserId, {
+        password: tempPassword,
+        email_confirm: true
+      });
+      if (error) {
+        console.error('Supabase password reset failed:', error.message);
+      } else {
+        saved = true;
+      }
+    } else if (student.email) {
+      // Student row existed without an auth.users record — create the auth login now
+      const { data: createdAuth, error: createErr } = await supabaseAdmin.auth.admin.createUser({
+        email: student.email,
+        password: tempPassword,
+        email_confirm: true,
+        user_metadata: {
+          full_name: buildFullName(student),
+          username: student.username,
+          student_id: student.student_id
+        }
+      });
+      if (!createErr && createdAuth?.user) {
+        saved = true;
+        if (student.id) {
+          await supabaseAdmin.from('students').update({ auth_user_id: createdAuth.user.id }).eq('id', student.id);
+        }
+      } else if (createErr) {
+        console.error('Supabase createUser during password reset failed:', createErr.message);
+      }
+    }
+  }
+
+  // Always sync to local users.json if a matching local record exists
+  const localUsers = getUsers();
+  const localTarget = localUsers.find(u =>
+    matchesStudentId(u, student.student_id || student.username) ||
+    (student.email && u.email && u.email.toLowerCase() === student.email.toLowerCase())
+  );
+  if (localTarget) {
+    localTarget.password = hashedPassword;
+    if (saveUsers(localUsers)) {
+      saved = true;
+    }
   }
 
   if (saved) {

@@ -597,6 +597,25 @@ router.post('/register', async (req, res) => {
       return renderRegisterError(`Student account was created but profile storage failed: ${studentInsertError.message}. Details: ${JSON.stringify(studentInsertError)}`);
     }
 
+    // Also mirror the new student into local data/users.json so local & Supabase always match
+    const localUsers = getUsers();
+    const localRecord = {
+      ...extendedProfile,
+      country: cleanCountry || 'Kenya',
+      country_code: registeredCountryCode,
+      password: bcrypt.hashSync(cleanPass, 10)
+    };
+    const existingIdx = localUsers.findIndex(u =>
+      (u.email && u.email.toLowerCase() === cleanEmail) ||
+      (u.username && u.username.toLowerCase() === username.toLowerCase())
+    );
+    if (existingIdx >= 0) {
+      localUsers[existingIdx] = { ...localUsers[existingIdx], ...localRecord };
+    } else {
+      localUsers.push(localRecord);
+    }
+    saveUsersList(localUsers);
+
     res.render('register-success', {
       title: 'Account Created | Pastors LMS',
       username: username,
@@ -658,104 +677,102 @@ router.post('/login', async (req, res) => {
       const isEmail = cleanUsername.includes('@');
       let emailToUse = cleanUsername;
       
-      // If it's a username or phone number, find the email
+      // If it's a username or phone number, check Supabase FIRST (source of truth), then local users.json
       if (!isEmail) {
-        const users = getUsers();
-        const localUser = users.find(u => {
-          const matchU = u.username && u.username.toLowerCase() === inputLower;
-          const matchId = u.student_id && u.student_id.toLowerCase() === inputLower;
-          const matchP = inputPhone && u.phone && normalizePhone(u.phone) === inputPhone;
-          return matchU || matchId || matchP;
-        });
+        const lookupClient = supabaseAdmin || supabase;
+        let studentData = null;
 
-        if (localUser && localUser.email) {
-          emailToUse = localUser.email;
-          console.log('Found email for identifier from local users:', emailToUse);
-        } else {
-          // Check Supabase students table by username, student_id, or phone
-          const lookupClient = supabaseAdmin || supabase;
-          let studentData = null;
-          let studentError = null;
-          
-          // 1. Try username case-insensitively
-          const userRes = await lookupClient
+        // 1. Try username case-insensitively in Supabase
+        const userRes = await lookupClient
+          .from('students')
+          .select('email')
+          .ilike('username', cleanUsername)
+          .limit(1)
+          .maybeSingle();
+
+        if (!userRes.error && userRes.data && userRes.data.email) {
+          studentData = userRes.data;
+        }
+
+        // 2. Try student_id case-insensitively if not found
+        if (!studentData) {
+          const idRes = await lookupClient
             .from('students')
             .select('email')
-            .ilike('username', cleanUsername)
+            .ilike('student_id', cleanUsername)
             .limit(1)
             .maybeSingle();
-          
-          if (!userRes.error && userRes.data && userRes.data.email) {
-            studentData = userRes.data;
+          if (!idRes.error && idRes.data && idRes.data.email) {
+            studentData = idRes.data;
           }
+        }
 
-          // 2. Try student_id case-insensitively if not found
-          if (!studentData) {
-            const idRes = await lookupClient
+        // 3. Try phone number (both raw and normalized) if not found
+        if (!studentData) {
+          for (const phoneVal of [cleanUsername, inputPhone].filter(Boolean)) {
+            const phoneRes = await lookupClient
               .from('students')
               .select('email')
-              .ilike('student_id', cleanUsername)
+              .eq('phone', phoneVal)
               .limit(1)
               .maybeSingle();
-            if (!idRes.error && idRes.data && idRes.data.email) {
-              studentData = idRes.data;
+            if (!phoneRes.error && phoneRes.data && phoneRes.data.email) {
+              studentData = phoneRes.data;
+              break;
             }
           }
+        }
 
-          // 3. Try phone number (both raw and normalized) if not found
-          if (!studentData) {
-            for (const phoneVal of [cleanUsername, inputPhone].filter(Boolean)) {
-              const phoneRes = await lookupClient
-                .from('students')
-                .select('email')
-                .eq('phone', phoneVal)
-                .limit(1)
-                .maybeSingle();
-              if (!phoneRes.error && phoneRes.data && phoneRes.data.email) {
-                studentData = phoneRes.data;
-                break;
+        // 4. Try matching full_name case-insensitively if not found
+        if (!studentData) {
+          const nameRes = await lookupClient
+            .from('students')
+            .select('email')
+            .ilike('full_name', cleanUsername)
+            .limit(1)
+            .maybeSingle();
+          if (!nameRes.error && nameRes.data && nameRes.data.email) {
+            studentData = nameRes.data;
+          }
+        }
+
+        // 5. Try Supabase Auth metadata lookup if admin client is available
+        if (!studentData && supabaseAdmin) {
+          try {
+            const { data: authList } = await supabaseAdmin.auth.admin.listUsers({ perPage: 200 });
+            if (authList && authList.users) {
+              const found = authList.users.find(u => {
+                const m = u.user_metadata || {};
+                const matchU = m.username && m.username.toLowerCase() === inputLower;
+                const matchId = m.student_id && m.student_id.toLowerCase() === inputLower;
+                const matchP = inputPhone && m.phone && normalizePhone(m.phone) === inputPhone;
+                return matchU || matchId || matchP;
+              });
+              if (found && found.email) {
+                studentData = { email: found.email };
+                console.log('Found email from Supabase Auth admin metadata:', found.email);
               }
             }
+          } catch (errList) {
+            console.warn('Supabase auth.admin.listUsers error:', errList.message);
           }
-          
-          // 4. Try matching full_name case-insensitively if not found
-          if (!studentData) {
-            const nameRes = await lookupClient
-              .from('students')
-              .select('email')
-              .ilike('full_name', cleanUsername)
-              .limit(1)
-              .maybeSingle();
-            if (!nameRes.error && nameRes.data && nameRes.data.email) {
-              studentData = nameRes.data;
-            }
-          }
+        }
 
-          // 5. Try Supabase Auth metadata lookup if admin client is available
-          if (!studentData && supabaseAdmin) {
-            try {
-              const { data: authList } = await supabaseAdmin.auth.admin.listUsers({ perPage: 100 });
-              if (authList && authList.users) {
-                const found = authList.users.find(u => {
-                  const m = u.user_metadata || {};
-                  const matchU = m.username && m.username.toLowerCase() === inputLower;
-                  const matchId = m.student_id && m.student_id.toLowerCase() === inputLower;
-                  const matchP = inputPhone && m.phone && normalizePhone(m.phone) === inputPhone;
-                  return matchU || matchId || matchP;
-                });
-                if (found && found.email) {
-                  studentData = { email: found.email };
-                  console.log('Found email from Supabase Auth admin metadata:', found.email);
-                }
-              }
-            } catch (errList) {
-              console.warn('Supabase auth.admin.listUsers error:', errList.message);
-            }
-          }
-          
-          if (studentData && studentData.email) {
-            emailToUse = studentData.email;
-            console.log('Found email for identifier from Supabase:', emailToUse);
+        if (studentData && studentData.email) {
+          emailToUse = studentData.email;
+          console.log('Found email for identifier from Supabase:', emailToUse);
+        } else {
+          // 6. Fallback to local users.json only if not found in Supabase
+          const users = getUsers();
+          const localUser = users.find(u => {
+            const matchU = u.username && u.username.toLowerCase() === inputLower;
+            const matchId = u.student_id && u.student_id.toLowerCase() === inputLower;
+            const matchP = inputPhone && u.phone && normalizePhone(u.phone) === inputPhone;
+            return matchU || matchId || matchP;
+          });
+          if (localUser && localUser.email) {
+            emailToUse = localUser.email;
+            console.log('Found email for identifier from local users fallback:', emailToUse);
           }
         }
       }
@@ -813,6 +830,35 @@ router.post('/login', async (req, res) => {
             resolveUserCountryCode(localMatched) ||
             resolveUserCountryCode(data.user.user_metadata) ||
             'KE';
+
+          // Mirror authenticated Supabase user & password hash into local data/users.json
+          try {
+            const currentUsers = getUsers();
+            const syncedEntry = {
+              ...(localMatched || {}),
+              ...(profileRow || {}),
+              username: resolvedUsername,
+              email: data.user.email,
+              full_name: fullName,
+              role,
+              country_code: countryCode,
+              status: profileRow?.status || localMatched?.status || 'active',
+              approval_status: profileRow?.approval_status || localMatched?.approval_status || 'approved',
+              password: bcrypt.hashSync(cleanPass, 10)
+            };
+            const idx = currentUsers.findIndex(u =>
+              (u.username && u.username.toLowerCase() === resolvedUsername.toLowerCase()) ||
+              (u.email && u.email.toLowerCase() === (data.user.email || '').toLowerCase())
+            );
+            if (idx >= 0) {
+              currentUsers[idx] = syncedEntry;
+            } else {
+              currentUsers.push(syncedEntry);
+            }
+            saveUsersList(currentUsers);
+          } catch (syncErr) {
+            console.warn('Local users.json sync on login warning:', syncErr.message);
+          }
 
           req.session.user = {
             id: data.user.id,

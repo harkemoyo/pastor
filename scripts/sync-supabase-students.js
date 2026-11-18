@@ -59,30 +59,35 @@ async function main() {
   let added = 0;
   let updated = 0;
   for (const s of students) {
-    const existingIndex = currentUsers.findIndex(u => u.email === s.email || u.username === s.username);
+    const existingIndex = currentUsers.findIndex(u =>
+      (s.email && u.email && u.email.toLowerCase() === s.email.toLowerCase()) ||
+      (s.username && u.username && u.username.toLowerCase() === s.username.toLowerCase())
+    );
+    const existing = existingIndex >= 0 ? currentUsers[existingIndex] : null;
     const mapped = {
+      ...(existing || {}),
       username: s.username,
       email: s.email,
-      password: currentUsers[existingIndex]?.password || '$2b$10$IFeR81mpSAzXDcSVYRoso.WqE/pxE.dsHCeLDjpWiEmcA5Kdz/tam', // keep existing hash or default
+      password: existing?.password || '$2b$10$IFeR81mpSAzXDcSVYRoso.WqE/pxE.dsHCeLDjpWiEmcA5Kdz/tam',
       full_name: s.full_name || [s.first_name, s.last_name].filter(Boolean).join(' '),
-      first_name: s.first_name || '',
-      last_name: s.last_name || '',
-      phone: s.phone || '',
-      church_name: s.church_name || '',
-      town: s.town || '',
-      county: s.county || '',
-      physical_address: s.physical_address || '',
-      ministry_role: s.ministry_role || '',
-      years_in_ministry: s.years_in_ministry || 0,
-      student_id: s.student_id || s.username,
-      role: 'student',
-      status: s.status || 'active',
-      approval_status: s.approval_status || 'approved',
-      created_at: s.created_at || new Date().toISOString()
+      first_name: s.first_name || existing?.first_name || '',
+      last_name: s.last_name || existing?.last_name || '',
+      phone: s.phone || existing?.phone || '',
+      church_name: s.church_name || existing?.church_name || '',
+      town: s.town || existing?.town || '',
+      county: s.county || existing?.county || '',
+      physical_address: s.physical_address || existing?.physical_address || '',
+      ministry_role: s.ministry_role || existing?.ministry_role || '',
+      years_in_ministry: s.years_in_ministry ?? existing?.years_in_ministry ?? 0,
+      student_id: s.student_id || existing?.student_id || s.username,
+      role: (existing?.role && ['admin', 'super_admin', 'teacher'].includes(existing.role)) ? existing.role : (s.role || 'student'),
+      status: s.status || existing?.status || 'active',
+      approval_status: s.approval_status || existing?.approval_status || 'approved',
+      created_at: s.created_at || existing?.created_at || new Date().toISOString()
     };
 
     if (existingIndex >= 0) {
-      currentUsers[existingIndex] = { ...currentUsers[existingIndex], ...mapped };
+      currentUsers[existingIndex] = mapped;
       updated++;
     } else {
       currentUsers.push(mapped);
@@ -90,8 +95,42 @@ async function main() {
     }
   }
 
+  // Push any real local users.json records missing in Supabase up to Supabase students table
+  let pushedToSupabase = 0;
+  const demoEmails = new Set(['demo@pastorslms.com', 'pastor.james@church.org', 'john.doe@church.org', 'sarah.otieno@example.com', 'admin@pastorslms.com', 'teacher@pastorslms.com']);
+  for (const u of currentUsers) {
+    if (!u.email || demoEmails.has(u.email.toLowerCase()) || ['admin', 'super_admin', 'teacher'].includes(u.role)) continue;
+    const inSupabase = students.some(s =>
+      (s.email && s.email.toLowerCase() === u.email.toLowerCase()) ||
+      (s.username && u.username && s.username.toLowerCase() === u.username.toLowerCase())
+    );
+    if (!inSupabase) {
+      const payload = {
+        username: u.username,
+        email: u.email,
+        full_name: u.full_name || [u.first_name, u.last_name].filter(Boolean).join(' '),
+        first_name: u.first_name || '',
+        last_name: u.last_name || '',
+        phone: u.phone || '',
+        county: u.county || '',
+        town: u.town || '',
+        physical_address: u.physical_address || '',
+        church_name: u.church_name || '',
+        ministry_role: u.ministry_role || '',
+        years_in_ministry: Number(u.years_in_ministry || 0),
+        student_id: u.student_id || u.username,
+        role: 'student',
+        status: u.status || 'active',
+        approval_status: u.approval_status || 'approved',
+        created_at: u.created_at || new Date().toISOString()
+      };
+      const { error: pushErr } = await supabase.from('students').upsert(payload, { onConflict: 'email' });
+      if (!pushErr) pushedToSupabase++;
+    }
+  }
+
   fs.writeFileSync(usersFile, JSON.stringify(currentUsers, null, 2), 'utf8');
-  console.log(`\nSynced to local data/users.json: ${added} added, ${updated} updated.`);
+  console.log(`\nTwo-way sync complete -> Local data/users.json: ${added} added, ${updated} updated | Pushed to Supabase: ${pushedToSupabase}`);
 }
 
 main().catch(err => {
