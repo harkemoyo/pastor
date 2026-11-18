@@ -1,10 +1,14 @@
 const express = require('express');
 const router = express.Router();
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const bcrypt = require('bcrypt');
 const { supabase, supabaseAdmin } = require('../config/supabase');
 const { resolveUserCountryCode } = require('../middleware/auth');
+
+const USERS_FILE = path.join(__dirname, '../data/users.json');
+const FALLBACK_USERS_FILE = path.join(os.tmpdir(), 'pastors-lms-users.json');
 
 let sharp = null;
 try {
@@ -43,14 +47,43 @@ async function saveProfilePicture(dataUrl, username) {
   }
 }
 
-// Load fallback users from JSON
+// Load fallback users from JSON (merging any runtime password updates from tmpdir)
 function getUsers() {
   try {
-    const raw = fs.readFileSync(path.join(__dirname, '../data/users.json'), 'utf8');
-    return JSON.parse(raw);
+    const raw = fs.readFileSync(USERS_FILE, 'utf8');
+    const baseUsers = JSON.parse(raw);
+    try {
+      if (fs.existsSync(FALLBACK_USERS_FILE)) {
+        const tmpUsers = JSON.parse(fs.readFileSync(FALLBACK_USERS_FILE, 'utf8'));
+        if (Array.isArray(tmpUsers)) {
+          return baseUsers.map(u => {
+            const over = tmpUsers.find(t => (t.username && t.username === u.username) || (t.email && t.email === u.email));
+            return over ? { ...u, ...over } : u;
+          });
+        }
+      }
+    } catch {
+      // Ignore tmp read error
+    }
+    return baseUsers;
   } catch (err) {
     console.error('Error reading users.json:', err);
     return [];
+  }
+}
+
+function saveUsersList(users) {
+  const serialized = JSON.stringify(users, null, 2);
+  try {
+    fs.writeFileSync(USERS_FILE, serialized, 'utf8');
+    return true;
+  } catch {
+    try {
+      fs.writeFileSync(FALLBACK_USERS_FILE, serialized, 'utf8');
+      return true;
+    } catch {
+      return false;
+    }
   }
 }
 
@@ -188,95 +221,159 @@ router.get('/forgot-password', (req, res) => {
   });
 });
 
-// POST /forgot-password
+// POST /forgot-password (Identity-Verified Password Reset)
 router.post('/forgot-password', async (req, res) => {
-  const { identifier } = req.body;
+  const { identifier, phone, new_password, confirm_password } = req.body;
   const cleanId = (identifier || '').trim();
+  const cleanPhone = (phone || '').trim();
+  const cleanNewPass = (new_password || '').trim();
+  const cleanConfirmPass = (confirm_password || '').trim();
 
-  if (!cleanId) {
-    return res.render('forgot-password', {
-      title: 'Forgot Password | Pastors LMS',
-      error: 'Please enter your phone number, email address, or username.',
-      success: null,
-      identifier: ''
-    });
-  }
-
-  const isEmail = cleanId.includes('@');
-  let targetEmail = isEmail ? cleanId.toLowerCase() : null;
-  let pastorName = 'Pastor';
-  const inputLower = cleanId.toLowerCase();
-  const inputPhone = normalizePhone(cleanId);
-
-  // 1. Look up in local users
-  const users = getUsers();
-  const matched = users.find(u => {
-    const matchU = u.username && u.username.toLowerCase() === inputLower;
-    const matchId = u.student_id && u.student_id.toLowerCase() === inputLower;
-    const matchE = u.email && u.email.toLowerCase() === inputLower;
-    const matchP = inputPhone && u.phone && normalizePhone(u.phone) === inputPhone;
-    return matchU || matchId || matchE || matchP;
+  const renderForgotError = (msg) => res.render('forgot-password', {
+    title: 'Forgot Password | Pastors LMS',
+    error: msg,
+    success: null,
+    identifier: cleanId,
+    phone: cleanPhone
   });
 
-  if (matched) {
-    targetEmail = matched.email;
+  if (!cleanId || !cleanPhone) {
+    return renderForgotError('Please enter both your email/username AND your registered phone number to verify your identity.');
+  }
+
+  if (!cleanNewPass || !cleanConfirmPass) {
+    return renderForgotError('Please enter and confirm your new password.');
+  }
+
+  if (cleanNewPass.length < 6) {
+    return renderForgotError('Your new password must be at least 6 characters.');
+  }
+
+  if (cleanNewPass !== cleanConfirmPass) {
+    return renderForgotError('New password and confirmation password do not match.');
+  }
+
+  const inputLower = cleanId.toLowerCase();
+  const verifyPhone = normalizePhone(cleanPhone);
+  if (!verifyPhone || verifyPhone.length < 9) {
+    return renderForgotError('Please enter a valid registered phone number for verification.');
+  }
+
+  let targetEmail = cleanId.includes('@') ? inputLower : null;
+  let pastorName = 'Pastor';
+  let loginHandle = cleanId;
+  let resetSucceeded = false;
+
+  // 1. Check local users.json — MUST match BOTH (email/username/student_id) AND registered phone!
+  const users = getUsers();
+  const matchedIndex = users.findIndex(u => {
+    const matchIdOrEmail =
+      (u.username && u.username.toLowerCase() === inputLower) ||
+      (u.student_id && u.student_id.toLowerCase() === inputLower) ||
+      (u.email && u.email.toLowerCase() === inputLower);
+    const matchPhone = u.phone && normalizePhone(u.phone) === verifyPhone;
+    return matchIdOrEmail && matchPhone;
+  });
+
+  if (matchedIndex >= 0) {
+    const matched = users[matchedIndex];
+    if (['admin', 'super_admin'].includes(matched.role)) {
+      return renderForgotError('For security, administrator passwords cannot be reset through the public form.');
+    }
+    targetEmail = matched.email || targetEmail;
     pastorName = matched.full_name || 'Pastor';
-  } else if (!targetEmail && (supabaseAdmin || supabase)) {
-    // Look up in Supabase
+    loginHandle = matched.username || matched.email || cleanId;
+    users[matchedIndex].password = bcrypt.hashSync(cleanNewPass, 10);
+    saveUsersList(users);
+    resetSucceeded = true;
+  }
+
+  // 2. Also check & update in Supabase Auth if configured (requiring BOTH identifier + phone match)
+  if (supabaseAdmin || supabase) {
     try {
       const lookupClient = supabaseAdmin || supabase;
-      for (const col of ['username', 'student_id']) {
-        const { data } = await lookupClient.from('students').select('email, full_name').ilike(col, cleanId).maybeSingle();
-        if (data && data.email) {
-          targetEmail = data.email;
-          pastorName = data.full_name || 'Pastor';
+      let studentRow = null;
+
+      for (const col of ['username', 'student_id', 'email']) {
+        const { data } = await lookupClient.from('students').select('*').ilike(col, cleanId).limit(1).maybeSingle();
+        if (data) {
+          studentRow = data;
           break;
         }
       }
-      if (!targetEmail && inputPhone) {
-        const { data } = await lookupClient.from('students').select('email, full_name').eq('phone', cleanId).maybeSingle();
-        if (data && data.email) {
-          targetEmail = data.email;
-          pastorName = data.full_name || 'Pastor';
+
+      if (studentRow) {
+        if (['admin', 'super_admin'].includes(studentRow.role)) {
+          return renderForgotError('For security, administrator passwords cannot be reset through the public form.');
+        }
+        const rowPhone = normalizePhone(studentRow.phone || '');
+        if (!rowPhone || rowPhone !== verifyPhone) {
+          studentRow = null; // Phone number did not match!
+        } else {
+          targetEmail = studentRow.email || targetEmail;
+          pastorName = studentRow.full_name || pastorName;
+          loginHandle = studentRow.username || studentRow.email || loginHandle;
+        }
+      }
+
+      if (supabaseAdmin && targetEmail && (studentRow || matchedIndex >= 0)) {
+        let authUserId = studentRow?.auth_user_id || null;
+        if (!authUserId) {
+          const { data: listData } = await supabaseAdmin.auth.admin.listUsers({ perPage: 200 });
+          const existingAuth = (listData?.users || []).find(
+            u => u.email && u.email.toLowerCase() === targetEmail.toLowerCase()
+          );
+          if (existingAuth) {
+            authUserId = existingAuth.id;
+          }
+        }
+
+        if (authUserId) {
+          const { error: updateErr } = await supabaseAdmin.auth.admin.updateUserById(authUserId, {
+            password: cleanNewPass,
+            email_confirm: true
+          });
+          if (!updateErr) {
+            resetSucceeded = true;
+          } else {
+            console.warn('Supabase updateUserById warning:', updateErr.message);
+          }
+        } else {
+          const { data: createdAuth, error: createErr } = await supabaseAdmin.auth.admin.createUser({
+            email: targetEmail,
+            password: cleanNewPass,
+            email_confirm: true,
+            user_metadata: {
+              full_name: pastorName,
+              username: loginHandle
+            }
+          });
+          if (!createErr && createdAuth?.user) {
+            resetSucceeded = true;
+            if (studentRow && studentRow.id) {
+              await supabaseAdmin.from('students').update({ auth_user_id: createdAuth.user.id }).eq('id', studentRow.id);
+            }
+          }
         }
       }
     } catch (err) {
-      console.warn('Supabase lookup in forgot-password error:', err.message);
+      console.warn('Supabase password reset error:', err.message);
     }
   }
 
-  let emailSent = false;
-  if (targetEmail && supabase) {
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(targetEmail);
-      if (!error) {
-        emailSent = true;
-      } else {
-        console.warn('Supabase resetPasswordForEmail warning:', error.message);
-      }
-    } catch (e) {
-      console.warn('Supabase password reset exception:', e.message);
-    }
+  if (!resetSucceeded) {
+    return renderForgotError('Verification failed: the email/username and registered phone number did not match our records.');
   }
-
-  const waText = encodeURIComponent(
-    `Hello Pastor Hark & IDA Admin, I need help resetting my Pastors LMS password. My name/ID is ${pastorName} (${cleanId}).`
-  );
-  const waUrl = `https://wa.me/254707821269?text=${waText}`;
 
   return res.render('forgot-password', {
     title: 'Forgot Password | Pastors LMS',
     error: null,
     success: {
-      message: emailSent
-        ? `A password reset link has been dispatched to ${targetEmail}. Please check your inbox.`
-        : `Your reset request has been recorded for ${cleanId}. If you need immediate access, you can also reach our administrative desk directly on WhatsApp.`,
-      emailSent,
+      message: `Your password for ${pastorName} (${loginHandle}) has been updated. You can now sign in immediately with your new password.`,
       targetEmail,
-      waUrl,
       pastorName
     },
-    identifier: cleanId
+    identifier: loginHandle
   });
 });
 

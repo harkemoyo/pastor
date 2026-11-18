@@ -7,6 +7,14 @@
   window.__PASTORS_LMS_APP_INITED__ = true;
 
 document.addEventListener('DOMContentLoaded', () => {
+  const regJsonEl = document.getElementById('registeredPastorsJson');
+  if (regJsonEl && !window.PASTORS_REGISTERED_USERS) {
+    try {
+      const rawJson = regJsonEl.getAttribute('data-json') || regJsonEl.textContent;
+      window.PASTORS_REGISTERED_USERS = JSON.parse(rawJson);
+    } catch (e) {}
+  }
+
   initClock();
   initCourseFilterTabs();
   initModuleAccordions();

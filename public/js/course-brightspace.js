@@ -5,6 +5,20 @@
  */
 
 document.addEventListener('DOMContentLoaded', () => {
+  const courseDataEl = document.getElementById('courseDataJson');
+  if (courseDataEl && !window.PASTORS_LMS_COURSE) {
+    try {
+      const rawJson = courseDataEl.getAttribute('data-json') || courseDataEl.textContent;
+      window.PASTORS_LMS_COURSE = JSON.parse(rawJson);
+    } catch (e) {
+      console.error('Failed to parse course data JSON:', e);
+    }
+  }
+
+  document.querySelectorAll('.progress-bar[data-percent]').forEach(bar => {
+    bar.style.width = `${bar.getAttribute('data-percent')}%`;
+  });
+
   initBrightspaceTabs();
   initBrightspaceTree();
   initBrightspaceSearch();
@@ -207,7 +221,7 @@ function initBrightspaceToolbar() {
   const btnFullscreen = document.getElementById('btnFullscreenTopic');
 
   function navigateTopic(direction) {
-    const allTopics = Array.from(document.querySelectorAll('.bp-topic-item:not([style*="display: none"])'));
+    const allTopics = Array.from(document.querySelectorAll('.bp-topic-item'));
     if (!allTopics.length) return;
 
     const currentIndex = allTopics.findIndex(t => t.classList.contains('selected'));
@@ -215,6 +229,12 @@ function initBrightspaceToolbar() {
 
     if (targetIndex >= 0 && targetIndex < allTopics.length) {
       const targetEl = allTopics[targetIndex];
+      const parentUnit = targetEl.closest('.bp-unit-node');
+      if (parentUnit) {
+        parentUnit.classList.add('expanded');
+        const sublist = parentUnit.querySelector('.bp-topic-sublist');
+        if (sublist) sublist.style.display = 'flex';
+      }
       const targetModId = targetEl.getAttribute('data-module-id');
       const targetTopicId = targetEl.getAttribute('data-topic-id');
       loadTopic(targetModId, targetTopicId, targetEl);
@@ -251,6 +271,88 @@ function initBrightspaceToolbar() {
   }
 }
 
+function refreshCourseProgressUI() {
+  const allTopics = document.querySelectorAll('.bp-topic-item');
+  const completedTopics = document.querySelectorAll('.bp-topic-item.completed');
+  const totalCount = allTopics.length;
+  const completedCount = completedTopics.length;
+  const coursePct = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+
+  const sidebarPct = document.getElementById('courseSidebarPct');
+  const sidebarBar = document.getElementById('courseSidebarBar');
+  const sidebarCount = document.getElementById('courseSidebarTopicsCount');
+  if (sidebarPct) sidebarPct.textContent = `${coursePct}%`;
+  if (sidebarBar) sidebarBar.style.width = `${coursePct}%`;
+  if (sidebarCount) sidebarCount.textContent = `${completedCount} of ${totalCount} lessons completed`;
+
+  const homePct = document.getElementById('homeCoursePercent');
+  const homeVal = document.getElementById('homeTopicsVal');
+  const homeBar = document.getElementById('homeOverallBar');
+  if (homePct) homePct.textContent = `${coursePct}%`;
+  if (homeVal) homeVal.textContent = `${completedCount} / ${totalCount}`;
+  if (homeBar) homeBar.style.width = `${coursePct}%`;
+}
+
+async function setTopicCompletion(targetItem, shouldBeCompleted) {
+  if (!targetItem) return;
+  const modId = targetItem.getAttribute('data-module-id') || currentModuleId;
+  const topId = targetItem.getAttribute('data-topic-id') || currentTopicId;
+  const btnComplete = document.getElementById('btnMarkTopicComplete');
+  const courseId = (btnComplete && btnComplete.getAttribute('data-course-id')) || '1';
+  const direction = shouldBeCompleted ? 'inc' : 'dec';
+
+  if (shouldBeCompleted) {
+    targetItem.classList.add('completed');
+    if (!targetItem.querySelector('.bp-done-check')) {
+      const checkSpan = document.createElement('span');
+      checkSpan.className = 'bp-done-check';
+      checkSpan.title = 'Completed';
+      checkSpan.innerHTML = `
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+          <polyline points="20 6 9 17 4 12" />
+        </svg>
+      `;
+      targetItem.appendChild(checkSpan);
+    }
+  } else {
+    targetItem.classList.remove('completed');
+    const checkIcon = targetItem.querySelector('.bp-done-check');
+    if (checkIcon) checkIcon.remove();
+  }
+
+  if (targetItem.classList.contains('selected')) {
+    updateMarkCompleteBtnState(shouldBeCompleted);
+  }
+
+  const parentUnit = targetItem.closest('.bp-unit-node');
+  if (parentUnit) {
+    const unitCompleted = parentUnit.querySelectorAll('.bp-topic-item.completed').length;
+    const unitTotal = parentUnit.querySelectorAll('.bp-topic-item').length;
+    const unitPct = unitTotal > 0 ? Math.round((unitCompleted / unitTotal) * 100) : 0;
+    const progressEl = parentUnit.querySelector('.bp-unit-progress-text');
+    if (progressEl) {
+      progressEl.textContent = `${unitCompleted}/${unitTotal} Completed (${unitPct}%)`;
+    }
+    const modBar = document.getElementById(`modBar-${modId}`);
+    if (modBar) {
+      modBar.style.width = `${unitPct}%`;
+    }
+    parentUnit.classList.toggle('module-complete', unitTotal > 0 && unitCompleted >= unitTotal);
+  }
+
+  refreshCourseProgressUI();
+
+  try {
+    await fetch(`/courses/${courseId}/modules/${modId}/toggle`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ direction, topicId: topId })
+    });
+  } catch (err) {
+    console.warn('Could not sync completion to server:', err);
+  }
+}
+
 /**
  * 5. Topic Footer Navigation & Interactive Mark Complete
  */
@@ -267,7 +369,11 @@ function initBrightspaceTopicFooter() {
   }
 
   if (footerBtnNext) {
-    footerBtnNext.addEventListener('click', () => {
+    footerBtnNext.addEventListener('click', async () => {
+      const selectedItem = document.querySelector('.bp-topic-item.selected');
+      if (selectedItem && !selectedItem.classList.contains('completed')) {
+        await setTopicCompletion(selectedItem, true);
+      }
       const btnNext = document.getElementById('btnNextTopic');
       if (btnNext) btnNext.click();
     });
@@ -276,55 +382,9 @@ function initBrightspaceTopicFooter() {
   if (btnComplete) {
     btnComplete.addEventListener('click', async () => {
       const selectedItem = document.querySelector('.bp-topic-item.selected');
-      if (!selectedItem || !currentModuleId) return;
-
+      if (!selectedItem) return;
       const isCompleted = selectedItem.classList.contains('completed');
-      const direction = isCompleted ? 'dec' : 'inc';
-      const courseId = btnComplete.getAttribute('data-course-id') || '1';
-
-      // Toggle UI State
-      if (isCompleted) {
-        selectedItem.classList.remove('completed');
-        const checkIcon = selectedItem.querySelector('.bp-done-check');
-        if (checkIcon) checkIcon.remove();
-        updateMarkCompleteBtnState(false);
-      } else {
-        selectedItem.classList.add('completed');
-        if (!selectedItem.querySelector('.bp-done-check')) {
-          const checkSpan = document.createElement('span');
-          checkSpan.className = 'bp-done-check';
-          checkSpan.title = 'Completed';
-          checkSpan.innerHTML = `
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
-              <polyline points="20 6 9 17 4 12" />
-            </svg>
-          `;
-          selectedItem.appendChild(checkSpan);
-        }
-        updateMarkCompleteBtnState(true);
-      }
-
-      // Update Unit Completed count
-      const parentUnit = selectedItem.closest('.bp-unit-node');
-      if (parentUnit) {
-        const completedCount = parentUnit.querySelectorAll('.bp-topic-item.completed').length;
-        const totalCount = parentUnit.querySelectorAll('.bp-topic-item').length;
-        const progressEl = parentUnit.querySelector('.bp-unit-progress-text');
-        if (progressEl) {
-          progressEl.textContent = `${completedCount}/${totalCount} Completed`;
-        }
-      }
-
-      // Sync to Server
-      try {
-        await fetch(`/courses/${courseId}/modules/${currentModuleId}/toggle`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ direction })
-        });
-      } catch (err) {
-        console.warn('Could not sync completion to server:', err);
-      }
+      await setTopicCompletion(selectedItem, !isCompleted);
     });
   }
 }

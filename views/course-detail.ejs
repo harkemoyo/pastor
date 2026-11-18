@@ -161,6 +161,20 @@
 
       <!-- LEFT SIDEBAR: Unit & Module Tree Navigation -->
       <aside class="bp-sidebar" aria-label="Course Table of Contents">
+        <!-- Live Course Progress Summary -->
+        <div class="bp-sidebar-progress-card" id="courseSidebarProgressCard">
+          <div class="bp-sidebar-progress-top">
+            <span class="bp-sidebar-progress-label">Your Course Progress</span>
+            <span class="bp-sidebar-progress-pct" id="courseSidebarPct"><%= course.percent %>%</span>
+          </div>
+          <div class="progress-container bp-sidebar-progress-track">
+            <div class="progress-bar" id="courseSidebarBar" data-percent="<%= course.percent %>"></div>
+          </div>
+          <div class="bp-sidebar-progress-meta" id="courseSidebarTopicsCount">
+            <%= course.completedTopics %> of <%= course.totalTopics %> lessons completed
+          </div>
+        </div>
+
         <!-- Search Titles & Descriptions -->
         <div class="bp-search-wrap">
           <div class="bp-search-inner">
@@ -176,14 +190,21 @@
 
         <!-- Modules Tree -->
         <div class="bp-tree-container" id="bpUnitsTree">
-          <% (course.modulesWithTopics || []).forEach((mod, modIdx) => { %>
+          <% 
+            const modsList = course.modulesWithTopics || [];
+            let defaultUnitIdx = modsList.findIndex(m => (m.completed_topics || 0) < (m.total_topics || (m.topics ? m.topics.length : 1)));
+            if (defaultUnitIdx < 0) defaultUnitIdx = 0;
+          %>
+          <% modsList.forEach((mod, modIdx) => { %>
             <% 
-              // Unit 1 (index 1 in standard courses) or first unit active by default
-              const isDefaultActiveUnit = (modIdx === 1 || (course.modulesWithTopics.length <= 1 && modIdx === 0));
-              const modCompleted = mod.completed_topics || 0;
-              const modTotal = mod.total_topics || (mod.topics ? mod.topics.length : 4);
+              const isDefaultActiveUnit = (modIdx === defaultUnitIdx);
+              const modTotal = (mod.topics && mod.topics.length) ? mod.topics.length : (mod.total_topics || 4);
+              const modCompleted = Math.min(modTotal, mod.completed_topics || 0);
+              const modPercent = modTotal > 0 ? Math.round((modCompleted / modTotal) * 100) : 0;
+              let defaultTopicIdx = (mod.topics || []).findIndex(t => !t.completed);
+              if (defaultTopicIdx < 0) defaultTopicIdx = 0;
             %>
-            <div class="bp-unit-node <%= isDefaultActiveUnit ? 'expanded active-unit' : '' %>" data-module-id="<%= mod.id %>" data-module-idx="<%= modIdx %>">
+            <div class="bp-unit-node <%= isDefaultActiveUnit ? 'expanded active-unit' : '' %> <%= modCompleted >= modTotal && modTotal > 0 ? 'module-complete' : '' %>" data-module-id="<%= mod.id %>" data-module-idx="<%= modIdx %>">
               
               <!-- Unit Header -->
               <div class="bp-unit-header">
@@ -194,16 +215,19 @@
                 </button>
                 <div class="bp-unit-title-group">
                   <span class="bp-unit-title"><%= mod.title %></span>
-                  <span class="bp-unit-progress-text" id="modProgress-<%= mod.id %>"><%= modCompleted %>/<%= modTotal %> Completed</span>
+                  <span class="bp-unit-progress-text" id="modProgress-<%= mod.id %>"><%= modCompleted %>/<%= modTotal %> Completed (<%= modPercent %>%)</span>
+                  <div class="bp-unit-mini-track">
+                    <div class="bp-unit-mini-bar progress-bar" id="modBar-<%= mod.id %>" data-percent="<%= modPercent %>"></div>
+                  </div>
                 </div>
               </div>
 
               <!-- Topic Items under this Unit -->
-              <div class="bp-topic-sublist" style="display: <%= isDefaultActiveUnit ? 'flex' : 'none' %>;">
+              <div class="bp-topic-sublist">
                 <% (mod.topics || []).forEach((topic, tIdx) => { %>
                   <% 
-                    const isDefaultActiveTopic = isDefaultActiveUnit && tIdx === 0;
-                    const isTopicComplete = tIdx < modCompleted;
+                    const isDefaultActiveTopic = isDefaultActiveUnit && tIdx === defaultTopicIdx;
+                    const isTopicComplete = Boolean(topic.completed);
                   %>
                   <button type="button" 
                           class="bp-topic-item <%= isDefaultActiveTopic ? 'selected' : '' %> <%= isTopicComplete ? 'completed' : '' %>" 
@@ -438,7 +462,7 @@
           </div>
           <div style="flex: 1; min-width: 200px; margin-left: auto;">
             <div class="progress-container" style="height: 10px;">
-              <div class="progress-bar" id="homeOverallBar" style="width: <%= course.percent %>%;"></div>
+              <div class="progress-bar" id="homeOverallBar" data-percent="<%= course.percent %>"></div>
             </div>
           </div>
         </div>
@@ -478,9 +502,7 @@
   <%- include('partials/footer') %>
 
   <!-- Embed Rich Course Content into Client Script for Instant Fast Switching -->
-  <script>
-    window.PASTORS_LMS_COURSE = <%- JSON.stringify(course) %>;
-  </script>
+  <div id="courseDataJson" hidden data-json="<%= JSON.stringify(course) %>"></div>
   <script src="/js/course-brightspace.js"></script>
 </body>
 

@@ -111,3 +111,4 @@ Thumbs.db
 tmp/
 temp/
 data/.sessions.json
+data/student-progress.json

@@ -139,14 +139,12 @@
   </div>
 
   <% if (typeof registeredPastors !== 'undefined' && Array.isArray(registeredPastors)) { %>
-    <script>
-      window.PASTORS_REGISTERED_USERS = <%- JSON.stringify(registeredPastors.map(p => ({
-        username: p.username,
-        email: p.email,
-        phone: p.phone,
-        country_code: p.country_code || 'KE'
-      }))) %>;
-    </script>
+    <div id="registeredPastorsJson" hidden data-json="<%= JSON.stringify(registeredPastors.map(p => ({
+      username: p.username,
+      email: p.email,
+      phone: p.phone,
+      country_code: p.country_code || 'KE'
+    }))) %>"></div>
   <% } %>
 
   <%- include('partials/footer') %>

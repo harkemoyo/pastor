@@ -15,21 +15,21 @@
           "id": 1,
           "title": "Course Introduction",
           "sort_order": 1,
-          "total_topics": 7,
+          "total_topics": 2,
           "completed_topics": 0
         },
         {
           "id": 2,
           "title": "Unit 1: What is the Gospel?",
           "sort_order": 2,
-          "total_topics": 6,
+          "total_topics": 5,
           "completed_topics": 0
         },
         {
           "id": 3,
           "title": "Unit 2: The Dangers of Prosperity Theology",
           "sort_order": 3,
-          "total_topics": 6,
+          "total_topics": 5,
           "completed_topics": 0
         },
         {
@@ -75,21 +75,21 @@
           "id": 7,
           "title": "Course Introduction",
           "sort_order": 1,
-          "total_topics": 5,
+          "total_topics": 2,
           "completed_topics": 0
         },
         {
           "id": 8,
           "title": "Unit 1: Marks of a Healthy Church",
           "sort_order": 2,
-          "total_topics": 6,
+          "total_topics": 5,
           "completed_topics": 0
         },
         {
           "id": 9,
           "title": "Unit 2: Church Governance & Elders",
           "sort_order": 3,
-          "total_topics": 6,
+          "total_topics": 5,
           "completed_topics": 0
         },
         {
@@ -118,27 +118,27 @@
       "cover_image": "/images/course-counseling.svg",
       "start_date": "2026-09-01",
       "end_date": "2026-11-30",
-      "status": "past",
+      "status": "current",
       "modules": [
         {
           "id": 12,
           "title": "Course Introduction",
           "sort_order": 1,
-          "total_topics": 5,
-          "completed_topics": 5
+          "total_topics": 2,
+          "completed_topics": 0
         },
         {
           "id": 13,
           "title": "Unit 1: Why Expository Preaching?",
           "sort_order": 2,
-          "total_topics": 6,
-          "completed_topics": 4
+          "total_topics": 5,
+          "completed_topics": 0
         },
         {
           "id": 14,
           "title": "Unit 2: Studying the Text in Context",
           "sort_order": 3,
-          "total_topics": 6,
+          "total_topics": 5,
           "completed_topics": 0
         },
         {
@@ -160,28 +160,28 @@
       "cover_image": "/images/course-worship.svg",
       "start_date": "2026-09-01",
       "end_date": "2026-11-30",
-      "status": "past",
+      "status": "current",
       "modules": [
         {
           "id": 16,
           "title": "Course Introduction",
           "sort_order": 1,
-          "total_topics": 4,
-          "completed_topics": 4
+          "total_topics": 2,
+          "completed_topics": 0
         },
         {
           "id": 17,
           "title": "Unit 1: The Pastor as Shepherd",
           "sort_order": 2,
-          "total_topics": 6,
-          "completed_topics": 6
+          "total_topics": 5,
+          "completed_topics": 0
         },
         {
           "id": 18,
           "title": "Unit 2: Counseling Through Hardship",
           "sort_order": 3,
           "total_topics": 5,
-          "completed_topics": 3
+          "completed_topics": 0
         }
       ],
       "announcement": null
