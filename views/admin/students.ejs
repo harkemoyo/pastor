@@ -107,7 +107,15 @@
                 <tr class="student-row">
                   <td><strong><%= student.student_id || 'N/A' %></strong></td>
                   <td>
-                    <div style="font-weight: 700; font-size: 0.95rem;"><%= student.full_name || [student.first_name, student.last_name].filter(Boolean).join(' ') %></div>
+                    <div style="font-weight: 700; font-size: 0.95rem;">
+                      <%= student.full_name || [student.first_name, student.last_name].filter(Boolean).join(' ') %>
+                      <span class="badge" style="margin-left: 6px; font-size: 0.72rem; background: <%= (student.role === 'admin' || student.role === 'super_admin') ? '#670C21' : (student.role === 'teacher' ? '#D97706' : '#192F47') %>; color: #fff;">
+                        <%= (student.role || 'student').toUpperCase() %>
+                      </span>
+                    </div>
+                    <% if (student.username) { %>
+                      <small style="color: #670C21; font-weight: 700; font-size: 0.78rem; display: block;">@<%= student.username %></small>
+                    <% } %>
                     <% if (student.church_name || student.town || student.county) { %>
                       <small style="color: #6b7280; font-size: 0.8rem; display: block; margin-top: 2px;">
                         🏛️ <%= [student.church_name, [student.town, student.county].filter(Boolean).join(', ')].filter(Boolean).join(' • ') %>
@@ -134,7 +142,20 @@
                   <td><%= (student.student_id ? (student.enrolled_courses || 0) : 0) || 0 %></td>
                   <td><%= student.created_at ? new Date(student.created_at).toLocaleDateString() : 'N/A' %></td>
                   <td>
-                    <div class="action-stack" style="display: flex; gap: 6px; flex-wrap: wrap;">
+                    <div class="action-stack" style="display: flex; gap: 6px; flex-wrap: wrap; align-items: center;">
+                      <% const isSuperAdmin = locals.user && locals.user.role === 'super_admin'; %>
+                      <% if (isSuperAdmin || (student.role !== 'super_admin' && student.role !== 'admin')) { %>
+                        <form method="POST" action="/admin/students/<%= student.student_id || student.username %>/role" style="display: inline;">
+                          <select name="role" aria-label="Change account role" onchange="this.form.submit()" style="padding: 4px 8px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.8rem; font-weight: 600;">
+                            <option value="student" <%= (!student.role || student.role === 'student') ? 'selected' : '' %>>🎓 Student</option>
+                            <option value="teacher" <%= student.role === 'teacher' ? 'selected' : '' %>>📖 Teacher</option>
+                            <% if (isSuperAdmin) { %>
+                              <option value="admin" <%= student.role === 'admin' ? 'selected' : '' %>>🛡️ Admin</option>
+                              <option value="super_admin" <%= student.role === 'super_admin' ? 'selected' : '' %>>👑 Super Admin</option>
+                            <% } %>
+                          </select>
+                        </form>
+                      <% } %>
                       <% if (student.status === 'pending' || student.approval_status === 'pending') { %>
                         <form method="POST" action="/admin/students/<%= student.student_id || student.username %>/approve" style="display: inline;">
                           <input type="hidden" name="redirect_to" value="/admin/students">

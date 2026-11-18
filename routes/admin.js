@@ -71,6 +71,7 @@ async function getStudents() {
           if (changed || data.length > 0) {
             saveUsers(localUsers);
           }
+          return localUsers;
         } catch (syncErr) {
           console.warn('Auto-sync Supabase students to users.json warning:', syncErr.message);
         }
@@ -296,7 +297,7 @@ router.get('/dashboard', requireAdmin, async (req, res) => {
 });
 
 router.get('/students', requireAdmin, async (req, res) => {
-  const users = (await getStudents()).filter(isStudentRecord);
+  const users = await getStudents();
   const courses = getCoursesData().courses || [];
   const courseIdFilter = req.query.course_id || '';
   const statusFilter = req.query.status || 'all';
@@ -439,7 +440,9 @@ router.post('/students/:studentId/edit', requireAdmin, async (req, res) => {
     return res.redirect('/admin/students');
   }
 
-  const { first_name, middle_name, last_name, date_of_birth, gender, phone, email, profile_photo, address, county, town, physical_address, church_name, ministry_role, years_in_ministry, emergency_contact_name, emergency_contact_phone, relationship } = req.body;
+  const { first_name, middle_name, last_name, date_of_birth, gender, phone, email, profile_photo, address, county, town, physical_address, church_name, ministry_role, years_in_ministry, emergency_contact_name, emergency_contact_phone, relationship, role } = req.body;
+  const assignableRoles = req.session.user.role === 'super_admin' ? ['super_admin', 'admin', 'teacher', 'student'] : ['teacher', 'student'];
+  const cleanRole = assignableRoles.includes(role) ? role : (student.role || 'student');
 
   if (!first_name || !last_name || !phone || !email) {
     return res.render('admin/student-form', {
@@ -481,8 +484,20 @@ router.post('/students/:studentId/edit', requireAdmin, async (req, res) => {
     years_in_ministry: Number(years_in_ministry) || 0,
     emergency_contact_name: emergency_contact_name || '',
     emergency_contact_phone: emergency_contact_phone || '',
-    relationship: relationship || ''
+    relationship: relationship || '',
+    role: cleanRole
   };
+
+  if (supabaseAdmin && student.auth_user_id) {
+    try {
+      await supabaseAdmin.auth.admin.updateUserById(student.auth_user_id, {
+        user_metadata: { role: cleanRole },
+        app_metadata: { role: cleanRole }
+      });
+    } catch (e) {
+      console.warn('Supabase auth role metadata update warning:', e.message);
+    }
+  }
 
   if (!isSupabaseRow) {
     // Local-only fields; the Supabase students table has no columns for these
@@ -518,7 +533,10 @@ router.post('/students/:studentId/edit', requireAdmin, async (req, res) => {
 });
 
 router.post('/students/new', requireAdmin, async (req, res) => {
-  const { first_name, middle_name, last_name, date_of_birth, gender, phone, email, profile_photo, address, county, town, physical_address, church_name, ministry_role, years_in_ministry, emergency_contact_name, emergency_contact_phone, relationship, password } = req.body;
+  const { first_name, middle_name, last_name, date_of_birth, gender, phone, email, profile_photo, address, county, town, physical_address, church_name, ministry_role, years_in_ministry, emergency_contact_name, emergency_contact_phone, relationship, password, role } = req.body;
+  const assignableRoles = req.session.user.role === 'super_admin' ? ['super_admin', 'admin', 'teacher', 'student'] : ['teacher', 'student'];
+  const cleanRole = assignableRoles.includes(role) ? role : 'student';
+  const rolePrefix = cleanRole === 'admin' || cleanRole === 'super_admin' ? 'a' : (cleanRole === 'teacher' ? 't' : 'p');
 
   const cleanFirst = (first_name || '').trim();
   const cleanLast = (last_name || '').trim();
@@ -562,8 +580,14 @@ router.post('/students/new', requireAdmin, async (req, res) => {
 
   const studentId = generateStudentId(users);
   const fullName = buildFullName({ first_name: cleanFirst, middle_name, last_name: cleanLast });
+  let generatedUsername = null;
+  for (let n = 1000000; !generatedUsername; n += 1) {
+    const candidate = `${rolePrefix}${n}`;
+    if (!users.some(user => user.username === candidate)) generatedUsername = candidate;
+  }
+
   const newUser = {
-    username: cleanEmail,
+    username: generatedUsername,
     email: cleanEmail,
     password: bcrypt.hashSync(cleanPassword, 10),
     full_name: fullName,
@@ -586,7 +610,7 @@ router.post('/students/new', requireAdmin, async (req, res) => {
     relationship: relationship || '',
     student_id: studentId,
     status: 'active',
-    role: 'student',
+    role: cleanRole,
     approval_status: 'approved',
     created_at: new Date().toISOString(),
     archived: false,
@@ -609,19 +633,15 @@ router.post('/students/new', requireAdmin, async (req, res) => {
       email: cleanEmail,
       password: cleanPassword,
       email_confirm: true,
-      user_metadata: { full_name: fullName }
+      user_metadata: { full_name: fullName, role: cleanRole, username: generatedUsername },
+      app_metadata: { role: cleanRole }
     });
     if (authError) {
       console.error('Admin create student - auth failed:', authError.message);
       return renderError(authError.message || 'Could not create the student login.');
     }
 
-    // Pick the next free pXXXXXXX login username
-    let username = null;
-    for (let n = 1000000; !username; n += 1) {
-      const candidate = `p${n}`;
-      if (!users.some(user => user.username === candidate)) username = candidate;
-    }
+    const username = generatedUsername;
 
     const profile = {
       auth_user_id: authData.user.id,
@@ -642,7 +662,7 @@ router.post('/students/new', requireAdmin, async (req, res) => {
       emergency_contact_phone: emergency_contact_phone || '',
       relationship: relationship || '',
       student_id: studentId,
-      role: 'student',
+      role: cleanRole,
       status: 'active',
       approval_status: 'approved'
     };
@@ -721,6 +741,44 @@ router.get('/students/:studentId', requireAdmin, async (req, res) => {
     success: req.query.success || null,
     error: req.query.error || null
   });
+});
+
+router.post('/students/:studentId/role', requireAdmin, async (req, res) => {
+  const student = await findStudent(req.params.studentId);
+
+  if (!student) {
+    return res.redirect('/admin/students');
+  }
+
+  const targetId = student.student_id || student.username;
+  const assignableRoles = req.session.user.role === 'super_admin' ? ['super_admin', 'admin', 'teacher', 'student'] : ['teacher', 'student'];
+  if (!assignableRoles.includes(req.body.role) || (student.role === 'super_admin' && req.session.user.role !== 'super_admin')) {
+    return res.redirect(`/admin/students/${targetId}?error=${encodeURIComponent('Only a Super Admin can assign or modify Admin / Super Admin roles.')}`);
+  }
+  const newRole = req.body.role;
+
+  if (supabaseAdmin && student.auth_user_id) {
+    try {
+      await supabaseAdmin.auth.admin.updateUserById(student.auth_user_id, {
+        user_metadata: { role: newRole },
+        app_metadata: { role: newRole }
+      });
+    } catch (e) {
+      console.warn('Supabase auth role update warning:', e.message);
+    }
+  }
+
+  if (await updateStudent(student, { role: newRole })) {
+    appendActivity({
+      adminUsername: req.session.user.username,
+      adminName: req.session.user.full_name,
+      action: `Admin changed ${buildFullName(student)} role to ${newRole}`,
+      targetType: 'student',
+      targetId
+    });
+  }
+
+  res.redirect(`/admin/students/${targetId}?success=${encodeURIComponent(`Account role updated to ${newRole.toUpperCase()}.`)}`);
 });
 
 router.post('/students/:studentId/status', requireAdmin, async (req, res) => {

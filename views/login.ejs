@@ -60,7 +60,7 @@
 
       <!-- Direct Sign-In Form -->
       <form action="/login" method="POST" id="directLoginForm" class="portal-form">
-        
+
         <!-- Field 1: Phone, Email, or Username -->
         <div class="form-field-group">
           <label class="field-label" for="loginIdentifier">
@@ -115,7 +115,7 @@
 
         <!-- Big Submit Button -->
         <button type="submit" class="btn-primary-large" id="btnSubmitLogin">
-          <span>Sign In to My Courses</span>
+          <span id="btnSubmitLoginLabel">Sign In</span>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
             <polyline points="9 18 15 12 9 6" />
           </svg>
@@ -137,15 +137,6 @@
       </div>
     </div>
   </div>
-
-  <% if (typeof registeredPastors !== 'undefined' && Array.isArray(registeredPastors)) { %>
-    <div id="registeredPastorsJson" hidden data-json="<%= JSON.stringify(registeredPastors.map(p => ({
-      username: p.username,
-      email: p.email,
-      phone: p.phone,
-      country_code: p.country_code || 'KE'
-    }))) %>"></div>
-  <% } %>
 
   <%- include('partials/footer') %>
 </body>

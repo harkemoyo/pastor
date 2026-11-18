@@ -14,13 +14,19 @@
   <main class="admin-page">
     <div class="admin-topbar">
       <div>
-        <h1 class="admin-title">Admin Dashboard</h1>
-        <div class="admin-subtitle">Overview of ministry operations and learner activity</div>
+        <div style="margin-bottom: 6px;">
+          <span class="badge" style="background: #670C21; color: #FFFFFF; font-weight: 700; padding: 4px 12px; border-radius: 999px; font-size: 0.8rem;">
+            <%= (user && user.role === 'super_admin') ? '👑 SUPER ADMIN PORTAL' : '🛡️ ADMIN PORTAL' %>
+          </span>
+        </div>
+        <h1 class="admin-title">Welcome, <%= user ? user.full_name : 'Administrator' %></h1>
+        <div class="admin-subtitle">Manage students, teachers, admins, courses, and learning materials in one place</div>
       </div>
-      <div class="admin-actions">
-        <a href="/admin/students/new" class="btn btn-primary">Add Student</a>
-        <a href="/admin/courses/new" class="btn btn-secondary">Add Course</a>
-        <a href="/admin/enrolments" class="btn btn-success">Create Enrolment</a>
+      <div class="admin-actions" style="display: flex; gap: 10px; flex-wrap: wrap;">
+        <a href="/admin/students" class="btn btn-secondary">👥 All Students &amp; Staff</a>
+        <a href="/admin/students/new" class="btn btn-primary">+ Register Person (Student / Teacher / Admin)</a>
+        <a href="/admin/courses" class="btn btn-secondary">📚 Courses</a>
+        <a href="/teacher/library" class="btn btn-secondary">📖 Library</a>
       </div>
     </div>
 
@@ -57,20 +63,32 @@
 
     <div class="detail-grid">
       <section class="admin-surface">
-        <h2>Recent Student Registrations</h2>
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+          <h2 style="margin: 0;">Recent Accounts &amp; Registrations</h2>
+          <a href="/admin/students" class="btn btn-sm btn-secondary">View All &rarr;</a>
+        </div>
         <% if (recentRegistrations.length) { %>
           <div class="admin-table-wrap">
             <table class="admin-table">
               <thead>
-                <tr><th>Name</th><th>Student ID</th><th>Email</th><th>Registered</th></tr>
+                <tr><th>Name</th><th>Username / ID</th><th>Role</th><th>Action</th></tr>
               </thead>
               <tbody>
                 <% recentRegistrations.forEach(student => { %>
                   <tr>
-                    <td><%= student.full_name || student.first_name + ' ' + student.last_name %></td>
-                    <td><%= student.student_id || 'N/A' %></td>
-                    <td><%= student.email %></td>
-                    <td><%= new Date(student.created_at || Date.now()).toLocaleDateString() %></td>
+                    <td>
+                      <strong><%= student.full_name || [student.first_name, student.last_name].filter(Boolean).join(' ') %></strong>
+                      <div style="font-size: 0.8rem; color: #6b7280;"><%= student.email %></div>
+                    </td>
+                    <td><code>@<%= student.username || student.student_id || 'N/A' %></code></td>
+                    <td>
+                      <span class="badge" style="background: <%= (student.role === 'admin' || student.role === 'super_admin') ? '#670C21' : (student.role === 'teacher' ? '#D97706' : '#192F47') %>; color: #fff; font-size: 0.72rem;">
+                        <%= (student.role || 'student').toUpperCase() %>
+                      </span>
+                    </td>
+                    <td>
+                      <a href="/admin/students/<%= student.student_id || student.username %>" class="btn btn-sm btn-secondary">Manage</a>
+                    </td>
                   </tr>
                 <% }) %>
               </tbody>

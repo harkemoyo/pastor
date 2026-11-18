@@ -814,17 +814,20 @@ router.post('/login', async (req, res) => {
             (inputPhone && u.phone && normalizePhone(u.phone) === inputPhone)
           );
 
+          const fullName = profileRow?.full_name || localMatched?.full_name || data.user.user_metadata?.full_name || cleanUsername;
+          const resolvedUsername = profileRow?.username || localMatched?.username || data.user.user_metadata?.username || cleanUsername;
+
           const candidateRoles = [
             profileRow?.role,
             data.user.app_metadata?.role,
             localMatched?.role,
-            data.user.user_metadata?.role
+            data.user.user_metadata?.role,
+            /^a\d{6,}$/i.test(resolvedUsername) ? 'admin' : null,
+            /^t\d{6,}$/i.test(resolvedUsername) ? 'teacher' : null,
+            /\b(ida\s+office\s+admin|system\s+admin)\b/i.test(`${fullName} ${profileRow?.ministry_role || ''}`) ? 'admin' : null
           ].filter(Boolean);
           const rolePriority = ['super_admin', 'admin', 'teacher', 'student'];
           const role = rolePriority.find(r => candidateRoles.includes(r)) || 'student';
-
-          const fullName = profileRow?.full_name || localMatched?.full_name || data.user.user_metadata?.full_name || cleanUsername;
-          const resolvedUsername = profileRow?.username || localMatched?.username || data.user.user_metadata?.username || cleanUsername;
           const countryCode =
             resolveUserCountryCode(profileRow) ||
             resolveUserCountryCode(localMatched) ||
@@ -874,7 +877,10 @@ router.post('/login', async (req, res) => {
           if (profileError && profileError.code !== 'PGRST116') {
             console.warn('Student profile lookup warning:', profileError.message);
           }
-          return req.session.save(() => res.redirect('/'));
+          const targetRedirect = ['admin', 'super_admin'].includes(role)
+            ? '/admin/dashboard'
+            : (role === 'teacher' ? '/teacher/library' : '/');
+          return req.session.save(() => res.redirect(targetRedirect));
         }
       } else {
         console.log('Identifier did not resolve to an email address; attempting local fallback auth for:', cleanUsername);
@@ -942,8 +948,13 @@ router.post('/login', async (req, res) => {
 
     console.log('Local login successful for:', cleanUsername, 'with role:', matchedUser.role);
 
+    const localRole = matchedUser.role || 'student';
+    const targetRedirect = ['admin', 'super_admin'].includes(localRole)
+      ? '/admin/dashboard'
+      : (localRole === 'teacher' ? '/teacher/library' : '/');
+
     return req.session.save(() => {
-      res.redirect('/');
+      res.redirect(targetRedirect);
     });
   }
 

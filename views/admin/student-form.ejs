@@ -111,6 +111,19 @@
           </div>
 
           <div class="form-field">
+            <label>Account Role *</label>
+            <% const currentRole = formData.role || 'student'; %>
+            <% const isSuperAdmin = locals.user && locals.user.role === 'super_admin'; %>
+            <select name="role" required>
+              <option value="student" <%= currentRole === 'student' ? 'selected' : '' %>>🎓 Student (Pastor / Learner)</option>
+              <option value="teacher" <%= currentRole === 'teacher' ? 'selected' : '' %>>📖 Teacher (Library &amp; Materials Only)</option>
+              <% if (isSuperAdmin) { %>
+                <option value="admin" <%= currentRole === 'admin' ? 'selected' : '' %>>🛡️ Admin (Manage Students &amp; Courses)</option>
+                <option value="super_admin" <%= currentRole === 'super_admin' ? 'selected' : '' %>>👑 Super Admin (Can Register Admins &amp; Teachers)</option>
+              <% } %>
+            </select>
+          </div>
+          <div class="form-field">
             <label>Student ID</label>
             <input value="<%= formData.student_id || 'Auto-generated' %>" disabled>
           </div>

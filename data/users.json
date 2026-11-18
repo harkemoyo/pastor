@@ -36,7 +36,7 @@
     "email": "admin@pastorslms.com",
     "password": "$2b$10$Sb.K4YkfyilbQO2tKmobC.AvBTwf4S.F1xYBtQ/0YcwoTbUqsUaC2",
     "full_name": "Admin User",
-    "role": "admin",
+    "role": "super_admin",
     "approval_status": "approved",
     "created_at": "2024-01-01T00:00:00Z",
     "status": "active"
@@ -46,7 +46,7 @@
     "email": "markndeche91@gmail.com",
     "password": "$2b$10$tSMK/KwDFiMpHC.fYDM/eeYy9eKG5w0O3b78IDq2eWUNpo5.jP28y",
     "full_name": "Hark Ndeche",
-    "role": "admin",
+    "role": "super_admin",
     "approval_status": "approved",
     "created_at": "2026-09-08T16:52:15.831Z",
     "status": "active"
