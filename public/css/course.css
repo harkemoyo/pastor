@@ -1106,3 +1106,107 @@
   border-radius: 999px;
   transition: width 0.3s ease;
 }
+
+/* Module / Course Instructor Contact Bar */
+.bp-instructor-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  background: #F4F0E7;
+  border: 1px solid #DFD5C3;
+  border-left: 4px solid #192F47;
+  border-radius: 10px;
+  padding: 14px 20px;
+  margin: 20px 36px 0;
+}
+
+.bp-instructor-bar[hidden] {
+  display: none;
+}
+
+.bp-instructor-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.bp-instructor-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #192F47;
+  color: #FFFFFF;
+  font-weight: 800;
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.bp-instructor-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #670C21;
+}
+
+.bp-instructor-name {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #0B192C;
+}
+
+.bp-instructor-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.bp-instructor-wa {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #25D366;
+  color: #FFFFFF;
+  text-decoration: none;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  transition: background-color 0.15s ease;
+}
+
+.bp-instructor-wa:hover {
+  background: #1EBE5D;
+  color: #FFFFFF;
+}
+
+.bp-instructor-email {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #192F47;
+  color: #FFFFFF;
+  text-decoration: none;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  transition: background-color 0.15s ease;
+}
+
+.bp-instructor-email:hover {
+  background: #24405F;
+  color: #FFFFFF;
+}
+
+@media (max-width: 900px) {
+  .bp-instructor-bar {
+    margin: 16px 20px 0;
+  }
+}

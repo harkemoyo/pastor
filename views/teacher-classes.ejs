@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title || 'My Assigned Classes | Pastors LMS' %></title>
+  <link rel="stylesheet" href="/css/global.css">
+  <link rel="stylesheet" href="/css/dashboard.css">
+  <link rel="stylesheet" href="/css/admin.css">
+  <link rel="stylesheet" href="/css/footer.css">
+  <link rel="icon" type="image/x-icon" href="/images/favicon.ico">
+</head>
+<body class="app-container">
+  <%- include('partials/header') %>
+
+  <main class="admin-page">
+    <div class="admin-topbar">
+      <div>
+        <h1 class="admin-title"><%= isStaffAdmin ? 'Lecturer Classes & Students' : 'My Assigned Classes' %></h1>
+        <p class="admin-subtitle">
+          <%= isStaffAdmin
+            ? 'Overview of courses, modules, and student contact lists for lecturers.'
+            : 'Courses and modules assigned to you by the Super Admin. Reach your students directly via WhatsApp or Email.' %>
+        </p>
+      </div>
+      <div class="admin-actions">
+        <a href="/teacher/library" class="btn btn-secondary" id="btnTeacherLibraryFromClasses">Manage Library Materials</a>
+        <% if (user && user.role === 'super_admin') { %>
+          <a href="/admin/courses" class="btn btn-primary" id="btnSuperAdminAssignCourses">Assign Lecturers</a>
+        <% } %>
+      </div>
+    </div>
+
+    <% if (!assignments || assignments.length === 0) { %>
+      <section class="admin-surface">
+        <div class="empty-state">
+          <h3>No Courses or Modules Assigned Yet</h3>
+          <p>Ask the Super Admin to assign you as the lecturer for a course or specific module under <strong>Admin &rarr; Courses</strong>.</p>
+        </div>
+      </section>
+    <% } else { %>
+      <% assignments.forEach(item => { %>
+        <section class="teacher-course-card" id="teacherCourse-<%= item.course.id %>">
+          <div class="teacher-course-head">
+            <div>
+              <span class="badge badge-purple"><%= item.course.code %></span>
+              <h2><%= item.course.title %></h2>
+              <% if (item.isCourseLecturer) { %>
+                <span class="lecturer-scope-tag lecturer-scope-course">Assigned Course Lecturer</span>
+              <% } else if (item.assignedModules && item.assignedModules.length) { %>
+                <span class="lecturer-scope-tag lecturer-scope-module">Assigned to <%= item.assignedModules.length %> Module(s)</span>
+              <% } %>
+            </div>
+            <div class="admin-actions">
+              <a href="/courses/<%= item.course.id %>" class="btn btn-secondary btn-sm" id="btnPreviewCourse-<%= item.course.id %>">Open Course</a>
+              <% if (user && user.role === 'super_admin') { %>
+                <a href="/admin/courses/<%= item.course.id %>" class="btn btn-primary btn-sm" id="btnManageLecturers-<%= item.course.id %>">Edit Lecturers</a>
+              <% } %>
+            </div>
+          </div>
+
+          <% if (item.assignedModules && item.assignedModules.length) { %>
+            <div class="teacher-module-chips" aria-label="Assigned modules">
+              <% item.assignedModules.forEach(mod => { %>
+                <span class="teacher-module-chip">📘 <%= mod.title %></span>
+              <% }) %>
+            </div>
+          <% } %>
+
+          <h3>Students (<%= item.students.length %>)</h3>
+          <% if (item.students.length === 0) { %>
+            <div class="empty-state">No students are currently enrolled in this class.</div>
+          <% } else { %>
+            <div class="admin-table-wrap">
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th>Student ID</th>
+                    <th>Pastor / Student Name</th>
+                    <th>Church</th>
+                    <th>Contact Details</th>
+                    <th>Message as Instructor</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% item.students.forEach(student => { %>
+                    <tr>
+                      <td><strong><%= student.student_id %></strong></td>
+                      <td><%= student.full_name %></td>
+                      <td><%= student.church_name || '—' %></td>
+                      <td>
+                        <div><%= student.email || 'No email' %></div>
+                        <% if (student.phone) { %>
+                          <span class="lecturer-contact-meta"><%= student.phone %></span>
+                        <% } %>
+                      </td>
+                      <td>
+                        <div class="contact-btn-group">
+                          <% if (student.wa_url) { %>
+                            <a href="<%= student.wa_url %>" target="_blank" rel="noopener noreferrer"
+                               class="btn-wa-sm" id="waStudent-<%= item.course.id %>-<%= student.username || student.student_id %>">
+                              <span>💬 WhatsApp</span>
+                            </a>
+                          <% } %>
+                          <% if (student.mailto_url) { %>
+                            <a href="<%= student.mailto_url %>"
+                               class="btn-email-sm" id="emailStudent-<%= item.course.id %>-<%= student.username || student.student_id %>">
+                              <span>✉️ Email</span>
+                            </a>
+                          <% } %>
+                          <% if (!student.wa_url && !student.mailto_url) { %>
+                            <span class="lecturer-subtitle">No contact info</span>
+                          <% } %>
+                        </div>
+                      </td>
+                    </tr>
+                  <% }) %>
+                </tbody>
+              </table>
+            </div>
+          <% } %>
+        </section>
+      <% }) %>
+    <% } %>
+  </main>
+
+  <%- include('partials/footer') %>
+</body>
+</html>

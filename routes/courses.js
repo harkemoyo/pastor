@@ -5,6 +5,7 @@ const os = require('os');
 const path = require('path');
 const { requireAuth } = require('../middleware/auth');
 const { getCourseModulesWithTopics } = require('../data/course-content');
+const { findTeacherByUsername, resolveModuleInstructor } = require('../utils/instructors');
 
 const COURSES_FILE = path.join(__dirname, '../data/courses.json');
 const PROGRESS_FILE = path.join(__dirname, '../data/student-progress.json');
@@ -240,6 +241,17 @@ router.get('/courses/:id', requireAuth, async (req, res) => {
   }
 
   const course = enrichCourseStats(rawCourse, userProg);
+  course.courseInstructor = findTeacherByUsername(rawCourse.instructor_username);
+  if (Array.isArray(course.modulesWithTopics)) {
+    course.modulesWithTopics = course.modulesWithTopics.map(mod => {
+      const rawMod = (rawCourse.modules || []).find(m => Number(m.id) === Number(mod.id)) || mod;
+      return {
+        ...mod,
+        instructor: resolveModuleInstructor(rawCourse, rawMod)
+      };
+    });
+  }
+  course.studentFullName = req.session?.user?.full_name || 'Student';
   const courseTasks = (data.tasks || []).filter(t => t.course_id === courseId);
 
   res.render('course-detail', {

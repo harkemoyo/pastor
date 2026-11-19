@@ -175,6 +175,18 @@ function requireAdmin(req, res, next) {
   return res.redirect('/login?error=admin_required');
 }
 
+function requireSuperAdmin(req, res, next) {
+  if (req.session && req.session.user && req.session.user.role === 'super_admin') {
+    return next();
+  }
+  if (req.session && req.session.user && req.session.user.role === 'admin') {
+    const backUrl = req.get('referer') || '/admin/courses';
+    const sep = backUrl.includes('?') ? '&' : '?';
+    return res.redirect(`${backUrl}${sep}error=${encodeURIComponent('Only a Super Admin can assign course or module lecturers.')}`);
+  }
+  return res.redirect('/login?error=admin_required');
+}
+
 function requireTeacher(req, res, next) {
   const allowedRoles = ['teacher', 'admin', 'super_admin'];
   const userRole = req.session?.user?.role;
@@ -203,6 +215,7 @@ function attachUser(req, res, next) {
 module.exports = {
   requireAuth,
   requireAdmin,
+  requireSuperAdmin,
   requireTeacher,
   attachUser,
   resolveUserCountryCode

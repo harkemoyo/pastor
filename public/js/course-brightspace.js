@@ -159,6 +159,9 @@ function loadTopic(moduleId, topicId, topicElement) {
     initBrightspaceInteractiveForms();
   }
 
+  // 5b. Update Assigned Module / Course Instructor Card (WhatsApp & Email)
+  updateModuleInstructorCard(course, targetMod);
+
   // 6. Update "Mark Complete" Button Status
   const isComplete = topicElement ? topicElement.classList.contains('completed') : false;
   updateMarkCompleteBtnState(isComplete);
@@ -505,4 +508,63 @@ function selectTopicByType(type) {
   } else {
     alert(`No ${type} activities found in this current unit.`);
   }
+}
+
+/**
+ * Update the Module / Course Instructor Contact Card (WhatsApp & Email)
+ */
+function updateModuleInstructorCard(course, targetMod) {
+  const card = document.getElementById('moduleInstructorCard');
+  if (!card) return;
+
+  const instructor = (targetMod && targetMod.instructor) || (course && course.courseInstructor) || null;
+  if (!instructor) {
+    card.hidden = true;
+    return;
+  }
+
+  const avatarEl = document.getElementById('instructorAvatar');
+  const scopeEl = document.getElementById('instructorScopeLabel');
+  const nameEl = document.getElementById('instructorName');
+  const waBtn = document.getElementById('btnWhatsAppInstructor');
+  const emailBtn = document.getElementById('btnEmailInstructor');
+
+  if (avatarEl) avatarEl.textContent = instructor.initials || 'T';
+  if (scopeEl) {
+    scopeEl.textContent = instructor.scope === 'module'
+      ? `Module Lecturer • ${course.code || ''}`
+      : `Course Lecturer • ${course.code || ''}`;
+  }
+  if (nameEl) nameEl.textContent = instructor.full_name || 'Instructor';
+
+  const studentName = (course && course.studentFullName) || 'a student';
+  const modTitle = (targetMod && targetMod.title) || (course && course.title) || '';
+  const courseCode = (course && course.code) || 'Pastors LMS';
+
+  if (waBtn) {
+    if (instructor.whatsapp_digits) {
+      const msg = encodeURIComponent(
+        `Hello ${instructor.full_name}, I am ${studentName} studying ${courseCode} (${modTitle}). I have a question about this lesson.`
+      );
+      waBtn.href = `https://wa.me/${instructor.whatsapp_digits}?text=${msg}`;
+      waBtn.hidden = false;
+    } else {
+      waBtn.hidden = true;
+    }
+  }
+
+  if (emailBtn) {
+    if (instructor.email) {
+      const subject = encodeURIComponent(`${courseCode} - ${modTitle} | Question from ${studentName}`);
+      const body = encodeURIComponent(
+        `Dear ${instructor.full_name},\n\nI am ${studentName}, enrolled in ${courseCode} (${modTitle}).\n\nMy question:\n`
+      );
+      emailBtn.href = `mailto:${instructor.email}?subject=${subject}&body=${body}`;
+      emailBtn.hidden = false;
+    } else {
+      emailBtn.hidden = true;
+    }
+  }
+
+  card.hidden = false;
 }

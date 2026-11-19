@@ -3,8 +3,9 @@ const router = express.Router();
 const fs = require('fs');
 const path = require('path');
 const bcrypt = require('bcrypt');
-const { requireAdmin } = require('../middleware/auth');
+const { requireAdmin, requireSuperAdmin } = require('../middleware/auth');
 const { supabaseAdmin } = require('../config/supabase');
+const { getTeachers, findTeacherByUsername, resolveModuleInstructor } = require('../utils/instructors');
 
 const USERS_FILE = path.join(__dirname, '../data/users.json');
 const COURSES_FILE = path.join(__dirname, '../data/courses.json');
@@ -1228,8 +1229,17 @@ router.get('/courses/:id', requireAdmin, (req, res) => {
     return res.redirect('/admin/courses');
   }
 
+  const allUsers = getUsers();
+  const teachers = getTeachers(allUsers);
+  const courseInstructor = findTeacherByUsername(course.instructor_username, allUsers);
+  const modulesWithInstructors = (course.modules || []).map(mod => ({
+    ...mod,
+    resolvedInstructor: resolveModuleInstructor(course, mod, allUsers),
+    hasOverride: Boolean(mod.instructor_username)
+  }));
+
   const enrolments = getEnrolments().filter(enrolment => Number(enrolment.course_id) === Number(req.params.id) && enrolment.status !== 'removed');
-  const studentList = getUsers().filter(user => user.role !== 'admin' && user.role !== 'super_admin');
+  const studentList = allUsers.filter(user => user.role !== 'admin' && user.role !== 'super_admin' && user.role !== 'teacher');
   const enrolledStudents = enrolments.map(enrolment => {
     const user = studentList.find(student => student.student_id === enrolment.student_id || student.username === enrolment.student_id);
     return {
@@ -1242,12 +1252,228 @@ router.get('/courses/:id', requireAdmin, (req, res) => {
   res.render('admin/course-detail', {
     title: `${course.title} | Pastors LMS`,
     user: req.session.user,
+    isSuperAdmin: req.session.user.role === 'super_admin',
     course,
+    teachers,
+    courseInstructor,
+    modulesWithInstructors,
     enrolments: enrolledStudents,
     studentList,
     success: req.query.success || null,
     error: req.query.error || null
   });
+});
+
+function safeCourseReturnUrl(returnTo, fallbackUrl) {
+  if (typeof returnTo === 'string' && /^\/admin\/courses\/\d+(\/modules)?$/.test(returnTo.trim())) {
+    return returnTo.trim();
+  }
+  return fallbackUrl;
+}
+
+// GET /admin/courses/:id/modules - Module & Module Lecturer Management
+router.get('/courses/:id/modules', requireAdmin, (req, res) => {
+  const data = getCoursesData();
+  const course = (data.courses || []).find(item => Number(item.id) === Number(req.params.id));
+  if (!course) {
+    return res.redirect('/admin/courses');
+  }
+
+  const allUsers = getUsers();
+  const teachers = getTeachers(allUsers);
+  const courseInstructor = findTeacherByUsername(course.instructor_username, allUsers);
+  const modulesWithInstructors = (course.modules || []).map(mod => ({
+    ...mod,
+    resolvedInstructor: resolveModuleInstructor(course, mod, allUsers),
+    hasOverride: Boolean(mod.instructor_username)
+  }));
+
+  res.render('admin/modules', {
+    title: `Manage Modules – ${course.code} | Pastors LMS`,
+    user: req.session.user,
+    isSuperAdmin: req.session.user.role === 'super_admin',
+    course,
+    teachers,
+    courseInstructor,
+    modulesWithInstructors,
+    success: req.query.success || null,
+    error: req.query.error || null
+  });
+});
+
+// POST /admin/courses/:id/modules/new - Add a new module
+router.post('/courses/:id/modules/new', requireAdmin, (req, res) => {
+  const data = getCoursesData();
+  const course = (data.courses || []).find(item => Number(item.id) === Number(req.params.id));
+  if (!course) {
+    return res.redirect('/admin/courses');
+  }
+
+  const title = (req.body.title || '').trim();
+  const totalTopics = Math.max(1, parseInt(req.body.total_topics, 10) || 1);
+  if (!title) {
+    return res.redirect(`/admin/courses/${course.id}/modules?error=${encodeURIComponent('Module title is required.')}`);
+  }
+
+  course.modules = Array.isArray(course.modules) ? course.modules : [];
+  const nextId = course.modules.reduce((max, m) => Math.max(max, Number(m.id) || 0), 0) + 1;
+  const newModule = {
+    id: nextId,
+    title,
+    sort_order: course.modules.length + 1,
+    total_topics: totalTopics,
+    completed_topics: 0
+  };
+
+  if (req.session.user.role === 'super_admin' && req.body.instructor_username) {
+    const teacher = findTeacherByUsername(req.body.instructor_username, getUsers());
+    if (teacher) {
+      newModule.instructor_username = teacher.username;
+    }
+  }
+
+  course.modules.push(newModule);
+  saveCoursesData(data);
+  appendActivity({
+    adminUsername: req.session.user.username,
+    adminName: req.session.user.full_name,
+    action: `Added module "${title}" to ${course.code}`,
+    targetType: 'module',
+    targetId: `${course.id}:${nextId}`
+  });
+
+  res.redirect(`/admin/courses/${course.id}/modules?success=${encodeURIComponent(`Module "${title}" added.`)}`);
+});
+
+// POST /admin/courses/:id/modules/:moduleId/edit - Update module title & topics
+router.post('/courses/:id/modules/:moduleId/edit', requireAdmin, (req, res) => {
+  const data = getCoursesData();
+  const course = (data.courses || []).find(item => Number(item.id) === Number(req.params.id));
+  if (!course) {
+    return res.redirect('/admin/courses');
+  }
+
+  const mod = (course.modules || []).find(m => Number(m.id) === Number(req.params.moduleId));
+  if (!mod) {
+    return res.redirect(`/admin/courses/${course.id}/modules?error=${encodeURIComponent('Module not found.')}`);
+  }
+
+  const title = (req.body.title || '').trim();
+  const totalTopics = Math.max(1, parseInt(req.body.total_topics, 10) || mod.total_topics || 1);
+  if (title) mod.title = title;
+  mod.total_topics = totalTopics;
+
+  saveCoursesData(data);
+  appendActivity({
+    adminUsername: req.session.user.username,
+    adminName: req.session.user.full_name,
+    action: `Updated module "${mod.title}" in ${course.code}`,
+    targetType: 'module',
+    targetId: `${course.id}:${mod.id}`
+  });
+
+  res.redirect(`/admin/courses/${course.id}/modules?success=${encodeURIComponent(`Module "${mod.title}" updated.`)}`);
+});
+
+// POST /admin/courses/:id/modules/:moduleId/delete - Remove module
+router.post('/courses/:id/modules/:moduleId/delete', requireAdmin, (req, res) => {
+  const data = getCoursesData();
+  const course = (data.courses || []).find(item => Number(item.id) === Number(req.params.id));
+  if (!course) {
+    return res.redirect('/admin/courses');
+  }
+
+  const beforeLen = (course.modules || []).length;
+  course.modules = (course.modules || []).filter(m => Number(m.id) !== Number(req.params.moduleId));
+  if (course.modules.length < beforeLen) {
+    saveCoursesData(data);
+    appendActivity({
+      adminUsername: req.session.user.username,
+      adminName: req.session.user.full_name,
+      action: `Deleted module #${req.params.moduleId} from ${course.code}`,
+      targetType: 'module',
+      targetId: `${course.id}:${req.params.moduleId}`
+    });
+  }
+
+  res.redirect(`/admin/courses/${course.id}/modules?success=${encodeURIComponent('Module deleted.')}`);
+});
+
+// Super Admin only: Assign default lecturer to a course (e.g. CHUR 201)
+router.post('/courses/:id/instructor', requireSuperAdmin, (req, res) => {
+  const data = getCoursesData();
+  const course = (data.courses || []).find(item => Number(item.id) === Number(req.params.id));
+  if (!course) {
+    return res.redirect('/admin/courses');
+  }
+
+  const dest = safeCourseReturnUrl(req.body.return_to, `/admin/courses/${course.id}`);
+  const chosenUsername = (req.body.instructor_username || '').trim();
+  if (!chosenUsername) {
+    delete course.instructor_username;
+    course.instructor = '';
+  } else {
+    const teacher = findTeacherByUsername(chosenUsername, getUsers());
+    if (!teacher) {
+      return res.redirect(`${dest}?error=${encodeURIComponent('Selected teacher account was not found.')}`);
+    }
+    course.instructor_username = teacher.username;
+    course.instructor = teacher.full_name;
+  }
+
+  saveCoursesData(data);
+  appendActivity({
+    adminUsername: req.session.user.username,
+    adminName: req.session.user.full_name,
+    action: chosenUsername
+      ? `Super Admin assigned ${course.instructor} as default lecturer for ${course.code}`
+      : `Super Admin cleared default lecturer for ${course.code}`,
+    targetType: 'course',
+    targetId: course.id
+  });
+
+  res.redirect(`${dest}?success=${encodeURIComponent('Course default lecturer updated.')}`);
+});
+
+// Super Admin only: Assign (or clear) lecturer for a specific module/unit
+router.post('/courses/:id/modules/:moduleId/instructor', requireSuperAdmin, (req, res) => {
+  const data = getCoursesData();
+  const course = (data.courses || []).find(item => Number(item.id) === Number(req.params.id));
+  if (!course) {
+    return res.redirect('/admin/courses');
+  }
+
+  const dest = safeCourseReturnUrl(req.body.return_to, `/admin/courses/${course.id}`);
+  const mod = (course.modules || []).find(m => Number(m.id) === Number(req.params.moduleId));
+  if (!mod) {
+    return res.redirect(`${dest}?error=${encodeURIComponent('Module not found.')}`);
+  }
+
+  const chosenUsername = (req.body.instructor_username || '').trim();
+  let actionText = '';
+
+  if (!chosenUsername) {
+    delete mod.instructor_username;
+    actionText = `Super Admin reset module "${mod.title}" in ${course.code} to inherit course lecturer`;
+  } else {
+    const teacher = findTeacherByUsername(chosenUsername, getUsers());
+    if (!teacher) {
+      return res.redirect(`${dest}?error=${encodeURIComponent('Selected teacher account was not found.')}`);
+    }
+    mod.instructor_username = teacher.username;
+    actionText = `Super Admin assigned ${teacher.full_name} to module "${mod.title}" (${course.code})`;
+  }
+
+  saveCoursesData(data);
+  appendActivity({
+    adminUsername: req.session.user.username,
+    adminName: req.session.user.full_name,
+    action: actionText,
+    targetType: 'module',
+    targetId: `${course.id}:${mod.id}`
+  });
+
+  res.redirect(`${dest}?success=${encodeURIComponent(`Lecturer updated for "${mod.title}".`)}`);
 });
 
 router.get('/courses/:id/edit', requireAdmin, (req, res) => {

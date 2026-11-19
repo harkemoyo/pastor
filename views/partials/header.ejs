@@ -39,10 +39,16 @@
           </a>
         </li>
         <% if (['teacher', 'admin', 'super_admin'].includes(user.role)) { %>
-          <li class="nav-item <%= (typeof currentPath !== 'undefined' && currentPath.startsWith('/teacher')) ? 'active' : '' %>">
+          <li class="nav-item <%= (typeof currentPath !== 'undefined' && currentPath.startsWith('/teacher/classes')) ? 'active' : '' %>">
+            <a href="/teacher/classes" id="navTeacherClasses">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              <span>My Classes</span>
+            </a>
+          </li>
+          <li class="nav-item <%= (typeof currentPath !== 'undefined' && currentPath.startsWith('/teacher/library')) ? 'active' : '' %>">
             <a href="/teacher/library" id="navTeacher">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" /></svg>
-              <span>Teacher</span>
+              <span>Teacher Library</span>
             </a>
           </li>
         <% } %>

@@ -33,7 +33,7 @@
             <div class="meta-row"><strong>Course Name</strong><span><%= course.title %></span></div>
             <div class="meta-row"><strong>Course Code</strong><span><%= course.code %></span></div>
             <div class="meta-row"><strong>Status</strong><span><span class="badge status-<%= course.status || 'active' %>"><%= (course.status || 'active').charAt(0).toUpperCase() + ((course.status || 'active').slice(1)) %></span></span></div>
-            <div class="meta-row"><strong>Instructor</strong><span><%= course.instructor || 'TBD' %></span></div>
+            <div class="meta-row"><strong>Instructor</strong><span><%= courseInstructor ? courseInstructor.full_name : (course.instructor || 'Unassigned') %></span></div>
             <div class="meta-row"><strong>Capacity</strong><span><%= course.capacity || 'Not limited' %></span></div>
             <div class="meta-row"><strong>Created</strong><span><%= course.created_at ? new Date(course.created_at).toLocaleDateString() : 'N/A' %></span></div>
           </div>
@@ -62,7 +62,94 @@
       </div>
     </section>
 
-    <section class="admin-surface" style="margin-top:1.5rem;">
+    <section class="admin-surface admin-section-spaced" id="courseLecturersSection">
+      <div class="lecturer-header-row">
+        <div>
+          <h3>Course &amp; Module Lecturers</h3>
+          <p class="lecturer-subtitle">
+            Assign a default lecturer for <strong><%= course.code %></strong>, or assign a dedicated lecturer to individual modules. Students will see their assigned lecturer's WhatsApp &amp; Email directly inside each module.
+          </p>
+        </div>
+        <% if (isSuperAdmin) { %>
+          <a href="/admin/students" class="btn btn-secondary btn-sm" id="btnManageTeacherAccounts">Manage Teacher Accounts</a>
+        <% } %>
+      </div>
+
+      <% if (isSuperAdmin) { %>
+        <form method="POST" action="/admin/courses/<%= course.id %>/instructor" class="lecturer-default-form" id="courseDefaultLecturerForm">
+          <label for="courseInstructorSelect">Default Course Lecturer (<%= course.code %>):</label>
+          <select name="instructor_username" id="courseInstructorSelect" class="lecturer-select">
+            <option value="">-- No default lecturer --</option>
+            <% (teachers || []).forEach(t => { %>
+              <option value="<%= t.username %>" <%= (course.instructor_username && course.instructor_username.toLowerCase() === t.username.toLowerCase()) ? 'selected' : '' %>>
+                <%= t.full_name %> (@<%= t.username %><%= t.phone ? ' • ' + t.phone : ' • No WhatsApp set' %>)
+              </option>
+            <% }) %>
+          </select>
+          <button type="submit" class="btn btn-primary btn-sm" id="btnSaveCourseLecturer">Save Course Lecturer</button>
+        </form>
+      <% } else { %>
+        <div class="lecturer-default-form">
+          <strong>Default Course Lecturer:</strong>
+          <span><%= courseInstructor ? courseInstructor.full_name : 'Unassigned' %></span>
+          <span class="lecturer-subtitle">(Only Super Admin can change lecturer assignments)</span>
+        </div>
+      <% } %>
+
+      <% if (modulesWithInstructors && modulesWithInstructors.length) { %>
+        <div class="admin-table-wrap">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Module / Unit</th>
+                <th>Assigned Lecturer</th>
+                <% if (isSuperAdmin) { %><th>Assign Lecturer for Module</th><% } %>
+              </tr>
+            </thead>
+            <tbody>
+              <% modulesWithInstructors.forEach(mod => { %>
+                <tr>
+                  <td><strong><%= mod.title %></strong></td>
+                  <td>
+                    <% if (mod.resolvedInstructor) { %>
+                      <strong><%= mod.resolvedInstructor.full_name %></strong>
+                      <span class="lecturer-scope-tag <%= mod.hasOverride ? 'lecturer-scope-module' : 'lecturer-scope-course' %>">
+                        <%= mod.hasOverride ? 'Module Lecturer' : 'Course Default' %>
+                      </span>
+                      <span class="lecturer-contact-meta">
+                        <%= mod.resolvedInstructor.email || 'No email' %>
+                        <% if (mod.resolvedInstructor.phone) { %> &middot; WhatsApp: <%= mod.resolvedInstructor.phone %><% } %>
+                      </span>
+                    <% } else { %>
+                      <span class="lecturer-subtitle">Unassigned</span>
+                    <% } %>
+                  </td>
+                  <% if (isSuperAdmin) { %>
+                    <td>
+                      <form method="POST" action="/admin/courses/<%= course.id %>/modules/<%= mod.id %>/instructor" class="module-lecturer-form" id="modLecturerForm-<%= mod.id %>">
+                        <select name="instructor_username" id="modLecturerSelect-<%= mod.id %>" class="lecturer-select" aria-label="Lecturer for <%= mod.title %>">
+                          <option value="">Use Course Default<%= courseInstructor ? ' (' + courseInstructor.full_name + ')' : '' %></option>
+                          <% (teachers || []).forEach(t => { %>
+                            <option value="<%= t.username %>" <%= (mod.instructor_username && mod.instructor_username.toLowerCase() === t.username.toLowerCase()) ? 'selected' : '' %>>
+                              <%= t.full_name %> (@<%= t.username %>)
+                            </option>
+                          <% }) %>
+                        </select>
+                        <button type="submit" class="btn btn-primary btn-sm" id="btnSaveModLecturer-<%= mod.id %>">Save</button>
+                      </form>
+                    </td>
+                  <% } %>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      <% } else { %>
+        <div class="empty-state">No modules configured for this course yet.</div>
+      <% } %>
+    </section>
+
+    <section class="admin-surface admin-section-spaced">
       <h3>Enrolled Students</h3>
       <% if (enrolments.length) { %>
         <div class="admin-table-wrap">

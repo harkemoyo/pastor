@@ -388,6 +388,174 @@
   color: #FFFFFF;
 }
 
+/* Course & Module Lecturer Assignment */
+.admin-section-spaced {
+  margin-top: 1.5rem;
+}
+
+.lecturer-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.lecturer-subtitle {
+  color: var(--text-muted);
+  font-size: 0.92rem;
+  margin-top: 0.25rem;
+}
+
+.lecturer-default-form {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 1rem 1.25rem;
+  background: #F4F0E7;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin-bottom: 1.25rem;
+}
+
+.lecturer-default-form label {
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.lecturer-select {
+  min-width: 240px;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #FFFFFF;
+  color: var(--text-title);
+  font-size: 0.92rem;
+}
+
+.module-lecturer-form {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.lecturer-scope-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  margin-left: 6px;
+}
+
+.lecturer-scope-module {
+  background: #F4E6E9;
+  color: #670C21;
+}
+
+.lecturer-scope-course {
+  background: #E3EAF3;
+  color: #192F47;
+}
+
+.lecturer-contact-meta {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* Teacher Assigned Classes & Student Contact */
+.teacher-course-card {
+  background: #FFFFFF;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.teacher-course-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border-light);
+  margin-bottom: 1rem;
+}
+
+.teacher-module-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.teacher-module-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #EEF2F7;
+  color: #192F47;
+  border: 1px solid #CBD6E3;
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
+.contact-btn-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.btn-wa-sm {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #25D366;
+  color: #FFFFFF;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 0.84rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition: background-color 0.15s ease;
+}
+
+.btn-wa-sm:hover {
+  background: #1EBE5D;
+  color: #FFFFFF;
+}
+
+.btn-email-sm {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #192F47;
+  color: #FFFFFF;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 0.84rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition: background-color 0.15s ease;
+}
+
+.btn-email-sm:hover {
+  background: #24405F;
+  color: #FFFFFF;
+}
+
 @media print {
   .top-navbar, .site-footer, .filters-bar, .admin-actions, .pagination, .action-stack, .status-pill-list, .btn {
     display: none !important;

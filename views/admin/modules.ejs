@@ -6,6 +6,7 @@
   <title><%= title || 'Module Management | Pastors LMS' %></title>
   <link rel="stylesheet" href="/css/global.css">
   <link rel="stylesheet" href="/css/dashboard.css">
+  <link rel="stylesheet" href="/css/admin.css">
   <link rel="stylesheet" href="/css/footer.css">
   <link rel="icon" type="image/x-icon" href="/images/favicon.ico">
 </head>
@@ -15,15 +16,47 @@
   <main class="main-content">
     <div class="dashboard-header">
       <div>
-        <h1>Manage Modules</h1>
+        <h1>Manage Modules &amp; Lecturers</h1>
         <p class="course-subtitle"><%= course.title %> (<%= course.code %>)</p>
       </div>
-      <a href="/admin/courses" class="btn btn-outline">← Back to Courses</a>
+      <div class="admin-actions">
+        <a href="/admin/courses/<%= course.id %>" class="btn btn-secondary">Course Overview</a>
+        <a href="/admin/courses" class="btn btn-outline">← Back to Courses</a>
+      </div>
     </div>
+
+    <% if (typeof success !== 'undefined' && success) { %>
+      <div class="alert alert-success" role="status">
+        <%= success %>
+      </div>
+    <% } %>
 
     <% if (typeof error !== 'undefined' && error) { %>
       <div class="alert alert-danger" role="alert">
         <%= error %>
+      </div>
+    <% } %>
+
+    <!-- Default Course Lecturer (Super Admin Only) -->
+    <% if (typeof isSuperAdmin !== 'undefined' && isSuperAdmin) { %>
+      <form method="POST" action="/admin/courses/<%= course.id %>/instructor" class="lecturer-default-form" id="modulesDefaultLecturerForm">
+        <input type="hidden" name="return_to" value="/admin/courses/<%= course.id %>/modules">
+        <label for="modulesCourseInstructorSelect">Default Course Lecturer (<%= course.code %>):</label>
+        <select name="instructor_username" id="modulesCourseInstructorSelect" class="lecturer-select">
+          <option value="">-- No default lecturer --</option>
+          <% (teachers || []).forEach(t => { %>
+            <option value="<%= t.username %>" <%= (course.instructor_username && course.instructor_username.toLowerCase() === t.username.toLowerCase()) ? 'selected' : '' %>>
+              <%= t.full_name %> (@<%= t.username %><%= t.phone ? ' • ' + t.phone : ' • No WhatsApp set' %>)
+            </option>
+          <% }) %>
+        </select>
+        <button type="submit" class="btn btn-primary btn-sm" id="btnSaveModulesCourseLecturer">Save Course Lecturer</button>
+      </form>
+    <% } else if (typeof courseInstructor !== 'undefined' && courseInstructor) { %>
+      <div class="lecturer-default-form">
+        <strong>Default Course Lecturer:</strong>
+        <span><%= courseInstructor.full_name %></span>
+        <span class="lecturer-subtitle">(Only Super Admin can change lecturer assignments)</span>
       </div>
     <% } %>
 
@@ -43,6 +76,18 @@
             <input type="number" id="total_topics" name="total_topics" class="form-input" 
                    placeholder="e.g., 6" min="1" required>
           </div>
+
+          <% if (typeof isSuperAdmin !== 'undefined' && isSuperAdmin) { %>
+            <div class="form-group">
+              <label class="form-label" for="newModuleInstructor">Module Lecturer (Optional)</label>
+              <select id="newModuleInstructor" name="instructor_username" class="form-input">
+                <option value="">Use Course Default<%= courseInstructor ? ' (' + courseInstructor.full_name + ')' : '' %></option>
+                <% (teachers || []).forEach(t => { %>
+                  <option value="<%= t.username %>"><%= t.full_name %> (@<%= t.username %>)</option>
+                <% }) %>
+              </select>
+            </div>
+          <% } %>
         </div>
 
         <button type="submit" class="btn btn-primary">
@@ -57,15 +102,15 @@
 
     <!-- Existing Modules -->
     <div class="modules-container">
-      <h3>Current Modules (<%= course.modules ? course.modules.length : 0 %>)</h3>
+      <h3>Current Modules (<%= modulesWithInstructors ? modulesWithInstructors.length : 0 %>)</h3>
       
-      <% if (!course.modules || course.modules.length === 0) { %>
+      <% if (!modulesWithInstructors || modulesWithInstructors.length === 0) { %>
         <div class="empty-state">
           <p>No modules added yet. Use the form above to add your first module.</p>
         </div>
       <% } else { %>
         <div class="modules-list">
-          <% course.modules.forEach((module, index) => { %>
+          <% modulesWithInstructors.forEach((module, index) => { %>
             <div class="module-card">
               <div class="module-header">
                 <div class="module-number">Module <%= index + 1 %></div>
@@ -85,17 +130,37 @@
                     <span class="stat-value"><%= module.total_topics %></span>
                   </div>
                   <div class="stat-item">
-                    <span class="stat-label">Completed:</span>
-                    <span class="stat-value"><%= module.completed_topics || 0 %></span>
-                  </div>
-                  <div class="stat-item">
-                    <span class="stat-label">Progress:</span>
+                    <span class="stat-label">Lecturer:</span>
                     <span class="stat-value">
-                      <%= Math.round(((module.completed_topics || 0) / module.total_topics) * 100) %>%
+                      <% if (module.resolvedInstructor) { %>
+                        <%= module.resolvedInstructor.full_name %>
+                        <span class="lecturer-scope-tag <%= module.hasOverride ? 'lecturer-scope-module' : 'lecturer-scope-course' %>">
+                          <%= module.hasOverride ? 'Module Lecturer' : 'Course Default' %>
+                        </span>
+                      <% } else { %>
+                        Unassigned
+                      <% } %>
                     </span>
                   </div>
                 </div>
               </div>
+
+              <!-- Assign Lecturer for this Module (Super Admin Only) -->
+              <% if (typeof isSuperAdmin !== 'undefined' && isSuperAdmin) { %>
+                <form action="/admin/courses/<%= course.id %>/modules/<%= module.id %>/instructor" method="POST" class="module-lecturer-form" id="modulesPageLecturerForm-<%= module.id %>">
+                  <input type="hidden" name="return_to" value="/admin/courses/<%= course.id %>/modules">
+                  <label class="form-label" for="modulesPageLecturerSelect-<%= module.id %>">Assign Lecturer:</label>
+                  <select name="instructor_username" id="modulesPageLecturerSelect-<%= module.id %>" class="lecturer-select">
+                    <option value="">Use Course Default<%= courseInstructor ? ' (' + courseInstructor.full_name + ')' : '' %></option>
+                    <% (teachers || []).forEach(t => { %>
+                      <option value="<%= t.username %>" <%= (module.instructor_username && module.instructor_username.toLowerCase() === t.username.toLowerCase()) ? 'selected' : '' %>>
+                        <%= t.full_name %> (@<%= t.username %>)
+                      </option>
+                    <% }) %>
+                  </select>
+                  <button type="submit" class="btn btn-sm btn-primary" id="btnSaveModulesPageLecturer-<%= module.id %>">Save Lecturer</button>
+                </form>
+              <% } %>
 
               <!-- Quick Edit Form -->
               <form action="/admin/courses/<%= course.id %>/modules/<%= module.id %>/edit" method="POST" class="quick-edit-form">
