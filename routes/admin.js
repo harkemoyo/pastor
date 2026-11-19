@@ -3,9 +3,10 @@ const router = express.Router();
 const fs = require('fs');
 const path = require('path');
 const bcrypt = require('bcrypt');
-const { requireAdmin, requireSuperAdmin } = require('../middleware/auth');
+const { requireAdmin, requireSuperAdmin, requireTeacher } = require('../middleware/auth');
 const { supabaseAdmin } = require('../config/supabase');
 const { getTeachers, findTeacherByUsername, resolveModuleInstructor } = require('../utils/instructors');
+const { getCustomLessonsSync, saveCustomLesson, deleteCustomLesson } = require('../utils/lms-store');
 
 const USERS_FILE = path.join(__dirname, '../data/users.json');
 const COURSES_FILE = path.join(__dirname, '../data/courses.json');
@@ -1397,6 +1398,134 @@ router.post('/courses/:id/modules/:moduleId/delete', requireAdmin, (req, res) =>
   }
 
   res.redirect(`/admin/courses/${course.id}/modules?success=${encodeURIComponent('Module deleted.')}`);
+});
+
+function canEditModuleLessons(sessionUser, course, mod) {
+  if (!sessionUser) return false;
+  if (['admin', 'super_admin'].includes(sessionUser.role)) return true;
+  if (sessionUser.role === 'teacher') {
+    const resolved = resolveModuleInstructor(course, mod, getUsers());
+    return Boolean(resolved && resolved.username.toLowerCase() === String(sessionUser.username || '').toLowerCase());
+  }
+  return false;
+}
+
+// GET /admin/courses/:id/modules/:moduleId/lessons - Browser-Based Lesson, Quiz & Schedule Editor
+router.get('/courses/:id/modules/:moduleId/lessons', requireTeacher, (req, res) => {
+  const data = getCoursesData();
+  const course = (data.courses || []).find(item => Number(item.id) === Number(req.params.id));
+  if (!course) return res.redirect('/admin/courses');
+
+  const mod = (course.modules || []).find(m => Number(m.id) === Number(req.params.moduleId));
+  if (!mod) return res.redirect(`/admin/courses/${course.id}/modules`);
+
+  if (!canEditModuleLessons(req.session.user, course, mod)) {
+    return res.redirect('/teacher/classes?error=' + encodeURIComponent('You can only edit lessons for modules assigned to you.'));
+  }
+
+  const lessons = getCustomLessonsSync(course.id, mod.id);
+  res.render('admin/lesson-editor', {
+    title: `Lesson & Quiz Editor – ${mod.title} | Pastors LMS`,
+    user: req.session.user,
+    course,
+    mod,
+    lessons,
+    isStaffAdmin: ['admin', 'super_admin'].includes(req.session.user.role),
+    success: req.query.success || null,
+    error: req.query.error || null
+  });
+});
+
+// POST /admin/courses/:id/modules/:moduleId/schedule - Set module unlock & due dates
+router.post('/courses/:id/modules/:moduleId/schedule', requireTeacher, (req, res) => {
+  const data = getCoursesData();
+  const course = (data.courses || []).find(item => Number(item.id) === Number(req.params.id));
+  if (!course) return res.redirect('/admin/courses');
+
+  const mod = (course.modules || []).find(m => Number(m.id) === Number(req.params.moduleId));
+  if (!mod || !canEditModuleLessons(req.session.user, course, mod)) {
+    return res.redirect('/teacher/classes');
+  }
+
+  mod.unlock_date = (req.body.unlock_date || '').trim() || null;
+  mod.due_date = (req.body.due_date || '').trim() || null;
+  saveCoursesData(data);
+
+  res.redirect(`/admin/courses/${course.id}/modules/${mod.id}/lessons?success=${encodeURIComponent('Module schedule dates saved.')}`);
+});
+
+// POST /admin/courses/:id/modules/:moduleId/lessons/new - Create a new lesson, assignment, quiz, exam, or discussion
+router.post('/courses/:id/modules/:moduleId/lessons/new', requireTeacher, async (req, res) => {
+  const data = getCoursesData();
+  const course = (data.courses || []).find(item => Number(item.id) === Number(req.params.id));
+  if (!course) return res.redirect('/admin/courses');
+
+  const mod = (course.modules || []).find(m => Number(m.id) === Number(req.params.moduleId));
+  if (!mod || !canEditModuleLessons(req.session.user, course, mod)) {
+    return res.redirect('/teacher/classes');
+  }
+
+  const title = (req.body.title || '').trim();
+  if (!title) {
+    return res.redirect(`/admin/courses/${course.id}/modules/${mod.id}/lessons?error=${encodeURIComponent('Lesson title is required.')}`);
+  }
+
+  // Convert plain newlines in reading content into clean HTML paragraphs if raw text was entered
+  let rawContent = (req.body.content_html || '').trim();
+  if (rawContent && !/<[a-z][\s\S]*>/i.test(rawContent)) {
+    rawContent = rawContent
+      .split(/\n{2,}/)
+      .map(p => `<p>${p.replace(/\n/g, '<br>')}</p>`)
+      .join('');
+  }
+
+  let quizQuestions = [];
+  if (req.body.quiz_questions_json) {
+    try {
+      const parsed = JSON.parse(req.body.quiz_questions_json);
+      if (Array.isArray(parsed)) quizQuestions = parsed.filter(q => q && q.prompt);
+    } catch {
+      quizQuestions = [];
+    }
+  }
+
+  const existingLessons = getCustomLessonsSync(course.id, mod.id);
+  await saveCustomLesson({
+    course_id: course.id,
+    module_id: mod.id,
+    sort_order: existingLessons.length + 1,
+    title,
+    banner_title: (req.body.banner_title || title).trim(),
+    topic_type: req.body.topic_type || 'reading',
+    content_html: rawContent,
+    scripture_ref: req.body.scripture_ref || '',
+    quiz_questions: quizQuestions,
+    max_score: req.body.max_score || 100,
+    pass_score: req.body.pass_score || 60,
+    max_attempts: req.body.max_attempts || 3,
+    time_limit_minutes: req.body.time_limit_minutes || null,
+    due_date: req.body.due_date || null,
+    created_by: req.session.user.username
+  });
+
+  // Update module total_topics count to include newly authored lesson
+  mod.total_topics = Math.max(Number(mod.total_topics) || 0, existingLessons.length + 1);
+  saveCoursesData(data);
+
+  res.redirect(`/admin/courses/${course.id}/modules/${mod.id}/lessons?success=${encodeURIComponent(`Lesson "${title}" published to ${mod.title}.`)}`);
+});
+
+// POST /admin/courses/:id/modules/:moduleId/lessons/:topicKey/delete
+router.post('/courses/:id/modules/:moduleId/lessons/:topicKey/delete', requireTeacher, async (req, res) => {
+  const data = getCoursesData();
+  const course = (data.courses || []).find(item => Number(item.id) === Number(req.params.id));
+  const mod = course && (course.modules || []).find(m => Number(m.id) === Number(req.params.moduleId));
+  if (!course || !mod || !canEditModuleLessons(req.session.user, course, mod)) {
+    return res.redirect('/teacher/classes');
+  }
+
+  await deleteCustomLesson(req.params.topicKey);
+  res.redirect(`/admin/courses/${course.id}/modules/${mod.id}/lessons?success=${encodeURIComponent('Lesson removed.')}`);
 });
 
 // Super Admin only: Assign default lecturer to a course (e.g. CHUR 201)

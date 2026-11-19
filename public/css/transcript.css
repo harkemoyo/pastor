@@ -1,0 +1,330 @@
+/* Official Academic Transcript & Course Certificate Styles */
+.doc-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+}
+
+.transcript-sheet {
+  background: #FFFFFF;
+  border: 2px solid #192F47;
+  border-radius: 12px;
+  padding: 2.5rem 2.75rem;
+  box-shadow: var(--shadow-md);
+  max-width: 960px;
+  margin: 0 auto 2rem;
+  color: #0B192C;
+}
+
+.transcript-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  padding-bottom: 1.5rem;
+  border-bottom: 3px double #192F47;
+  margin-bottom: 1.75rem;
+}
+
+.transcript-org {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.transcript-logo {
+  height: 84px;
+  width: auto;
+  object-fit: contain;
+}
+
+.transcript-org h1 {
+  font-size: 1.4rem;
+  letter-spacing: 0.6px;
+  color: #0B192C;
+  margin: 0 0 4px;
+}
+
+.transcript-org-sub {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #670C21;
+  margin: 0;
+}
+
+.transcript-org-loc {
+  font-size: 0.85rem;
+  color: #5B656B;
+  margin: 2px 0 0;
+}
+
+.transcript-doc-label {
+  text-align: right;
+}
+
+.doc-badge {
+  display: inline-block;
+  background: #192F47;
+  color: #FFFFFF;
+  font-weight: 800;
+  font-size: 0.82rem;
+  letter-spacing: 1px;
+  padding: 6px 14px;
+  border-radius: 4px;
+}
+
+.doc-date {
+  font-size: 0.88rem;
+  color: #30383A;
+  margin-top: 6px;
+}
+
+.transcript-student-box {
+  display: flex;
+  align-items: center;
+  gap: 1.75rem;
+  flex-wrap: wrap;
+  background: #F4F0E7;
+  border: 1px solid #DFD5C3;
+  border-radius: 10px;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.transcript-photo-frame {
+  width: 112px;
+  height: 112px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 2px solid #192F47;
+  flex-shrink: 0;
+  background: #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.transcript-student-photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.transcript-photo-fallback {
+  font-size: 2rem;
+  font-weight: 800;
+  color: #192F47;
+}
+
+.transcript-meta-grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 0.85rem 1.25rem;
+}
+
+.meta-k {
+  display: block;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #5B656B;
+  font-weight: 700;
+}
+
+.meta-v {
+  font-size: 0.98rem;
+  color: #0B192C;
+}
+
+.transcript-records h2 {
+  font-size: 1.15rem;
+  color: #192F47;
+  margin-bottom: 0.75rem;
+}
+
+.transcript-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1.75rem;
+  font-size: 0.92rem;
+}
+
+.transcript-table th,
+.transcript-table td {
+  padding: 11px 10px;
+  text-align: left;
+  border-bottom: 1px solid #E3DACA;
+}
+
+.transcript-table th {
+  background: #192F47;
+  color: #FFFFFF;
+  font-weight: 700;
+  font-size: 0.82rem;
+  text-transform: uppercase;
+}
+
+.transcript-summary-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2.25rem;
+}
+
+.summary-stat {
+  background: #FCFDFD;
+  border: 1px solid #DFD5C3;
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  text-align: center;
+}
+
+.summary-stat span {
+  display: block;
+  font-size: 0.82rem;
+  color: #5B656B;
+  font-weight: 700;
+}
+
+.summary-stat strong {
+  font-size: 1.5rem;
+  color: #192F47;
+}
+
+.summary-stat-gpa {
+  background: #F4E6E9;
+  border-color: #670C21;
+}
+
+.summary-stat-gpa strong {
+  color: #670C21;
+}
+
+.transcript-signatures {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 3rem;
+  margin-top: 2.5rem;
+  padding-top: 1.5rem;
+}
+
+.sig-block {
+  text-align: center;
+}
+
+.sig-line {
+  border-bottom: 1.5px solid #0B192C;
+  height: 36px;
+  margin-bottom: 8px;
+}
+
+.sig-block strong {
+  display: block;
+  font-size: 0.95rem;
+  color: #0B192C;
+}
+
+.sig-block span {
+  font-size: 0.82rem;
+  color: #5B656B;
+}
+
+.transcript-scripture {
+  text-align: center;
+  font-style: italic;
+  font-size: 0.88rem;
+  color: #5B656B;
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid #E3DACA;
+}
+
+/* Certificate of Completion Frame */
+.cert-frame {
+  background: #FFFFFF;
+  border: 10px double #192F47;
+  outline: 3px solid #670C21;
+  outline-offset: -18px;
+  padding: 3.5rem 3rem;
+  max-width: 920px;
+  margin: 0 auto 2rem;
+  text-align: center;
+  box-shadow: var(--shadow-lg);
+}
+
+.cert-logo {
+  height: 92px;
+  width: auto;
+  object-fit: contain;
+  margin-bottom: 1rem;
+}
+
+.cert-eyebrow {
+  font-size: 0.9rem;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: #670C21;
+  font-weight: 800;
+  margin-bottom: 0.5rem;
+}
+
+.cert-heading {
+  font-size: 2.25rem;
+  color: #192F47;
+  margin-bottom: 1rem;
+}
+
+.cert-recipient {
+  font-family: var(--font-heading);
+  font-size: 2.1rem;
+  color: #0B192C;
+  border-bottom: 2px solid #D9C7AA;
+  display: inline-block;
+  padding: 0 2rem 0.4rem;
+  margin: 0.75rem 0 1.25rem;
+}
+
+.cert-course-title {
+  font-size: 1.45rem;
+  font-weight: 800;
+  color: #670C21;
+  margin: 0.75rem 0;
+}
+
+.cert-meta {
+  font-size: 0.95rem;
+  color: #30383A;
+  margin-top: 1rem;
+}
+
+.cert-locked-box {
+  background: #FFFFFF;
+  border: 2px solid #E3DACA;
+  border-radius: 14px;
+  padding: 2.5rem 2rem;
+  max-width: 680px;
+  margin: 2rem auto;
+  text-align: center;
+}
+
+@media print {
+  .top-navbar, .site-footer, .whatsapp-float-btn, .doc-toolbar {
+    display: none !important;
+  }
+  body, .main-content {
+    background: #FFFFFF !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: 100% !important;
+  }
+  .transcript-sheet, .cert-frame {
+    box-shadow: none !important;
+    margin: 0 !important;
+    max-width: 100% !important;
+  }
+}

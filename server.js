@@ -12,6 +12,7 @@ const adminRoutes = require('./routes/admin');
 const onboardingRoutes = require('./routes/onboarding');
 const libraryRoutes = require('./routes/library');
 const teacherRoutes = require('./routes/teacher');
+const academicsRoutes = require('./routes/academics');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -253,6 +254,7 @@ app.get('/', (req, res, next) => {
 app.use('/', authRoutes);
 app.use('/', coursesRoutes);
 app.use('/', libraryRoutes);
+app.use('/', academicsRoutes);
 app.use('/teacher', teacherRoutes);
 app.use('/admin', adminRoutes);
 app.use('/onboarding', onboardingRoutes);

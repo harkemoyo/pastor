@@ -10,6 +10,8 @@
   <link rel="stylesheet" href="/css/dashboard.css">
   <link rel="stylesheet" href="/css/course.css">
   <link rel="icon" type="image/x-icon" href="/images/favicon.ico">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <meta name="theme-color" content="#192F47">
 </head>
 
 <body class="bp-lms-body">
@@ -98,58 +100,22 @@
     <div class="bp-nav-container">
       <button class="bp-nav-tab" id="tabNavHome" data-tab="home">Home</button>
       <button class="bp-nav-tab active" id="tabNavContent" data-tab="content">Content</button>
+      <button class="bp-nav-tab" id="tabNavDiscussions" data-tab="discussions">Discussions</button>
+      <button class="bp-nav-tab" id="tabNavGrades" data-tab="grades">Grades</button>
       
       <!-- Dropdown: Activities -->
       <div class="bp-nav-dropdown-item">
         <button class="bp-nav-tab has-dropdown">Activities <span>▾</span></button>
         <div class="bp-nav-submenu">
           <a href="javascript:void(0)" onclick="selectTopicByType('assignment')">Assignments</a>
-          <a href="javascript:void(0)" onclick="selectTopicByType('quiz')">Quizzes</a>
-          <a href="javascript:void(0)" onclick="alert('Discussion Forums: Open cohort exchange on pastoral ethics.')">Discussions</a>
-          <a href="javascript:void(0)" onclick="alert('Checklists: Week 1 pastoral study checklist.')">Checklists</a>
+          <a href="javascript:void(0)" onclick="selectTopicByType('quiz')">Quizzes &amp; Exams</a>
+          <a href="javascript:void(0)" onclick="switchBrightspaceTab('discussions')">Cohort Discussions</a>
         </div>
       </div>
 
-      <button class="bp-nav-tab" onclick="alert('Classlist: 24 pastors currently enrolled in this cohort.')">Classlist</button>
-      <button class="bp-nav-tab" onclick="alert('Gradebook: Current Standing: A (94%) - Excellent theological reflection.')">Grades</button>
-      
-      <!-- Dropdown: Course Tools -->
-      <div class="bp-nav-dropdown-item">
-        <button class="bp-nav-tab has-dropdown">Course Tools <span>▾</span></button>
-        <div class="bp-nav-submenu">
-          <a href="javascript:void(0)" onclick="alert('Course Syllabus: Complete 12-week pastoral training curriculum PDF.')">Syllabus PDF</a>
-          <a href="javascript:void(0)" onclick="alert('Scriptural Index: Key Greek and Hebrew exegesis tools.')">Scripture Concordance</a>
-          <a href="javascript:void(0)" onclick="alert('Calendar: Important term dates and deadlines.')">Term Calendar</a>
-        </div>
-      </div>
-
-      <!-- Dropdown: Learning Resources -->
-      <div class="bp-nav-dropdown-item">
-        <button class="bp-nav-tab has-dropdown">Learning Resources <span>▾</span></button>
-        <div class="bp-nav-submenu">
-          <a href="javascript:void(0)" onclick="alert('Swahili Bible Cross-References & Study Notes.')">Swahili Study Notes</a>
-          <a href="javascript:void(0)" onclick="alert('Intentional Discipleship Theological Library.')">IDA Seminary Library</a>
-          <a href="javascript:void(0)" onclick="alert('Pastoral Counseling Case Studies & Audio Sermons.')">Pastoral Audio Sermons</a>
-        </div>
-      </div>
-
-      <div class="bp-nav-dropdown-item">
-        <button class="bp-nav-tab has-dropdown">Useful Links <span>▾</span></button>
-        <div class="bp-nav-submenu">
-          <a href="/" target="_blank">LMS Student Portal</a>
-          <a href="/admin" target="_blank">Faculty Administration</a>
-        </div>
-      </div>
-
-      <div class="bp-nav-dropdown-item">
-        <button class="bp-nav-tab has-dropdown">Help <span>▾</span></button>
-        <div class="bp-nav-submenu">
-          <a href="javascript:void(0)" onclick="alert('Senior Pastors Technical Assistance: Call/WhatsApp +254 700 000 000')">Pastor Phone Support</a>
-          <a href="javascript:void(0)" onclick="alert('LMS Guide: Video tutorial on navigating units and quizzes.')">How-To Tutorial</a>
-        </div>
-      </div>
-
-      <button class="bp-nav-tab" onclick="alert('Media Library: Video lectures and sermon archives available.')">Media Library</button>
+      <a class="bp-nav-tab" href="/library" id="tabNavLibrary">Library</a>
+      <a class="bp-nav-tab" href="/transcript" id="tabNavTranscript">Transcript</a>
+      <a class="bp-nav-tab" href="/courses/<%= course.id %>/certificate" id="tabNavCertificate">Certificate</a>
     </div>
   </nav>
 
@@ -491,6 +457,19 @@
     <!-- Layout: Announcement + Tasks Sidebar -->
     <div class="dashboard-layout">
       <div class="course-main-col">
+        <!-- Live Faculty Announcements Posted by Course Lecturer -->
+        <% if (typeof liveAnnouncements !== 'undefined' && liveAnnouncements && liveAnnouncements.length) { %>
+          <% liveAnnouncements.forEach(ann => { %>
+            <div class="announcement-box announcement-box-live">
+              <div class="announcement-header">
+                <span class="announcement-title">📢 <%= ann.title %></span>
+                <span class="announcement-date"><%= ann.author_name %> &middot; <%= new Date(ann.created_at).toLocaleDateString() %></span>
+              </div>
+              <p class="announcement-text"><%= ann.body %></p>
+            </div>
+          <% }) %>
+        <% } %>
+
         <% if (course.announcement) { %>
           <div class="announcement-box" style="margin-bottom: 24px;">
             <div class="announcement-header">
@@ -509,13 +488,134 @@
 
         <div class="home-action-box">
           <h3>Continue Your Pastoral Studies</h3>
-          <p>You are enrolled in <strong><%= course.title %></strong>. Select <em>Content</em> in the navigation bar to access the weekly units, scripture readings, cohort assignments, and self-quizzes.</p>
-          <button class="btn btn-primary" id="btnGoToContentFromHome">Open Course Content &rarr;</button>
+          <p>You are enrolled in <strong><%= course.title %></strong>. Open <em>Content</em> for readings and assignments, <em>Discussions</em> to study with your cohort, or save this course for offline reading.</p>
+          <div class="home-action-buttons">
+            <button class="btn btn-primary" id="btnGoToContentFromHome">Open Course Content &rarr;</button>
+            <button type="button" class="btn btn-secondary" id="btnSaveCourseOffline" data-course-url="/courses/<%= course.id %>">
+              📥 Save Course for Offline Reading
+            </button>
+          </div>
+          <p class="offline-save-hint" id="offlineSaveStatus">Saves this course's readings to your phone (uses a small amount of mobile data) so you can read without internet.</p>
         </div>
       </div>
 
       <%- include('partials/sidebar', { tasks: courseTasks.length > 0 ? courseTasks : allTasks }) %>
     </div>
+  </main>
+
+  <!-- =========================================================================
+       5. COHORT DISCUSSION FORUM & PEER FEEDBACK VIEW
+       ========================================================================= -->
+  <main class="main-content bp-extra-tab" id="viewDiscussions" style="display: none;">
+    <section class="bp-tab-card">
+      <div class="bp-tab-head">
+        <div>
+          <h2>Weekly Cohort Discussion Forum</h2>
+          <p>Share your biblical reflection for each unit and encourage fellow pastors across East Africa.</p>
+        </div>
+        <div class="discussion-unit-picker">
+          <label class="form-label" for="discussionModuleSelect">Choose Unit:</label>
+          <select id="discussionModuleSelect" class="form-input">
+            <% (course.modulesWithTopics || course.modules || []).forEach(m => { %>
+              <option value="<%= m.id %>"><%= m.title %></option>
+            <% }) %>
+          </select>
+        </div>
+      </div>
+
+      <!-- New Discussion Post Form -->
+      <form id="newDiscussionForm" class="discussion-composer">
+        <label class="form-label" for="discussionPostBody">Post Your Reflection for This Unit</label>
+        <textarea id="discussionPostBody" class="assignment-textarea" rows="4"
+          placeholder="Write your reflection grounded in Scripture and your local church experience..." required></textarea>
+        <div class="assignment-actions-row">
+          <button type="submit" class="btn btn-primary" id="btnSubmitDiscussionPost">Post to Cohort Forum</button>
+          <span id="discussionPostStatus" class="assignment-saved-msg" hidden></span>
+        </div>
+      </form>
+
+      <!-- Discussion Threads Container -->
+      <div id="discussionThreadsList" class="discussion-threads-list">
+        <p class="lecturer-subtitle">Loading cohort discussions...</p>
+      </div>
+
+      <!-- Peer Feedback Section (UoPeople-style peer encouragement) -->
+      <div class="peer-review-section">
+        <h3>Peer Review &amp; Encouragement</h3>
+        <p>Read a fellow pastor's written reflection for this unit and share brief, Scripture-centered encouragement.</p>
+        <div id="peerSubmissionsList" class="peer-submissions-list">
+          <p class="lecturer-subtitle">Loading peer reflections...</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- =========================================================================
+       6. STUDENT GRADEBOOK VIEW (Live Scores, Teacher Feedback, GPA)
+       ========================================================================= -->
+  <main class="main-content bp-extra-tab" id="viewGrades" style="display: none;">
+    <section class="bp-tab-card">
+      <div class="bp-tab-head">
+        <div>
+          <h2>Course Gradebook &mdash; <%= course.code %></h2>
+          <p>Track your graded written assignments, unit quizzes, final exams, discussion participation, and instructor feedback.</p>
+        </div>
+        <div class="home-action-buttons">
+          <a href="/transcript" class="btn btn-secondary" id="btnGradesToTranscript">Official Transcript</a>
+          <a href="/courses/<%= course.id %>/certificate" class="btn btn-primary" id="btnGradesToCertificate">Course Certificate</a>
+        </div>
+      </div>
+
+      <div class="gradebook-summary-grid" id="gradebookSummaryGrid">
+        <div class="gradebook-stat">
+          <span>Course Progress</span>
+          <strong id="gbProgressPct"><%= course.percent %>%</strong>
+        </div>
+        <div class="gradebook-stat">
+          <span>Graded Items</span>
+          <strong id="gbGradedCount"><%= gradeSummary ? gradeSummary.gradedCount : 0 %></strong>
+        </div>
+        <div class="gradebook-stat">
+          <span>Average Score</span>
+          <strong id="gbAveragePct"><%= (gradeSummary && gradeSummary.averagePercent !== null) ? gradeSummary.averagePercent + '%' : '—' %></strong>
+        </div>
+        <div class="gradebook-stat gradebook-stat-highlight">
+          <span>Current Letter Grade</span>
+          <strong id="gbLetterGrade"><%= gradeSummary ? gradeSummary.letterGrade : 'IP' %></strong>
+        </div>
+      </div>
+
+      <div class="admin-table-wrap">
+        <table class="admin-table" id="gradebookTable">
+          <thead>
+            <tr>
+              <th>Assessment / Activity</th>
+              <th>Type</th>
+              <th>Score</th>
+              <th>Grade</th>
+              <th>Instructor Feedback</th>
+            </tr>
+          </thead>
+          <tbody id="gradebookTableBody">
+            <% if (gradeSummary && gradeSummary.items && gradeSummary.items.length) { %>
+              <% gradeSummary.items.forEach(item => { %>
+                <tr>
+                  <td><strong><%= item.title %></strong></td>
+                  <td><%= item.type %></td>
+                  <td><%= item.score %> / <%= item.max_score %> (<%= item.percent %>%)</td>
+                  <td><strong><%= item.letter %></strong></td>
+                  <td><%= item.feedback || '—' %></td>
+                </tr>
+              <% }) %>
+            <% } else { %>
+              <tr>
+                <td colspan="5">No graded assessments recorded yet. Submit an assignment, quiz, or discussion post to build your gradebook.</td>
+              </tr>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
+    </section>
   </main>
 
   <%- include('partials/footer') %>

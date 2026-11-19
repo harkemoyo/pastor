@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title || 'Lesson & Quiz Editor | Pastors LMS' %></title>
+  <link rel="stylesheet" href="/css/global.css">
+  <link rel="stylesheet" href="/css/dashboard.css">
+  <link rel="stylesheet" href="/css/admin.css">
+  <link rel="stylesheet" href="/css/lesson-editor.css">
+  <link rel="stylesheet" href="/css/footer.css">
+  <link rel="icon" type="image/x-icon" href="/images/favicon.ico">
+</head>
+<body class="app-container">
+  <%- include('../partials/header') %>
+
+  <main class="admin-page">
+    <div class="admin-topbar">
+      <div>
+        <h1 class="admin-title">Lesson, Quiz &amp; Schedule Editor</h1>
+        <p class="admin-subtitle"><strong><%= course.code %></strong> &mdash; <%= mod.title %></p>
+      </div>
+      <div class="admin-actions">
+        <a href="/courses/<%= course.id %>" class="btn btn-secondary" id="btnPreviewCourseLessons">Preview Course</a>
+        <% if (isStaffAdmin) { %>
+          <a href="/admin/courses/<%= course.id %>/modules" class="btn btn-outline" id="btnBackToCourseModules">&larr; Back to Modules</a>
+        <% } else { %>
+          <a href="/teacher/classes" class="btn btn-outline" id="btnBackToClasses">&larr; Back to My Classes</a>
+        <% } %>
+      </div>
+    </div>
+
+    <% if (success) { %>
+      <div class="alert alert-success" role="status"><%= success %></div>
+    <% } %>
+    <% if (error) { %>
+      <div class="alert alert-danger" role="alert"><%= error %></div>
+    <% } %>
+
+    <!-- Weekly Schedule: Unlock & Due Dates -->
+    <section class="admin-surface">
+      <h2>Weekly Term Schedule (Unlock &amp; Due Dates)</h2>
+      <p class="lecturer-subtitle">Control when this unit unlocks for students and when weekly activities are due.</p>
+      <form action="/admin/courses/<%= course.id %>/modules/<%= mod.id %>/schedule" method="POST" class="schedule-form-grid" id="moduleScheduleForm">
+        <div class="form-group">
+          <label class="form-label" for="unlockDate">Unlock Date (Optional)</label>
+          <input type="date" id="unlockDate" name="unlock_date" class="form-input" value="<%= mod.unlock_date || '' %>">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="dueDate">Unit Due Date (Optional)</label>
+          <input type="date" id="dueDate" name="due_date" class="form-input" value="<%= mod.due_date || '' %>">
+        </div>
+        <div class="schedule-submit-wrap">
+          <button type="submit" class="btn btn-primary" id="btnSaveModuleSchedule">Save Dates</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- Add New Lesson / Assignment / Graded Quiz / Exam -->
+    <section class="admin-surface admin-section-spaced">
+      <h2>Add New Lesson, Assignment, Quiz, or Exam</h2>
+      <form action="/admin/courses/<%= course.id %>/modules/<%= mod.id %>/lessons/new" method="POST" id="newLessonForm">
+        <div class="editor-grid">
+          <div class="form-group">
+            <label class="form-label" for="lessonType">Activity Type *</label>
+            <select id="lessonType" name="topic_type" class="form-input" required>
+              <option value="reading">Reading Lesson</option>
+              <option value="assignment">Written Assignment (Graded by Lecturer)</option>
+              <option value="journal">Learning Journal (Pastoral Reflection)</option>
+              <option value="discussion">Weekly Discussion Prompt</option>
+              <option value="quiz">Graded Unit Quiz (Auto-Graded)</option>
+              <option value="exam">Timed Final Exam (Auto-Graded)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="lessonTitle">Lesson / Activity Title *</label>
+            <input type="text" id="lessonTitle" name="title" class="form-input" placeholder="e.g. Biblical Qualifications of an Elder" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="lessonScripture">Key Scripture Reference (Optional)</label>
+            <input type="text" id="lessonScripture" name="scripture_ref" class="form-input" placeholder="e.g. 1 Timothy 3:1-7; Titus 1:5-9">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="lessonDueDate">Due Date (Optional)</label>
+            <input type="date" id="lessonDueDate" name="due_date" class="form-input">
+          </div>
+        </div>
+
+        <!-- Grading & Exam Settings (Shown for Assignment, Quiz, Exam) -->
+        <div class="editor-grid assessment-settings-row" id="assessmentSettingsRow" hidden>
+          <div class="form-group">
+            <label class="form-label" for="lessonMaxScore">Max Points</label>
+            <input type="number" id="lessonMaxScore" name="max_score" class="form-input" value="100" min="10" max="500">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="lessonPassScore">Pass Score (%)</label>
+            <input type="number" id="lessonPassScore" name="pass_score" class="form-input" value="60" min="1" max="100">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="lessonMaxAttempts">Max Attempts</label>
+            <input type="number" id="lessonMaxAttempts" name="max_attempts" class="form-input" value="3" min="1" max="10">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="lessonTimeLimit">Time Limit (Minutes — Exams)</label>
+            <input type="number" id="lessonTimeLimit" name="time_limit_minutes" class="form-input" min="5" max="180" placeholder="e.g. 45">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="lessonContent">Lesson Reading / Assignment Instructions *</label>
+          <textarea id="lessonContent" name="content_html" class="form-input editor-textarea" rows="7"
+            placeholder="Write your clear pastoral lesson, study notes, or assignment prompt here. Blank lines automatically become paragraphs." required></textarea>
+        </div>
+
+        <!-- Interactive Multiple-Choice Question Builder (Shown for Quiz & Exam) -->
+        <div class="quiz-builder-box" id="quizBuilderBox" hidden>
+          <div class="quiz-builder-head">
+            <h3>Multiple-Choice Questions</h3>
+            <button type="button" class="btn btn-secondary btn-sm" id="btnAddQuizQuestion">+ Add Question</button>
+          </div>
+          <div id="quizQuestionsContainer"></div>
+          <input type="hidden" name="quiz_questions_json" id="quizQuestionsJson" value="[]">
+        </div>
+
+        <button type="submit" class="btn btn-primary" id="btnPublishLesson">Publish to Module</button>
+      </form>
+    </section>
+
+    <!-- Existing Browser-Authored Lessons in this Module -->
+    <section class="admin-surface admin-section-spaced">
+      <h2>Published Custom Lessons &amp; Assessments (<%= lessons.length %>)</h2>
+      <% if (!lessons || lessons.length === 0) { %>
+        <div class="empty-state">
+          <p>No custom lessons have been published in this module yet. Built-in curriculum topics are still shown automatically unless you add custom ones above.</p>
+        </div>
+      <% } else { %>
+        <div class="admin-table-wrap">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Title</th>
+                <th>Type</th>
+                <th>Due Date</th>
+                <th>Details</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% lessons.forEach(item => { %>
+                <tr>
+                  <td><strong><%= item.title %></strong></td>
+                  <td><span class="lecturer-scope-tag lecturer-scope-course"><%= item.topic_type.toUpperCase() %></span></td>
+                  <td><%= item.due_date || '—' %></td>
+                  <td>
+                    <% if (item.quiz_questions && item.quiz_questions.length) { %>
+                      <%= item.quiz_questions.length %> question(s)
+                    <% } else if (item.scripture_ref) { %>
+                      📖 <%= item.scripture_ref %>
+                    <% } else { %>
+                      Published
+                    <% } %>
+                  </td>
+                  <td>
+                    <form action="/admin/courses/<%= course.id %>/modules/<%= mod.id %>/lessons/<%= item.topic_key %>/delete" method="POST"
+                      onsubmit="return confirm('Remove this lesson from the module?');">
+                      <button type="submit" class="btn btn-sm btn-danger" id="btnDelLesson-<%= item.topic_key %>">Delete</button>
+                    </form>
+                  </td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      <% } %>
+    </section>
+  </main>
+
+  <%- include('../partials/footer') %>
+  <script src="/js/lesson-editor.js"></script>
+</body>
+</html>

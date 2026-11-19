@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/css/global.css">
+  <link rel="stylesheet" href="/css/dashboard.css">
+  <link rel="stylesheet" href="/css/transcript.css">
+  <link rel="stylesheet" href="/css/footer.css">
+  <link rel="icon" type="image/x-icon" href="/images/favicon.ico">
+</head>
+<body class="app-container">
+  <%- include('partials/header') %>
+
+  <main class="main-content">
+    <div class="doc-toolbar">
+      <a href="/courses/<%= course.id %>" class="btn btn-secondary" id="btnCertBackCourse">&larr; Back to Course</a>
+      <% if (isUnlocked) { %>
+        <button type="button" class="btn btn-primary" id="btnPrintCertificate" onclick="window.print()">
+          🖨️ Print / Save Certificate PDF
+        </button>
+      <% } %>
+    </div>
+
+    <% if (!isUnlocked) { %>
+      <section class="cert-locked-box">
+        <h1>Certificate Not Yet Unlocked</h1>
+        <p>You have completed <strong><%= completionPct %>%</strong> of <strong><%= course.code %> &mdash; <%= course.title %></strong>.</p>
+        <p>Complete all units and lessons (100%) to unlock your official Intentional Discipleship Africa Course Completion Certificate.</p>
+        <a href="/courses/<%= course.id %>" class="btn btn-primary" id="btnContinueToUnlock">Continue Course Lessons &rarr;</a>
+      </section>
+    <% } else { %>
+      <article class="cert-frame" id="officialCertificate">
+        <img src="/images/IDA-Logo-Black.webp" alt="Pastors LMS" class="cert-logo" width="120" height="92">
+        <div class="cert-eyebrow">Intentional Discipleship Africa &middot; Pastors LMS</div>
+        <h1 class="cert-heading">Certificate of Completion</h1>
+        <p>This proudly certifies that</p>
+        <div class="cert-recipient"><%= student.full_name || student.username %></div>
+        <p>has faithfully completed all required pastoral studies and biblical assessments for</p>
+        <div class="cert-course-title"><%= course.code %>: <%= course.title %></div>
+        <p class="cert-meta">
+          Student ID: <strong><%= student.student_id || student.username %></strong>
+          <% if (gradeSummary && gradeSummary.averagePercent !== null) { %>
+            &middot; Final Standing: <strong><%= gradeSummary.letterGrade %> (<%= gradeSummary.averagePercent %>%)</strong>
+          <% } %>
+          &middot; Date Awarded: <strong><%= issuedDate %></strong>
+        </p>
+        <p class="cert-meta">Certificate Serial: <code><%= certSerial %></code></p>
+
+        <footer class="transcript-signatures">
+          <div class="sig-block">
+            <div class="sig-line"></div>
+            <strong>Director of Pastoral Training</strong>
+            <span>Intentional Discipleship Africa</span>
+          </div>
+          <div class="sig-block">
+            <div class="sig-line"></div>
+            <strong>Academic Registrar</strong>
+            <span>Nairobi, Kenya</span>
+          </div>
+        </footer>
+      </article>
+    <% } %>
+  </main>
+
+  <%- include('partials/footer') %>
+</body>
+</html>

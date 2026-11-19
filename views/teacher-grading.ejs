@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title || 'Grading Queue | Pastors LMS' %></title>
+  <link rel="stylesheet" href="/css/global.css">
+  <link rel="stylesheet" href="/css/dashboard.css">
+  <link rel="stylesheet" href="/css/admin.css">
+  <link rel="stylesheet" href="/css/footer.css">
+  <link rel="icon" type="image/x-icon" href="/images/favicon.ico">
+</head>
+<body class="app-container">
+  <%- include('partials/header') %>
+
+  <main class="admin-page">
+    <div class="admin-topbar">
+      <div>
+        <h1 class="admin-title">Grading Queue &amp; Pastoral Feedback</h1>
+        <p class="admin-subtitle">Review written assignments, learning journals, and weekly cohort discussions for your assigned modules.</p>
+      </div>
+      <div class="admin-actions">
+        <a href="/teacher/classes" class="btn btn-secondary" id="btnBackToTeacherClasses">&larr; My Classes</a>
+        <a href="/teacher/library" class="btn btn-outline" id="btnGradingToLibrary">Teacher Library</a>
+      </div>
+    </div>
+
+    <% if (success) { %>
+      <div class="alert alert-success" role="status"><%= success %></div>
+    <% } %>
+    <% if (error) { %>
+      <div class="alert alert-danger" role="alert"><%= error %></div>
+    <% } %>
+
+    <!-- Filter Pills -->
+    <div class="status-pill-list" role="navigation" aria-label="Filter submissions by grading status">
+      <a href="/teacher/grading?status=all" class="status-pill <%= filterStatus === 'all' ? 'active' : '' %>" id="pillGradeAll">
+        All Submissions <span class="pill-count"><%= pendingCount + gradedCount %></span>
+      </a>
+      <a href="/teacher/grading?status=pending" class="status-pill <%= filterStatus === 'pending' ? 'active' : '' %>" id="pillGradePending">
+        Needs Grading <span class="pill-count"><%= pendingCount %></span>
+      </a>
+      <a href="/teacher/grading?status=graded" class="status-pill <%= filterStatus === 'graded' ? 'active' : '' %>" id="pillGradeDone">
+        Graded <span class="pill-count"><%= gradedCount %></span>
+      </a>
+    </div>
+
+    <!-- Written Submissions & Quiz Attempts -->
+    <section class="admin-surface admin-section-spaced">
+      <h2>Written Assignments, Journals &amp; Assessments (<%= submissions.length %>)</h2>
+      <% if (!submissions || submissions.length === 0) { %>
+        <div class="empty-state">
+          <p>No student submissions match this filter yet. As pastors submit assignments or quizzes in your modules, they will appear here.</p>
+        </div>
+      <% } else { %>
+        <% submissions.forEach(sub => { %>
+          <article class="teacher-course-card" id="gradeSubCard-<%= sub.id %>">
+            <div class="teacher-course-head">
+              <div>
+                <span class="badge badge-purple"><%= sub.course_code %></span>
+                <span class="lecturer-scope-tag lecturer-scope-course"><%= sub.module_title %></span>
+                <span class="lecturer-scope-tag <%= sub.status === 'graded' ? 'lecturer-scope-course' : 'lecturer-scope-module' %>">
+                  <%= sub.status === 'graded' ? `Graded: ${sub.score}/${sub.max_score} (${sub.grade_letter})` : 'Awaiting Grade' %>
+                </span>
+                <h3><%= sub.student_name %> (@<%= sub.student_username %>) — <%= sub.topic_title || sub.topic_id %></h3>
+                <span class="lecturer-contact-meta">
+                  Type: <%= sub.submission_type %> &middot; Attempt #<%= sub.attempt_number || 1 %> &middot; Submitted <%= new Date(sub.updated_at || sub.created_at).toLocaleString() %>
+                </span>
+              </div>
+            </div>
+
+            <% if (sub.content_text) { %>
+              <div class="submission-response-box">
+                <strong>Pastor's Submission:</strong>
+                <p><%= sub.content_text %></p>
+              </div>
+            <% } %>
+
+            <form action="/teacher/submissions/<%= sub.id %>/grade" method="POST" class="grading-inline-form" id="gradeForm-<%= sub.id %>">
+              <div class="grading-field-score">
+                <label class="form-label" for="score-<%= sub.id %>">Score (0–<%= sub.max_score || 100 %>)</label>
+                <input type="number" id="score-<%= sub.id %>" name="score" class="form-input" min="0" max="<%= sub.max_score || 100 %>"
+                  value="<%= sub.score !== null && sub.score !== undefined ? sub.score : '' %>" required placeholder="e.g. 88">
+              </div>
+              <div class="grading-field-feedback">
+                <label class="form-label" for="feedback-<%= sub.id %>">Pastoral Feedback</label>
+                <input type="text" id="feedback-<%= sub.id %>" name="feedback" class="form-input"
+                  value="<%= sub.feedback || '' %>" placeholder="Write encouraging biblical feedback for this pastor...">
+              </div>
+              <button type="submit" class="btn btn-primary" id="btnSaveGrade-<%= sub.id %>">Save Grade</button>
+            </form>
+          </article>
+        <% }) %>
+      <% } %>
+    </section>
+
+    <!-- Discussion Participation Grading -->
+    <section class="admin-surface admin-section-spaced">
+      <h2>Weekly Discussion Forum Posts (<%= discussions.length %>)</h2>
+      <% if (!discussions || discussions.length === 0) { %>
+        <div class="empty-state">
+          <p>No cohort discussion posts in your modules yet.</p>
+        </div>
+      <% } else { %>
+        <% discussions.forEach(post => { %>
+          <article class="teacher-course-card" id="gradePostCard-<%= post.id %>">
+            <div class="teacher-course-head">
+              <div>
+                <span class="badge badge-purple"><%= post.course_code %></span>
+                <span class="lecturer-scope-tag lecturer-scope-course"><%= post.module_title %></span>
+                <% if (post.grade_score !== null && post.grade_score !== undefined) { %>
+                  <span class="lecturer-scope-tag lecturer-scope-course">Graded: <%= post.grade_score %>/100</span>
+                <% } else { %>
+                  <span class="lecturer-scope-tag lecturer-scope-module">Ungraded Post</span>
+                <% } %>
+                <h3><%= post.author_name %> (@<%= post.author_username %>)</h3>
+                <span class="lecturer-contact-meta">Posted <%= new Date(post.created_at).toLocaleString() %></span>
+              </div>
+            </div>
+
+            <div class="submission-response-box">
+              <p><%= post.body %></p>
+            </div>
+
+            <form action="/teacher/discussions/<%= post.id %>/grade" method="POST" class="grading-inline-form" id="gradePostForm-<%= post.id %>">
+              <div class="grading-field-score">
+                <label class="form-label" for="postScore-<%= post.id %>">Participation Score (0–100)</label>
+                <input type="number" id="postScore-<%= post.id %>" name="score" class="form-input" min="0" max="100"
+                  value="<%= post.grade_score !== null && post.grade_score !== undefined ? post.grade_score : '' %>" required placeholder="e.g. 90">
+              </div>
+              <div class="grading-field-feedback">
+                <label class="form-label" for="postFeedback-<%= post.id %>">Instructor Comment</label>
+                <input type="text" id="postFeedback-<%= post.id %>" name="feedback" class="form-input"
+                  value="<%= post.grade_feedback || '' %>" placeholder="Comment on their theological reflection...">
+              </div>
+              <button type="submit" class="btn btn-primary" id="btnSavePostGrade-<%= post.id %>">Grade Post</button>
+            </form>
+          </article>
+        <% }) %>
+      <% } %>
+    </section>
+  </main>
+
+  <%- include('partials/footer') %>
+</body>
+</html>

@@ -325,3 +325,59 @@ a:hover {
   color: #30383A;
   border: 1px solid rgba(217, 199, 170, 0.35);
 }
+
+.alert-success {
+  background-color: var(--success-bg);
+  color: var(--success);
+  border: 1px solid rgba(27, 122, 75, 0.25);
+}
+
+/* Dashboard Hero Quick Actions */
+.hero-quick-links {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 20px;
+}
+
+/* Offline PWA Banner & Card (Elderly-Friendly High Contrast) */
+.offline-banner {
+  background: #670C21;
+  color: #FFFFFF;
+  text-align: center;
+  padding: 12px 20px;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.offline-banner[hidden] {
+  display: none;
+}
+
+.offline-card {
+  background: #FFFFFF;
+  border: 2px solid #192F47;
+  border-radius: 16px;
+  padding: 2.5rem 2rem;
+  max-width: 640px;
+  margin: 2rem auto;
+  text-align: center;
+  box-shadow: var(--shadow-md);
+}
+
+.offline-card h1 {
+  color: #192F47;
+  margin-bottom: 1rem;
+}
+
+.offline-card p {
+  font-size: 1.05rem;
+  margin-bottom: 1.5rem;
+}
+
+.offline-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}

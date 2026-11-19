@@ -18,6 +18,7 @@
         <div class="admin-subtitle"><%= student.full_name || [student.first_name, student.last_name].filter(Boolean).join(' ') %></div>
       </div>
       <div class="admin-actions">
+        <a href="/admin/students/<%= student.student_id || student.username %>/transcript" class="btn btn-primary" id="btnAdminViewTranscript">Official Transcript</a>
         <a href="/admin/students" class="btn btn-secondary">Back to Students</a>
       </div>
     </div>

@@ -6,6 +6,7 @@ const path = require('path');
 const bcrypt = require('bcrypt');
 const { supabase, supabaseAdmin } = require('../config/supabase');
 const { resolveUserCountryCode } = require('../middleware/auth');
+const { uploadProfilePictureToStorage } = require('../utils/lms-store');
 
 const USERS_FILE = path.join(__dirname, '../data/users.json');
 const FALLBACK_USERS_FILE = path.join(os.tmpdir(), 'pastors-lms-users.json');
@@ -29,20 +30,27 @@ async function saveProfilePicture(dataUrl, username) {
   if (!match) return null;
 
   try {
-    const buffer = Buffer.from(match[1], 'base64');
+    const rawBuffer = Buffer.from(match[1], 'base64');
+    let finalBuffer = rawBuffer;
+    let contentType = 'image/jpeg';
+
+    if (sharp) {
+      finalBuffer = await sharp(rawBuffer).resize(320, 320, { fit: 'cover' }).webp({ quality: 85 }).toBuffer();
+      contentType = 'image/webp';
+    }
+
+    // 1. Prefer Supabase Storage when available (works on Vercel serverless)
+    const cloudUrl = await uploadProfilePictureToStorage(finalBuffer, username, contentType);
+    if (cloudUrl) return cloudUrl;
+
+    // 2. Fall back to local public/uploads/profiles WebP file
     const dir = path.join(__dirname, '../public/uploads/profiles');
     fs.mkdirSync(dir, { recursive: true });
     const filename = `${username}.webp`;
-    const filePath = path.join(dir, filename);
-
-    if (sharp) {
-      await sharp(buffer).resize(320, 320, { fit: 'cover' }).webp({ quality: 85 }).toFile(filePath);
-    } else {
-      fs.writeFileSync(filePath, buffer);
-    }
+    fs.writeFileSync(path.join(dir, filename), finalBuffer);
     return `/uploads/profiles/${filename}`;
   } catch (err) {
-    console.warn('Could not save profile picture to disk, storing data URL fallback:', err.message);
+    console.warn('Could not save profile picture to storage/disk, storing data URL fallback:', err.message);
     return dataUrl;
   }
 }

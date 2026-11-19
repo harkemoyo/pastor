@@ -593,24 +593,121 @@ const courseContent = {
   }
 };
 
+const { getCustomLessonsSync } = require('../utils/lms-store');
+
+function escapeHtml(str) {
+  return String(str || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function buildCustomLessonHtml(lesson) {
+  const safeTitle = escapeHtml(lesson.title);
+  const safeScripture = escapeHtml(lesson.scripture_ref);
+  const bodyHtml = lesson.content_html || '';
+
+  let html = '';
+  if (lesson.due_date || lesson.max_score) {
+    html += `<div class="assignment-header-meta">`;
+    if (lesson.due_date) html += `<span class="due-badge">📅 Due: ${escapeHtml(lesson.due_date)}</span>`;
+    if (['assignment', 'journal', 'quiz', 'exam'].includes(lesson.topic_type)) {
+      html += `<span class="points-badge">Graded: ${Number(lesson.max_score) || 100} Points</span>`;
+    }
+    if (lesson.topic_type === 'exam' && lesson.time_limit_minutes) {
+      html += `<span class="due-badge">⏱️ Time Limit: ${Number(lesson.time_limit_minutes)} min</span>`;
+    }
+    if ((lesson.topic_type === 'quiz' || lesson.topic_type === 'exam') && lesson.max_attempts) {
+      html += `<span class="points-badge">Max Attempts: ${Number(lesson.max_attempts)}</span>`;
+    }
+    html += `</div>`;
+  }
+
+  html += `<h3>${safeTitle}</h3>`;
+  if (safeScripture) {
+    html += `<div class="scripture-focus-box"><strong>📖 Key Scripture:</strong> ${safeScripture}</div>`;
+  }
+  html += `<div class="custom-lesson-body">${bodyHtml}</div>`;
+
+  if (lesson.topic_type === 'assignment' || lesson.topic_type === 'journal') {
+    const label = lesson.topic_type === 'journal' ? 'Your Learning Journal Entry' : 'Your Written Submission';
+    html += `
+      <div class="assignment-submission-box" data-submission-type="${lesson.topic_type}" data-max-score="${Number(lesson.max_score) || 100}">
+        <h4>✍️ ${label}</h4>
+        <textarea id="assignmentInput" class="assignment-textarea" rows="7" placeholder="Type your pastoral reflection or assignment response here..."></textarea>
+        <div class="assignment-actions-row">
+          <button type="button" class="btn btn-primary" id="btnSubmitAssignment">Submit to Instructor</button>
+          <span id="assignmentSuccessMsg" class="assignment-saved-msg" style="display:none;">✓ Saved and sent to your instructor for grading!</span>
+        </div>
+        <div id="assignmentGradeBox" class="assignment-grade-box" hidden></div>
+      </div>`;
+  } else if (lesson.topic_type === 'quiz' || lesson.topic_type === 'exam') {
+    const questions = Array.isArray(lesson.quiz_questions) ? lesson.quiz_questions : [];
+    const timerAttr = lesson.time_limit_minutes ? `data-time-limit="${Number(lesson.time_limit_minutes)}"` : '';
+    const maxAttemptsAttr = `data-max-attempts="${Number(lesson.max_attempts) || 3}"`;
+    const passAttr = `data-pass-score="${Number(lesson.pass_score) || 60}"`;
+    const maxScoreAttr = `data-max-score="${Number(lesson.max_score) || 100}"`;
+    html += `<div class="graded-quiz-wrapper" data-quiz-type="${lesson.topic_type}" ${timerAttr} ${maxAttemptsAttr} ${passAttr} ${maxScoreAttr}>`;
+    if (lesson.time_limit_minutes) {
+      html += `<div class="quiz-timer-bar" id="quizTimerBar">⏱️ Time Remaining: <strong id="quizTimerDisplay">${Number(lesson.time_limit_minutes)}:00</strong></div>`;
+    }
+    if (questions.length === 0) {
+      html += `<p>No questions have been added to this assessment yet.</p>`;
+    } else {
+      questions.forEach((q, idx) => {
+        const qNum = idx + 1;
+        const correct = String(q.correct || 'a').toLowerCase();
+        html += `<div class="quiz-question-card" data-q="${qNum}" data-correct="${escapeHtml(correct)}">`;
+        html += `<p class="quiz-q-title"><strong>Q${qNum}.</strong> ${escapeHtml(q.prompt)}</p>`;
+        ['a', 'b', 'c', 'd'].forEach(letter => {
+          const optText = q.options && q.options[letter];
+          if (optText) {
+            html += `<label class="quiz-option-label"><input type="radio" name="q${qNum}" value="${letter}"> <span><strong>${letter.toUpperCase()}.</strong> ${escapeHtml(optText)}</span></label>`;
+          }
+        });
+        html += `<div class="quiz-feedback" id="feedback-q${qNum}"></div>`;
+        html += `</div>`;
+      });
+      html += `<div class="quiz-submit-row">
+        <button type="button" class="btn btn-primary" id="btnSubmitQuiz">${lesson.topic_type === 'exam' ? 'Submit Final Exam' : 'Submit Graded Quiz'}</button>
+        <span id="quizScoreDisplay" class="quiz-score-badge" style="display:none;"></span>
+      </div>`;
+    }
+    html += `</div>`;
+  } else if (lesson.topic_type === 'discussion') {
+    html += `
+      <div class="discussion-prompt-cta">
+        <p>Join your fellow pastors in the <strong>Cohort Discussion Forum</strong> to post your response and reply to peers.</p>
+        <button type="button" class="btn btn-primary btn-open-discussions">Open Cohort Discussion Forum &rarr;</button>
+      </div>`;
+  }
+
+  return html;
+}
+
 /**
  * Returns structured modules with their topics for a given course.
- * If specific custom topics aren't set for another course, generates default Brightspace-style topics.
+ * Merges browser-authored custom lessons & quizzes from data/custom-lessons.json.
  */
 function getCourseModulesWithTopics(course) {
   const courseId = course.id;
   const customCourse = courseContent[courseId] || {};
+  const todayIso = new Date().toISOString().slice(0, 10);
 
   return (course.modules || []).map(mod => {
     const modCustom = customCourse[mod.id];
+    const authoredLessons = getCustomLessonsSync(courseId, mod.id);
     let topics = [];
 
     if (modCustom && modCustom.topics) {
-      topics = modCustom.topics;
+      topics = modCustom.topics.map(t => ({ ...t }));
+    } else if (authoredLessons.length > 0) {
+      topics = [];
     } else {
       // Standard UoPeople Brightspace pattern for units
-      const unitNum = mod.sort_order - 1;
-      const isIntro = mod.sort_order === 1;
+      const unitNum = (mod.sort_order || 1) - 1;
+      const isIntro = (mod.sort_order || 1) === 1;
 
       if (isIntro) {
         topics = [
@@ -624,7 +721,7 @@ function getCourseModulesWithTopics(course) {
               <h3>Welcome to ${course.title}</h3>
               <p>Welcome to this foundational pastoral ministry course. This course is designed to equip church leaders with solid biblical insights, practical shepherding skills, and faithful exegetical tools.</p>
               <h4>Course Schedule &amp; Format</h4>
-              <p>Each unit covers an overview, assigned readings, practical church ministry activity, and a self-check evaluation.</p>
+              <p>Each unit covers an overview, assigned readings, cohort discussion, practical church ministry activity, and a graded evaluation.</p>
             `
           },
           {
@@ -635,11 +732,12 @@ function getCourseModulesWithTopics(course) {
             bannerTitle: 'Faculty Introduction',
             contentHtml: `
               <h3>Meet Your Pastoral Instructors</h3>
-              <p>Our faculty members are experienced pastors and theologians serving in local congregations across East Africa. We are here to support your learning journey.</p>
+              <p>Our faculty members are experienced pastors and theologians serving in local congregations across East Africa. Use the WhatsApp or Email buttons above whenever you need guidance.</p>
             `
           }
         ];
       } else {
+        const dueLabel = mod.due_date ? `Due: ${mod.due_date}` : 'Due: Term Schedule';
         topics = [
           {
             id: `${mod.id}-1`,
@@ -666,35 +764,53 @@ function getCourseModulesWithTopics(course) {
             bannerTitle: `Unit ${unitNum} Reading Assignment`,
             contentHtml: `
               <h3>Assigned Readings for Unit ${unitNum}</h3>
-              <p>Study the following scripture passages and commentary excerpts carefully. Make notes in your study journal.</p>
+              <p>Study the prescribed scripture passages and course commentary carefully. Record key ministry applications in your learning journal.</p>
             `
           },
           {
             id: `${mod.id}-3`,
             type: 'assignment',
             title: `Assignment Activity Unit ${unitNum}`,
-            subtitle: 'Due in 7 days',
-            dueDate: 'Due: Oct 2026',
+            subtitle: dueLabel,
+            dueDate: dueLabel,
             bannerTitle: `Assignment Activity Unit ${unitNum}`,
             contentHtml: `
               <div class="assignment-header-meta">
-                <span class="due-badge">📅 Due: Term Schedule</span>
+                <span class="due-badge">📅 ${dueLabel}</span>
                 <span class="points-badge">Graded: 100 Points</span>
               </div>
               <h3>Pastoral Ministry Application</h3>
-              <p>Apply the principles from this unit to your local church setting. Write a short sermon reflection or counseling case study.</p>
+              <p>Apply the principles from this unit to your local church setting. Write a practical pastoral reflection or ministry plan and submit it to your instructor.</p>
             `
           },
           {
             id: `${mod.id}-4`,
             type: 'quiz',
             title: `Self-Quiz Unit ${unitNum}`,
-            subtitle: 'Due in 7 days',
-            dueDate: 'Due: Oct 2026',
+            subtitle: dueLabel,
+            dueDate: dueLabel,
             bannerTitle: `Self-Quiz Unit ${unitNum}`,
             contentHtml: `
               <h3>Self-Quiz Unit ${unitNum}</h3>
-              <p>Answer the self-check questions to verify your understanding before moving forward.</p>
+              <p>Answer the check questions below to confirm your understanding of this unit.</p>
+              <div class="quiz-question-card" data-q="1" data-correct="b">
+                <p class="quiz-q-title"><strong>Q1.</strong> What is the primary authority for Christian pastoral leadership and teaching?</p>
+                <label class="quiz-option-label"><input type="radio" name="q1" value="a"> <span><strong>A.</strong> Popular cultural trends</span></label>
+                <label class="quiz-option-label"><input type="radio" name="q1" value="b"> <span><strong>B.</strong> Holy Scripture faithfully interpreted</span></label>
+                <label class="quiz-option-label"><input type="radio" name="q1" value="c"> <span><strong>C.</strong> Personal opinions alone</span></label>
+                <div class="quiz-feedback" id="feedback-q1"></div>
+              </div>
+              <div class="quiz-question-card" data-q="2" data-correct="a">
+                <p class="quiz-q-title"><strong>Q2.</strong> How should a pastor apply biblical lessons from ${escapeHtml(mod.title)}?</p>
+                <label class="quiz-option-label"><input type="radio" name="q2" value="a"> <span><strong>A.</strong> Through humble teaching, prayer, and practical care for the flock</span></label>
+                <label class="quiz-option-label"><input type="radio" name="q2" value="b"> <span><strong>B.</strong> Keeping knowledge strictly theoretical</span></label>
+                <label class="quiz-option-label"><input type="radio" name="q2" value="c"> <span><strong>C.</strong> Avoiding accountability in the local church</span></label>
+                <div class="quiz-feedback" id="feedback-q2"></div>
+              </div>
+              <div class="quiz-submit-row">
+                <button type="button" class="btn btn-primary" id="btnSubmitQuiz">Submit Quiz</button>
+                <span id="quizScoreDisplay" class="quiz-score-badge" style="display:none;"></span>
+              </div>
             `
           },
           {
@@ -712,8 +828,50 @@ function getCourseModulesWithTopics(course) {
       }
     }
 
+    // Ensure every built-in assignment topic has a live submission form
+    topics = topics.map(t => {
+      if (t.type === 'assignment' && t.contentHtml && !t.contentHtml.includes('id="assignmentInput"')) {
+        return {
+          ...t,
+          contentHtml: t.contentHtml + `
+            <div class="assignment-submission-box" data-submission-type="assignment" data-max-score="100">
+              <h4>✍️ Your Written Submission</h4>
+              <textarea id="assignmentInput" class="assignment-textarea" rows="7" placeholder="Write your pastoral reflection or assignment response here..."></textarea>
+              <div class="assignment-actions-row">
+                <button type="button" class="btn btn-primary" id="btnSubmitAssignment">Submit to Instructor</button>
+                <span id="assignmentSuccessMsg" class="assignment-saved-msg" style="display:none;">✓ Saved and sent to your instructor for grading!</span>
+              </div>
+              <div id="assignmentGradeBox" class="assignment-grade-box" hidden></div>
+            </div>`
+        };
+      }
+      return t;
+    });
+
+    // Append any browser-authored lessons/quizzes/exams for this module
+    if (authoredLessons.length > 0) {
+      const mappedCustom = authoredLessons.map(lesson => ({
+        id: lesson.topic_key,
+        type: lesson.topic_type === 'reading' ? 'doc' : lesson.topic_type,
+        title: lesson.title,
+        subtitle: lesson.due_date ? `Due: ${lesson.due_date}` : (lesson.topic_type === 'exam' ? 'Graded Exam' : 'Lesson'),
+        dueDate: lesson.due_date || '',
+        bannerTitle: lesson.banner_title || lesson.title,
+        maxScore: lesson.max_score || 100,
+        passScore: lesson.pass_score || 60,
+        maxAttempts: lesson.max_attempts || 3,
+        timeLimitMinutes: lesson.time_limit_minutes || null,
+        isCustom: true,
+        contentHtml: buildCustomLessonHtml(lesson)
+      }));
+      topics = topics.concat(mappedCustom);
+    }
+
+    const isLocked = Boolean(mod.unlock_date && mod.unlock_date > todayIso);
+
     return {
       ...mod,
+      isLocked,
       topics
     };
   });

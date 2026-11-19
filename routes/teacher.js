@@ -121,7 +121,9 @@ router.get('/classes', requireTeacher, async (req, res) => {
     title: 'My Assigned Classes | Pastors LMS',
     user,
     isStaffAdmin,
-    assignments: enrichedAssignments
+    assignments: enrichedAssignments,
+    success: req.query.success || null,
+    error: req.query.error || null
   });
 });
 

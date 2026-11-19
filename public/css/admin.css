@@ -556,6 +556,55 @@
   color: #FFFFFF;
 }
 
+/* Teacher Grading Queue & Announcement Composer */
+.submission-response-box {
+  background: #F4F0E7;
+  border: 1px solid #DFD5C3;
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 1rem;
+  white-space: pre-wrap;
+  line-height: 1.6;
+}
+
+.grading-inline-form {
+  display: flex;
+  align-items: flex-end;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.grading-field-score {
+  width: 170px;
+}
+
+.grading-field-feedback {
+  flex: 1;
+  min-width: 260px;
+}
+
+.teacher-announce-form {
+  background: #F4F0E7;
+  border: 1px solid #DFD5C3;
+  border-radius: 10px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
+.teacher-announce-grid {
+  display: grid;
+  grid-template-columns: 1fr 2fr auto;
+  gap: 0.75rem;
+  align-items: end;
+  margin-top: 0.5rem;
+}
+
+@media (max-width: 900px) {
+  .teacher-announce-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media print {
   .top-navbar, .site-footer, .filters-bar, .admin-actions, .pagination, .action-stack, .status-pill-list, .btn {
     display: none !important;

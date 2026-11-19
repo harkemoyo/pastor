@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/css/global.css">
+  <link rel="stylesheet" href="/css/dashboard.css">
+  <link rel="stylesheet" href="/css/transcript.css">
+  <link rel="stylesheet" href="/css/footer.css">
+  <link rel="icon" type="image/x-icon" href="/images/favicon.ico">
+</head>
+<body class="app-container">
+  <%- include('partials/header') %>
+
+  <main class="main-content">
+    <div class="doc-toolbar">
+      <div>
+        <% if (isAdminView) { %>
+          <a href="/admin/students/<%= student.student_id || student.username %>" class="btn btn-secondary" id="btnTranscriptBackAdmin">&larr; Back to Student Record</a>
+        <% } else { %>
+          <a href="/" class="btn btn-secondary" id="btnTranscriptBackDash">&larr; Back to Dashboard</a>
+        <% } %>
+      </div>
+      <button type="button" class="btn btn-primary" id="btnPrintTranscript" onclick="window.print()">
+        🖨️ Print / Save Official PDF
+      </button>
+    </div>
+
+    <article class="transcript-sheet" id="officialTranscriptSheet">
+      <!-- Official Letterhead with Monochrome Print Logo -->
+      <header class="transcript-header">
+        <div class="transcript-org">
+          <img src="/images/IDA-Logo-Black.webp" alt="Pastors LMS" class="transcript-logo" width="110" height="84">
+          <div>
+            <h1>INTENTIONAL DISCIPLESHIP AFRICA</h1>
+            <p class="transcript-org-sub">Pastors Learning Management System &middot; Office of the Academic Registrar</p>
+            <p class="transcript-org-loc">Nairobi, Kenya &middot; info@ida-africa.org</p>
+          </div>
+        </div>
+        <div class="transcript-doc-label">
+          <span class="doc-badge">OFFICIAL ACADEMIC TRANSCRIPT</span>
+          <p class="doc-date">Issued: <%= issuedDate %></p>
+        </div>
+      </header>
+
+      <!-- Student Identity + Uploaded Profile Photo -->
+      <section class="transcript-student-box">
+        <div class="transcript-photo-frame">
+          <% if (student.profile_picture) { %>
+            <img src="<%= student.profile_picture %>" alt="<%= student.full_name || student.username %>" class="transcript-student-photo" width="112" height="112">
+          <% } else { %>
+            <div class="transcript-photo-fallback">
+              <%= ((student.full_name || student.username || 'P').split(' ').map(p => p[0]).join('').slice(0, 2)).toUpperCase() %>
+            </div>
+          <% } %>
+        </div>
+
+        <div class="transcript-meta-grid">
+          <div><span class="meta-k">Pastor / Student Name</span><strong class="meta-v"><%= student.full_name || [student.first_name, student.last_name].filter(Boolean).join(' ') || student.username %></strong></div>
+          <div><span class="meta-k">Student ID</span><strong class="meta-v"><%= student.student_id || student.username || 'N/A' %></strong></div>
+          <div><span class="meta-k">Cohort</span><strong class="meta-v"><%= student.cohort || 'East Africa Pastoral Cohort' %></strong></div>
+          <div><span class="meta-k">Church / Ministry</span><strong class="meta-v"><%= student.church_name || 'Local Church Ministry' %></strong></div>
+          <div><span class="meta-k">Ministry Role</span><strong class="meta-v"><%= student.ministry_role || 'Pastor' %></strong></div>
+          <div><span class="meta-k">Email / Phone</span><strong class="meta-v"><%= student.email || '' %><%= student.phone ? ' • ' + student.phone : '' %></strong></div>
+        </div>
+      </section>
+
+      <!-- Academic Record Table -->
+      <section class="transcript-records">
+        <h2>Academic Course Record</h2>
+        <table class="transcript-table">
+          <thead>
+            <tr>
+              <th>Code</th>
+              <th>Course Title</th>
+              <th>Term</th>
+              <th>Credits</th>
+              <th>Completion</th>
+              <th>Score</th>
+              <th>Grade</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% courseRecords.forEach(row => { %>
+              <tr>
+                <td><strong><%= row.code %></strong></td>
+                <td><%= row.title %></td>
+                <td><%= row.term %></td>
+                <td><%= row.credits.toFixed(1) %></td>
+                <td><%= row.completionPct %>%</td>
+                <td><%= row.averagePercent !== null ? row.averagePercent + '%' : '—' %></td>
+                <td><strong><%= row.letterGrade %></strong></td>
+                <td><%= row.status %></td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- GPA Summary -->
+      <section class="transcript-summary-row">
+        <div class="summary-stat">
+          <span>Enrolled Credits</span>
+          <strong><%= totalCredits %></strong>
+        </div>
+        <div class="summary-stat">
+          <span>Graded Credits</span>
+          <strong><%= gradedCredits %></strong>
+        </div>
+        <div class="summary-stat summary-stat-gpa">
+          <span>Cumulative GPA (4.0 Scale)</span>
+          <strong><%= cumulativeGpa %></strong>
+        </div>
+      </section>
+
+      <!-- Verification & Signature Lines -->
+      <footer class="transcript-signatures">
+        <div class="sig-block">
+          <div class="sig-line"></div>
+          <strong>Academic Registrar</strong>
+          <span>Intentional Discipleship Africa</span>
+        </div>
+        <div class="sig-block">
+          <div class="sig-line"></div>
+          <strong>Dean of Pastoral Training</strong>
+          <span>Pastors LMS &middot; East Africa</span>
+        </div>
+      </footer>
+
+      <p class="transcript-scripture">
+        &ldquo;Do your best to present yourself to God as one approved, a worker who does not need to be ashamed and who correctly handles the word of truth.&rdquo; &mdash; 2 Timothy 2:15
+      </p>
+    </article>
+  </main>
+
+  <%- include('partials/footer') %>
+</body>
+</html>

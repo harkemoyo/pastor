@@ -27,6 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initProgressBars();
   initAdminLiveSearch();
   initPasswordToggles();
+  initOfflinePwa();
 });
 
 // Universal Password Show/Hide Toggle (works on Login, Register, Admin forms)
@@ -647,6 +648,34 @@ function initAdminMenu() {
       adminToggle.setAttribute('aria-expanded', 'false');
       adminDropdown.classList.remove('active');
     }
+  });
+}
+
+// PWA Service Worker, Offline Status Banner & Logout Cache Clearing (shared-phone safety)
+function initOfflinePwa() {
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  }
+
+  const banner = document.getElementById('offlineNoticeBanner');
+  function syncOnlineState() {
+    if (!banner) return;
+    banner.hidden = navigator.onLine;
+  }
+  window.addEventListener('online', syncOnlineState);
+  window.addEventListener('offline', syncOnlineState);
+  syncOnlineState();
+
+  // Clear cached lesson pages when logging out so shared phones never leak another pastor's data
+  document.querySelectorAll('a[href="/logout"]').forEach(link => {
+    link.addEventListener('click', () => {
+      if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage({ type: 'CLEAR_CACHES' });
+      }
+      if ('caches' in window) {
+        caches.delete('pastors-lms-lessons-v1').catch(() => {});
+      }
+    });
   });
 }
 })();

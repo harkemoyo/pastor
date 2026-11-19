@@ -25,6 +25,9 @@ document.addEventListener('DOMContentLoaded', () => {
   initBrightspaceToolbar();
   initBrightspaceTopicFooter();
   initBrightspaceInteractiveForms();
+  initDiscussionForum();
+  initOfflineCourseSave();
+  fetchMyCourseSubmissions();
 });
 
 // State
@@ -32,35 +35,59 @@ let currentModuleIndex = 1;
 let currentTopicIndex = 0;
 let currentModuleId = null;
 let currentTopicId = null;
+let currentTopicTitle = '';
+let cachedCourseSubmissions = [];
+let activeExamTimer = null;
 
 /**
- * 1. Secondary Navigation Tabs (Home vs Content)
+ * 1. Secondary Navigation Tabs (Home, Content, Discussions, Grades)
  */
 function initBrightspaceTabs() {
   const tabHome = document.getElementById('tabNavHome');
   const tabContent = document.getElementById('tabNavContent');
+  const tabDiscussions = document.getElementById('tabNavDiscussions');
+  const tabGrades = document.getElementById('tabNavGrades');
   const viewHome = document.getElementById('viewHome');
   const viewContent = document.getElementById('viewContent');
+  const viewDiscussions = document.getElementById('viewDiscussions');
+  const viewGrades = document.getElementById('viewGrades');
   const btnGoContent = document.getElementById('btnGoToContentFromHome');
 
   if (!tabHome || !tabContent) return;
 
   function showTab(tabName) {
+    const allTabs = [tabHome, tabContent, tabDiscussions, tabGrades].filter(Boolean);
+    allTabs.forEach(t => t.classList.remove('active'));
+    if (viewHome) viewHome.style.display = 'none';
+    if (viewContent) viewContent.style.display = 'none';
+    if (viewDiscussions) viewDiscussions.style.display = 'none';
+    if (viewGrades) viewGrades.style.display = 'none';
+
     if (tabName === 'home') {
       tabHome.classList.add('active');
-      tabContent.classList.remove('active');
       if (viewHome) viewHome.style.display = 'block';
-      if (viewContent) viewContent.style.display = 'none';
+    } else if (tabName === 'discussions') {
+      if (tabDiscussions) tabDiscussions.classList.add('active');
+      if (viewDiscussions) viewDiscussions.style.display = 'block';
+      const modSelect = document.getElementById('discussionModuleSelect');
+      if (modSelect && currentModuleId) modSelect.value = String(currentModuleId);
+      loadDiscussionForum();
+    } else if (tabName === 'grades') {
+      if (tabGrades) tabGrades.classList.add('active');
+      if (viewGrades) viewGrades.style.display = 'block';
+      fetchMyCourseSubmissions(true);
     } else {
       tabContent.classList.add('active');
-      tabHome.classList.remove('active');
       if (viewContent) viewContent.style.display = 'flex';
-      if (viewHome) viewHome.style.display = 'none';
     }
   }
 
+  window.switchBrightspaceTab = showTab;
+
   tabHome.addEventListener('click', () => showTab('home'));
   tabContent.addEventListener('click', () => showTab('content'));
+  if (tabDiscussions) tabDiscussions.addEventListener('click', () => showTab('discussions'));
+  if (tabGrades) tabGrades.addEventListener('click', () => showTab('grades'));
   if (btnGoContent) {
     btnGoContent.addEventListener('click', () => showTab('content'));
   }
@@ -138,6 +165,16 @@ function loadTopic(moduleId, topicId, topicElement) {
 
   const targetTopic = (targetMod.topics || []).find(t => String(t.id) === String(topicId));
   if (!targetTopic) return;
+  currentTopicTitle = targetTopic.title || '';
+
+  // Check if module is locked by weekly unlock_date for students
+  if (targetMod.isLocked) {
+    const bodyContainer = document.getElementById('topicBodyContent');
+    if (bodyContainer) {
+      bodyContainer.innerHTML = `<div class="locked-module-notice"><h3>🔒 Unit Unlocks on ${targetMod.unlock_date}</h3><p>This unit is scheduled to open on <strong>${targetMod.unlock_date}</strong> according to the term calendar. Complete your current unit readings and discussions in the meantime.</p></div>`;
+    }
+    return;
+  }
 
   // 3. Update Breadcrumb
   const unitBreadcrumb = document.getElementById('toolbarUnitTitle');
@@ -412,43 +449,134 @@ function updateMarkCompleteBtnState(isCompleted) {
  * 6. Interactive Quizzes & Assignment Submissions inside Content Body
  */
 function initBrightspaceInteractiveForms() {
-  // Assignment Submission
+  if (activeExamTimer) {
+    clearInterval(activeExamTimer);
+    activeExamTimer = null;
+  }
+
+  const course = window.PASTORS_LMS_COURSE;
+  const courseId = course ? course.id : null;
+
+  // Discussion CTA buttons inside custom lessons
+  document.querySelectorAll('.btn-open-discussions').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (window.switchBrightspaceTab) window.switchBrightspaceTab('discussions');
+    });
+  });
+
+  // Restore any previously saved assignment submission & instructor grade
+  const existingSub = cachedCourseSubmissions.find(s => String(s.topic_id) === String(currentTopicId));
   const submitAssignmentBtn = document.getElementById('btnSubmitAssignment');
   if (submitAssignmentBtn) {
-    submitAssignmentBtn.addEventListener('click', () => {
-      const textarea = document.getElementById('assignmentInput');
-      const successMsg = document.getElementById('assignmentSuccessMsg');
-      if (textarea && textarea.value.trim().length < 10) {
-        alert('Please write your pastoral reflection before submitting.');
-        textarea.focus();
+    const textarea = document.getElementById('assignmentInput');
+    const successMsg = document.getElementById('assignmentSuccessMsg');
+    const gradeBox = document.getElementById('assignmentGradeBox');
+    const wrap = submitAssignmentBtn.closest('.assignment-submission-box');
+    const subType = (wrap && wrap.getAttribute('data-submission-type')) || 'assignment';
+    const maxScore = Number((wrap && wrap.getAttribute('data-max-score')) || 100);
+
+    if (existingSub && existingSub.content_text && textarea) {
+      textarea.value = existingSub.content_text;
+      submitAssignmentBtn.textContent = 'Update Submission';
+      if (successMsg) {
+        successMsg.style.display = 'inline-block';
+        successMsg.textContent = existingSub.status === 'graded'
+          ? `✓ Graded (${existingSub.score}/${existingSub.max_score} — ${existingSub.grade_letter})`
+          : '✓ Previously submitted (awaiting instructor grade)';
+      }
+      if (gradeBox && existingSub.status === 'graded') {
+        gradeBox.hidden = false;
+        gradeBox.innerHTML = `<strong>Instructor Grade:</strong> ${existingSub.score}/${existingSub.max_score} (${existingSub.grade_letter})`
+          + (existingSub.feedback ? `<p><strong>Pastoral Feedback:</strong> ${escapeUiText(existingSub.feedback)}</p>` : '');
+      }
+    }
+
+    submitAssignmentBtn.addEventListener('click', async () => {
+      if (!textarea || textarea.value.trim().length < 10) {
+        alert('Please write your pastoral reflection (at least 10 characters) before submitting.');
+        if (textarea) textarea.focus();
         return;
       }
+      if (!courseId) return;
 
-      if (successMsg) {
-        successMsg.style.display = 'block';
-        submitAssignmentBtn.textContent = 'Submitted ✓';
-        submitAssignmentBtn.disabled = true;
+      submitAssignmentBtn.disabled = true;
+      submitAssignmentBtn.textContent = 'Saving...';
 
-        // Auto mark topic completed
+      try {
+        const res = await fetch(`/api/courses/${courseId}/submissions`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            module_id: currentModuleId,
+            topic_id: currentTopicId,
+            topic_title: currentTopicTitle,
+            submission_type: subType,
+            content_text: textarea.value.trim(),
+            max_score: maxScore
+          })
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          throw new Error(data.error || 'Could not save submission.');
+        }
+
+        if (successMsg) {
+          successMsg.style.display = 'inline-block';
+          successMsg.textContent = '✓ Saved and sent to your instructor for grading!';
+        }
+        submitAssignmentBtn.textContent = 'Update Submission ✓';
+        submitAssignmentBtn.disabled = false;
+        fetchMyCourseSubmissions(false);
+
         const completeBtn = document.getElementById('btnMarkTopicComplete');
         if (completeBtn && !completeBtn.classList.contains('is-completed')) {
           completeBtn.click();
         }
+      } catch (err) {
+        alert(err.message || 'Unable to submit right now. If you are offline, copy your response and try again when connected.');
+        submitAssignmentBtn.disabled = false;
+        submitAssignmentBtn.textContent = 'Submit to Instructor';
       }
     });
   }
 
-  // Unit Self-Quiz Checking
+  // Graded Quiz / Timed Exam Engine (saves score & attempt to backend)
   const submitQuizBtn = document.getElementById('btnSubmitQuiz');
   if (submitQuizBtn) {
-    submitQuizBtn.addEventListener('click', () => {
+    const quizWrap = submitQuizBtn.closest('.graded-quiz-wrapper');
+    const quizType = (quizWrap && quizWrap.getAttribute('data-quiz-type')) || 'quiz';
+    const maxAttempts = Number((quizWrap && quizWrap.getAttribute('data-max-attempts')) || 5);
+    const passScore = Number((quizWrap && quizWrap.getAttribute('data-pass-score')) || 60);
+    const maxScore = Number((quizWrap && quizWrap.getAttribute('data-max-score')) || 100);
+    const timeLimitMin = Number((quizWrap && quizWrap.getAttribute('data-time-limit')) || 0);
+
+    if (timeLimitMin > 0) {
+      let remainingSec = timeLimitMin * 60;
+      const timerDisplay = document.getElementById('quizTimerDisplay');
+      activeExamTimer = setInterval(() => {
+        remainingSec -= 1;
+        if (timerDisplay) {
+          const m = Math.max(0, Math.floor(remainingSec / 60));
+          const s = Math.max(0, remainingSec % 60);
+          timerDisplay.textContent = `${m}:${String(s).padStart(2, '0')}`;
+        }
+        if (remainingSec <= 0) {
+          clearInterval(activeExamTimer);
+          activeExamTimer = null;
+          if (!submitQuizBtn.disabled) submitQuizBtn.click();
+        }
+      }, 1000);
+    }
+
+    submitQuizBtn.addEventListener('click', async () => {
       const questionCards = document.querySelectorAll('.quiz-question-card');
-      let score = 0;
-      let total = questionCards.length;
+      let correctCount = 0;
+      const total = questionCards.length || 1;
+      const answers = {};
 
       questionCards.forEach(card => {
         const qNum = card.getAttribute('data-q');
-        const correctVal = card.getAttribute('data-correct');
+        const correctVal = (card.getAttribute('data-correct') || '').toLowerCase();
         const selectedRadio = card.querySelector(`input[name="q${qNum}"]:checked`);
         const feedbackEl = document.getElementById(`feedback-q${qNum}`);
 
@@ -460,8 +588,9 @@ function initBrightspaceInteractiveForms() {
           return;
         }
 
-        if (selectedRadio.value === correctVal) {
-          score++;
+        answers[`q${qNum}`] = selectedRadio.value;
+        if (selectedRadio.value.toLowerCase() === correctVal) {
+          correctCount++;
           if (feedbackEl) {
             feedbackEl.className = 'quiz-feedback correct';
             feedbackEl.textContent = '✓ Correct! Sound theological answer.';
@@ -474,15 +603,50 @@ function initBrightspaceInteractiveForms() {
         }
       });
 
+      if (activeExamTimer) {
+        clearInterval(activeExamTimer);
+        activeExamTimer = null;
+      }
+
+      const percent = Math.round((correctCount / total) * 100);
+      const scaledScore = Math.round((percent / 100) * maxScore);
       const scoreDisplay = document.getElementById('quizScoreDisplay');
       if (scoreDisplay) {
         scoreDisplay.style.display = 'inline-block';
-        const percent = Math.round((score / total) * 100);
-        scoreDisplay.textContent = `Your Score: ${score}/${total} (${percent}%)`;
+        scoreDisplay.textContent = `Your Score: ${correctCount}/${total} (${percent}%)`;
       }
 
-      // Auto mark topic complete if passed
-      if (score >= 3) {
+      if (courseId) {
+        try {
+          const res = await fetch(`/api/courses/${courseId}/submissions`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              module_id: currentModuleId,
+              topic_id: currentTopicId,
+              topic_title: currentTopicTitle,
+              submission_type: quizType,
+              quiz_answers: answers,
+              score: scaledScore,
+              max_score: maxScore,
+              max_attempts: maxAttempts
+            })
+          });
+          const data = await res.json();
+          if (!res.ok || !data.success) {
+            if (scoreDisplay) scoreDisplay.textContent += ` — ${data.error || 'Max attempts reached'}`;
+          } else {
+            if (scoreDisplay) {
+              scoreDisplay.textContent = `Recorded: ${correctCount}/${total} (${percent}%) • Attempt #${data.attemptsUsed}`;
+            }
+            fetchMyCourseSubmissions(false);
+          }
+        } catch {
+          // keep local score visible even if offline
+        }
+      }
+
+      if (percent >= passScore) {
         const completeBtn = document.getElementById('btnMarkTopicComplete');
         if (completeBtn && !completeBtn.classList.contains('is-completed')) {
           completeBtn.click();
@@ -490,6 +654,261 @@ function initBrightspaceInteractiveForms() {
       }
     });
   }
+}
+
+function escapeUiText(str) {
+  return String(str || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+/**
+ * Fetch logged-in student's saved submissions & refresh Gradebook tab
+ */
+async function fetchMyCourseSubmissions(renderGradebook = false) {
+  const course = window.PASTORS_LMS_COURSE;
+  if (!course || !course.id) return;
+  try {
+    const res = await fetch(`/api/courses/${course.id}/submissions`);
+    const data = await res.json();
+    if (!data || !data.success) return;
+    cachedCourseSubmissions = data.submissions || [];
+
+    if (renderGradebook && data.summary) {
+      const s = data.summary;
+      const gCount = document.getElementById('gbGradedCount');
+      const gAvg = document.getElementById('gbAveragePct');
+      const gLet = document.getElementById('gbLetterGrade');
+      const tbody = document.getElementById('gradebookTableBody');
+      if (gCount) gCount.textContent = String(s.gradedCount || 0);
+      if (gAvg) gAvg.textContent = s.averagePercent !== null ? `${s.averagePercent}%` : '—';
+      if (gLet) gLet.textContent = s.letterGrade || 'IP';
+
+      if (tbody) {
+        if (!s.items || s.items.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="5">No graded assessments recorded yet. Submit an assignment, quiz, or discussion post to build your gradebook.</td></tr>';
+        } else {
+          tbody.innerHTML = s.items.map(item => `
+            <tr>
+              <td><strong>${escapeUiText(item.title)}</strong></td>
+              <td>${escapeUiText(item.type)}</td>
+              <td>${item.score} / ${item.max_score} (${item.percent}%)</td>
+              <td><strong>${escapeUiText(item.letter)}</strong></td>
+              <td>${escapeUiText(item.feedback || '—')}</td>
+            </tr>
+          `).join('');
+        }
+      }
+    }
+  } catch {
+    // offline fallback
+  }
+}
+
+/**
+ * Cohort Discussion Forum & Peer Feedback Controller
+ */
+function initDiscussionForum() {
+  const modSelect = document.getElementById('discussionModuleSelect');
+  const form = document.getElementById('newDiscussionForm');
+  if (modSelect) {
+    modSelect.addEventListener('change', loadDiscussionForum);
+  }
+  if (form) {
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const course = window.PASTORS_LMS_COURSE;
+      const bodyEl = document.getElementById('discussionPostBody');
+      const statusEl = document.getElementById('discussionPostStatus');
+      const moduleId = modSelect ? modSelect.value : (currentModuleId || 1);
+      if (!course || !bodyEl || bodyEl.value.trim().length < 5) return;
+
+      try {
+        const res = await fetch(`/api/courses/${course.id}/modules/${moduleId}/discussions`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ body: bodyEl.value.trim() })
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) throw new Error(data.error || 'Could not post.');
+        bodyEl.value = '';
+        if (statusEl) {
+          statusEl.hidden = false;
+          statusEl.textContent = '✓ Posted to your cohort discussion!';
+        }
+        loadDiscussionForum();
+      } catch (err) {
+        alert(err.message || 'Unable to post discussion right now.');
+      }
+    });
+  }
+}
+
+async function loadDiscussionForum() {
+  const course = window.PASTORS_LMS_COURSE;
+  const modSelect = document.getElementById('discussionModuleSelect');
+  const listEl = document.getElementById('discussionThreadsList');
+  const peerEl = document.getElementById('peerSubmissionsList');
+  if (!course || !listEl) return;
+
+  const moduleId = modSelect ? modSelect.value : (currentModuleId || 1);
+  try {
+    const res = await fetch(`/api/courses/${course.id}/modules/${moduleId}/discussions`);
+    const data = await res.json();
+    if (!data || !data.success) return;
+
+    const posts = data.posts || [];
+    const topPosts = posts.filter(p => !p.parent_id);
+    const repliesByParent = {};
+    posts.filter(p => p.parent_id).forEach(r => {
+      repliesByParent[r.parent_id] = repliesByParent[r.parent_id] || [];
+      repliesByParent[r.parent_id].push(r);
+    });
+
+    if (topPosts.length === 0) {
+      listEl.innerHTML = '<div class="empty-state"><p>Be the first pastor to share a reflection in this unit\'s cohort forum!</p></div>';
+    } else {
+      listEl.innerHTML = topPosts.map(p => {
+        const isStaff = ['teacher', 'admin', 'super_admin'].includes(p.author_role);
+        const replies = repliesByParent[p.id] || [];
+        return `
+          <article class="discussion-post-card">
+            <div class="discussion-post-meta">
+              <strong>${escapeUiText(p.author_name)}</strong>
+              ${isStaff ? '<span class="lecturer-scope-tag lecturer-scope-module">Instructor</span>' : '<span class="lecturer-scope-tag lecturer-scope-course">Cohort Pastor</span>'}
+              <span class="discussion-post-date">${new Date(p.created_at).toLocaleString()}</span>
+              ${p.grade_score !== null && p.grade_score !== undefined ? `<span class="discussion-grade-pill">Score: ${p.grade_score}/100</span>` : ''}
+            </div>
+            <p class="discussion-post-body">${escapeUiText(p.body)}</p>
+            ${replies.length ? `<div class="discussion-replies">${replies.map(r => `
+              <div class="discussion-reply-item">
+                <strong>${escapeUiText(r.author_name)}</strong>
+                ${['teacher', 'admin', 'super_admin'].includes(r.author_role) ? '<span class="lecturer-scope-tag lecturer-scope-module">Instructor</span>' : ''}
+                <span class="discussion-post-date">${new Date(r.created_at).toLocaleString()}</span>
+                <p>${escapeUiText(r.body)}</p>
+              </div>
+            `).join('')}</div>` : ''}
+            <form class="discussion-reply-form" data-parent-id="${escapeUiText(p.id)}">
+              <input type="text" class="form-input discussion-reply-input" placeholder="Reply to ${escapeUiText(p.author_name)}..." required>
+              <button type="submit" class="btn btn-secondary btn-sm">Reply</button>
+            </form>
+          </article>
+        `;
+      }).join('');
+
+      listEl.querySelectorAll('.discussion-reply-form').forEach(rForm => {
+        rForm.addEventListener('submit', async (ev) => {
+          ev.preventDefault();
+          const input = rForm.querySelector('.discussion-reply-input');
+          const parentId = rForm.getAttribute('data-parent-id');
+          if (!input || input.value.trim().length < 5) return;
+          await fetch(`/api/courses/${course.id}/modules/${moduleId}/discussions`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ parent_id: parentId, body: input.value.trim() })
+          });
+          loadDiscussionForum();
+        });
+      });
+    }
+
+    // Peer Feedback List
+    if (peerEl) {
+      const peers = data.peerSubmissions || [];
+      if (peers.length === 0) {
+        peerEl.innerHTML = '<p class="lecturer-subtitle">No fellow pastors\' written submissions in this unit yet. Check back once your cohort submits.</p>';
+      } else {
+        peerEl.innerHTML = peers.map(ps => `
+          <article class="peer-card">
+            <div class="discussion-post-meta">
+              <strong>${escapeUiText(ps.student_name)}</strong> &mdash; <span>${escapeUiText(ps.topic_title || 'Reflection')}</span>
+            </div>
+            <p class="discussion-post-body">${escapeUiText(ps.content_text)}</p>
+            ${ps.reviews && ps.reviews.length ? `<div class="peer-reviews-existing">${ps.reviews.map(rv => `
+              <div class="peer-review-note"><strong>${escapeUiText(rv.reviewer_name)}</strong> (${rv.rating}/5 ★): ${escapeUiText(rv.feedback)}</div>
+            `).join('')}</div>` : ''}
+            <form class="peer-review-form" data-sub-id="${escapeUiText(ps.id)}">
+              <select class="form-input peer-rating-select" aria-label="Peer rating">
+                <option value="5">5 ★ — Strong Biblical Insight</option>
+                <option value="4">4 ★ — Encouraging & Clear</option>
+                <option value="3">3 ★ — Good Foundation</option>
+                <option value="2">2 ★ — Needs More Scripture</option>
+              </select>
+              <input type="text" class="form-input peer-feedback-input" placeholder="Share encouraging biblical feedback..." required>
+              <button type="submit" class="btn btn-primary btn-sm">Send Peer Feedback</button>
+            </form>
+          </article>
+        `).join('');
+
+        peerEl.querySelectorAll('.peer-review-form').forEach(pForm => {
+          pForm.addEventListener('submit', async (ev) => {
+            ev.preventDefault();
+            const subId = pForm.getAttribute('data-sub-id');
+            const rating = pForm.querySelector('.peer-rating-select')?.value || '5';
+            const fbInput = pForm.querySelector('.peer-feedback-input');
+            if (!fbInput || fbInput.value.trim().length < 8) {
+              alert('Please write at least 8 characters of encouraging feedback.');
+              return;
+            }
+            const r = await fetch(`/api/courses/${course.id}/submissions/${subId}/peer-review`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ rating, feedback: fbInput.value.trim() })
+            });
+            const j = await r.json();
+            if (!j.success) alert(j.error || 'Could not save peer review.');
+            else loadDiscussionForum();
+          });
+        });
+      }
+    }
+  } catch {
+    listEl.innerHTML = '<p class="lecturer-subtitle">Discussions require an internet connection to load new posts.</p>';
+  }
+}
+
+/**
+ * Offline Course Caching Button (PWA)
+ */
+function initOfflineCourseSave() {
+  const btn = document.getElementById('btnSaveCourseOffline');
+  const statusEl = document.getElementById('offlineSaveStatus');
+  if (!btn) return;
+
+  btn.addEventListener('click', async () => {
+    const courseUrl = btn.getAttribute('data-course-url') || window.location.pathname;
+    if (!('caches' in window)) {
+      if (statusEl) statusEl.textContent = 'Offline saving is not supported by this browser.';
+      return;
+    }
+    btn.disabled = true;
+    btn.textContent = 'Saving for offline reading...';
+    try {
+      const cache = await caches.open('pastors-lms-lessons-v1');
+      await cache.addAll([
+        courseUrl,
+        '/courses',
+        '/css/global.css',
+        '/css/course.css',
+        '/css/dashboard.css',
+        '/css/footer.css',
+        '/js/course-brightspace.js',
+        '/js/app.js'
+      ]);
+      btn.textContent = '✓ Saved for Offline Reading';
+      if (statusEl) {
+        statusEl.textContent = '✓ This course and all its unit readings are saved on your device! You can open it even without internet.';
+      }
+    } catch {
+      btn.disabled = false;
+      btn.textContent = '📥 Save Course for Offline Reading';
+      if (statusEl) {
+        statusEl.textContent = 'Could not save right now. Check your connection and try again.';
+      }
+    }
+  });
 }
 
 /**

@@ -6,6 +6,13 @@ const path = require('path');
 const { requireAuth } = require('../middleware/auth');
 const { getCourseModulesWithTopics } = require('../data/course-content');
 const { findTeacherByUsername, resolveModuleInstructor } = require('../utils/instructors');
+const {
+  getEnrolledCoursesForUser,
+  getAnnouncements,
+  getSubmissions,
+  getDiscussions,
+  computeCourseGradeSummary
+} = require('../utils/lms-store');
 
 const COURSES_FILE = path.join(__dirname, '../data/courses.json');
 const PROGRESS_FILE = path.join(__dirname, '../data/student-progress.json');
@@ -181,12 +188,28 @@ function enrichCourseStats(course, userProg = {}) {
 router.get('/', requireAuth, async (req, res) => {
   const data = getLMSData();
   const userProg = getStudentProgress(req);
-  const enrichedCourses = data.courses.map(c => enrichCourseStats(c, userProg));
-  const tasks = data.tasks || [];
+  const { courses: visibleCourses } = getEnrolledCoursesForUser(data.courses || [], req.session.user);
+  const enrichedCourses = visibleCourses.map(c => enrichCourseStats(c, userProg));
+
+  // Build real upcoming deadlines from module due_date fields + static tasks
+  const moduleDeadlines = [];
+  enrichedCourses.forEach(c => {
+    (c.modules || []).forEach(m => {
+      if (m.due_date) {
+        moduleDeadlines.push({
+          title: `${c.code}: ${m.title}`,
+          due_date: m.due_date,
+          course_id: c.id,
+          type: 'module'
+        });
+      }
+    });
+  });
+  const tasks = [...moduleDeadlines, ...(data.tasks || [])];
 
   // Summary statistics for dashboard cards
   const totalEnrolled = enrichedCourses.length;
-  const currentCourses = enrichedCourses.filter(c => c.status === 'current');
+  const currentCourses = enrichedCourses.filter(c => c.status === 'current' || c.status === 'active');
   const pastCourses = enrichedCourses.filter(c => c.status === 'past');
   const totalCompletedTopics = enrichedCourses.reduce((sum, c) => sum + c.completedTopics, 0);
   const totalTopicsAll = enrichedCourses.reduce((sum, c) => sum + c.totalTopics, 0);
@@ -212,8 +235,9 @@ router.get('/', requireAuth, async (req, res) => {
 // GET /courses - My Courses list
 router.get('/courses', requireAuth, (req, res) => {
   const userProg = getStudentProgress(req);
-  const courses = getLMSData().courses.map(c => enrichCourseStats(c, userProg));
-  const currentCount = courses.filter(c => c.status === 'current').length;
+  const { courses: visibleCourses } = getEnrolledCoursesForUser(getLMSData().courses || [], req.session.user);
+  const courses = visibleCourses.map(c => enrichCourseStats(c, userProg));
+  const currentCount = courses.filter(c => c.status === 'current' || c.status === 'active').length;
   const pastCount = courses.filter(c => c.status === 'past').length;
 
   res.render('courses', {
@@ -240,23 +264,51 @@ router.get('/courses/:id', requireAuth, async (req, res) => {
     });
   }
 
+  // Enforce enrolment for students when explicit enrolment records exist
+  const { courses: allowedCourses, isFilteredByEnrolment } = getEnrolledCoursesForUser(data.courses || [], req.session.user);
+  if (isFilteredByEnrolment && !allowedCourses.some(c => Number(c.id) === courseId)) {
+    return res.redirect('/courses');
+  }
+
   const course = enrichCourseStats(rawCourse, userProg);
   course.courseInstructor = findTeacherByUsername(rawCourse.instructor_username);
+  const isStaff = ['admin', 'super_admin', 'teacher'].includes(req.session.user.role);
   if (Array.isArray(course.modulesWithTopics)) {
     course.modulesWithTopics = course.modulesWithTopics.map(mod => {
       const rawMod = (rawCourse.modules || []).find(m => Number(m.id) === Number(mod.id)) || mod;
       return {
         ...mod,
+        isLocked: isStaff ? false : Boolean(mod.isLocked),
         instructor: resolveModuleInstructor(rawCourse, rawMod)
       };
     });
   }
   course.studentFullName = req.session?.user?.full_name || 'Student';
-  const courseTasks = (data.tasks || []).filter(t => t.course_id === courseId);
+  course.studentUsername = req.session?.user?.username || '';
+  course.userRole = req.session?.user?.role || 'student';
+
+  const username = req.session.user.username || req.session.user.email;
+  const [liveAnnouncements, mySubs, courseDiscussions] = await Promise.all([
+    getAnnouncements(courseId),
+    getSubmissions({ course_id: courseId, student_username: username }),
+    getDiscussions(courseId)
+  ]);
+  const myDiscussions = courseDiscussions.filter(
+    d => String(d.author_username || '').toLowerCase() === String(username).toLowerCase()
+  );
+  const gradeSummary = computeCourseGradeSummary(mySubs, myDiscussions);
+
+  const moduleTasks = (rawCourse.modules || [])
+    .filter(m => m.due_date)
+    .map(m => ({ title: `${rawCourse.code}: ${m.title}`, due_date: m.due_date, course_id: courseId }));
+  const courseTasks = [...moduleTasks, ...(data.tasks || []).filter(t => t.course_id === courseId)];
 
   res.render('course-detail', {
     title: `${course.code} - ${course.title} | Pastors LMS`,
     course,
+    liveAnnouncements,
+    gradeSummary,
+    mySubmissions: mySubs,
     courseTasks,
     allTasks: data.tasks || []
   });

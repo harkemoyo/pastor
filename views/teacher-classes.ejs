@@ -24,12 +24,20 @@
         </p>
       </div>
       <div class="admin-actions">
+        <a href="/teacher/grading" class="btn btn-primary" id="btnTeacherGradingQueue">Grading Queue</a>
         <a href="/teacher/library" class="btn btn-secondary" id="btnTeacherLibraryFromClasses">Manage Library Materials</a>
         <% if (user && user.role === 'super_admin') { %>
-          <a href="/admin/courses" class="btn btn-primary" id="btnSuperAdminAssignCourses">Assign Lecturers</a>
+          <a href="/admin/courses" class="btn btn-outline" id="btnSuperAdminAssignCourses">Assign Lecturers</a>
         <% } %>
       </div>
     </div>
+
+    <% if (typeof success !== 'undefined' && success) { %>
+      <div class="alert alert-success" role="status"><%= success %></div>
+    <% } %>
+    <% if (typeof error !== 'undefined' && error) { %>
+      <div class="alert alert-danger" role="alert"><%= error %></div>
+    <% } %>
 
     <% if (!assignments || assignments.length === 0) { %>
       <section class="admin-surface">
@@ -62,10 +70,28 @@
           <% if (item.assignedModules && item.assignedModules.length) { %>
             <div class="teacher-module-chips" aria-label="Assigned modules">
               <% item.assignedModules.forEach(mod => { %>
-                <span class="teacher-module-chip">📘 <%= mod.title %></span>
+                <a href="/admin/courses/<%= item.course.id %>/modules/<%= mod.id %>/lessons" class="teacher-module-chip" title="Edit lessons, quizzes &amp; due dates">
+                  📘 <%= mod.title %> &middot; Edit Lessons
+                </a>
               <% }) %>
             </div>
           <% } %>
+
+          <!-- Post Course Announcement -->
+          <form action="/teacher/courses/<%= item.course.id %>/announcements" method="POST" class="teacher-announce-form" id="announceForm-<%= item.course.id %>">
+            <strong>📢 Post Announcement to <%= item.course.code %> Students</strong>
+            <div class="teacher-announce-grid">
+              <div>
+                <label class="form-label" for="annTitle-<%= item.course.id %>">Title</label>
+                <input type="text" id="annTitle-<%= item.course.id %>" name="title" class="form-input" placeholder="e.g. Week 2 Reminder" required>
+              </div>
+              <div>
+                <label class="form-label" for="annBody-<%= item.course.id %>">Message</label>
+                <input type="text" id="annBody-<%= item.course.id %>" name="body" class="form-input" placeholder="Share weekly encouragement or deadline update..." required>
+              </div>
+              <button type="submit" class="btn btn-primary btn-sm" id="btnPostAnn-<%= item.course.id %>">Post</button>
+            </div>
+          </form>
 
           <h3>Students (<%= item.students.length %>)</h3>
           <% if (item.students.length === 0) { %>
