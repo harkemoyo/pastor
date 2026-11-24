@@ -286,6 +286,9 @@
             <span class="bp-user-name">
               <%= locals.user ? locals.user.full_name : 'Pastor' %>
             </span>
+            <svg class="bp-dd-chevron" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
           </button>
 
           <div class="bp-popover bp-popover-profile" id="popoverUserProfile" role="dialog" aria-label="User Profile Menu" hidden>
@@ -322,7 +325,10 @@
                 data-nav-dropdown="activitiesDropdownWrap"
                 aria-expanded="false"
                 aria-controls="activitiesDropdownMenu">
-          Activities <span aria-hidden="true">&#9662;</span>
+          <span>Activities</span>
+          <svg class="bp-dd-chevron" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" aria-hidden="true">
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
         </button>
         <div class="bp-nav-submenu" id="activitiesDropdownMenu" role="menu">
           <button type="button" id="btnActivitiesAssignments" role="menuitem" data-activity-action="assignment">Assignments</button>
@@ -342,7 +348,10 @@
                 data-nav-dropdown="courseToolsDropdownWrap"
                 aria-expanded="false"
                 aria-controls="courseToolsDropdownMenu">
-          Course Tools <span aria-hidden="true">&#9662;</span>
+          <span>Course Tools</span>
+          <svg class="bp-dd-chevron" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" aria-hidden="true">
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
         </button>
         <div class="bp-nav-submenu" id="courseToolsDropdownMenu" role="menu">
           <button type="button" id="btnToolAnnouncements" role="menuitem" data-tool-action="announcements">Announcements</button>
@@ -361,7 +370,10 @@
                 data-nav-dropdown="resourcesDropdownWrap"
                 aria-expanded="false"
                 aria-controls="resourcesDropdownMenu">
-          Learning Resources <span aria-hidden="true">&#9662;</span>
+          <span>Learning Resources</span>
+          <svg class="bp-dd-chevron" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" aria-hidden="true">
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
         </button>
         <div class="bp-nav-submenu" id="resourcesDropdownMenu" role="menu">
           <a href="/library" id="btnResLibrary" role="menuitem">Pastors Theological Library</a>
@@ -379,7 +391,10 @@
                 data-nav-dropdown="helpDropdownWrap"
                 aria-expanded="false"
                 aria-controls="helpDropdownMenu">
-          Help <span aria-hidden="true">&#9662;</span>
+          <span>Help</span>
+          <svg class="bp-dd-chevron" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" aria-hidden="true">
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
         </button>
         <div class="bp-nav-submenu bp-nav-submenu-right" id="helpDropdownMenu" role="menu">
           <% if (primaryInst && primaryInst.whatsapp_digits) { %>

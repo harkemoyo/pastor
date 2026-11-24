@@ -88,28 +88,41 @@
 .bp-top-right {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  flex-shrink: 0;
 }
 
 .bp-icon-btn {
-  background: transparent;
-  border: none;
-  width: 38px;
-  height: 38px;
-  border-radius: 50%;
+  background: #F7F9FB;
+  border: 1px solid #E3E8EE;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #495057;
+  color: #192F47;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
   position: relative;
   text-decoration: none;
 }
 
 .bp-icon-btn:hover {
-  background: #ECEFF2;
-  color: #1B2024;
+  background: #EEF2F7;
+  border-color: #192F47;
+  color: #0B192C;
+}
+
+.bp-dd-chevron {
+  flex-shrink: 0;
+  transition: transform 0.18s ease;
+  opacity: 0.92;
+}
+
+.bp-nav-dropdown-item.open .bp-dd-chevron,
+.bp-popover-wrap.open .bp-dd-chevron {
+  transform: rotate(180deg);
 }
 
 .bp-icon-divider {
@@ -191,7 +204,30 @@
   border-radius: 12px;
   box-shadow: 0 16px 40px rgba(11, 25, 44, 0.18), 0 4px 12px rgba(11, 25, 44, 0.08);
   z-index: 300;
-  overflow: hidden;
+  overflow: visible;
+}
+
+.bp-popover::before {
+  content: '';
+  position: absolute;
+  top: -7px;
+  right: 16px;
+  width: 13px;
+  height: 13px;
+  background: #FFFFFF;
+  border-top: 1px solid #D9D2C4;
+  border-left: 1px solid #D9D2C4;
+  transform: rotate(45deg);
+}
+
+.bp-popover > :first-child {
+  border-top-left-radius: 11px;
+  border-top-right-radius: 11px;
+}
+
+.bp-popover > :last-child {
+  border-bottom-left-radius: 11px;
+  border-bottom-right-radius: 11px;
 }
 
 .bp-popover[hidden] {
@@ -733,25 +769,25 @@
 
 .bp-nav-container {
   width: 100%;
-  max-width: var(--site-max-width, 1440px);
+  max-width: var(--site-max-width, 1220px);
   margin: 0 auto;
   padding: 0 24px;
   display: flex;
   align-items: stretch;
   flex-wrap: wrap;
-  gap: 4px;
+  gap: 2px;
   overflow: visible;
 }
 
 .bp-nav-tab {
   background: transparent;
   border: none;
-  color: rgba(255, 255, 255, 0.92);
+  color: rgba(255, 255, 255, 0.94);
   font-family: var(--font-body);
-  font-size: 0.94rem;
+  font-size: 0.9rem;
   font-weight: 700;
-  padding: 0 18px;
-  min-height: 52px;
+  padding: 0 13px;
+  min-height: 50px;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -1686,6 +1722,10 @@
     max-width: none;
     max-height: calc(100vh - 88px);
     overflow-y: auto;
+  }
+
+  .bp-popover::before {
+    display: none;
   }
 
   .bp-nav-submenu,

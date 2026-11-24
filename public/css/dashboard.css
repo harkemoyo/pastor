@@ -501,6 +501,14 @@
   outline-offset: 2px;
 }
 
+.admin-menu-toggle .admin-caret {
+  transition: transform 0.18s ease;
+}
+
+.admin-menu-toggle[aria-expanded="true"] .admin-caret {
+  transform: rotate(180deg);
+}
+
 .admin-dropdown {
   position: absolute;
   top: calc(100% + 8px);
