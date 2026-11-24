@@ -776,3 +776,49 @@ html {
     margin-right: auto;
   }
 }
+
+@media (max-width: 560px) {
+  .hero {
+    padding: 44px 16px 86px;
+  }
+
+  .section {
+    padding: 48px 16px;
+  }
+
+  .stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding: 0 16px;
+    gap: 12px;
+  }
+
+  .stat {
+    padding: 16px 12px;
+  }
+
+  .stat strong {
+    font-size: 1.55rem;
+  }
+
+  .hero-photo figcaption {
+    position: static;
+    margin-top: 12px;
+  }
+
+  .partner-logos {
+    gap: 14px;
+  }
+
+  .partner-logos li {
+    flex: 1 1 130px;
+    height: 88px;
+  }
+
+  .final-cta {
+    padding: 52px 16px;
+  }
+
+  .final-cta h2 {
+    font-size: 1.6rem;
+  }
+}

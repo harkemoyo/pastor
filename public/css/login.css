@@ -931,3 +931,35 @@
   font-size: 0.95rem;
   font-weight: 800;
 }
+
+@media (max-width: 640px) {
+  .login-body,
+  .login-viewport {
+    background-attachment: scroll;
+  }
+
+  .login-viewport-content {
+    padding: 20px 12px;
+  }
+
+  .main-portal-logo {
+    height: 88px;
+  }
+
+  .login-card-container,
+  .login-card {
+    padding: 24px 18px;
+    border-radius: 16px;
+  }
+
+  .profile-upload-box {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .field-label-row {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+}

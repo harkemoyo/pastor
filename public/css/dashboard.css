@@ -905,10 +905,19 @@
   box-shadow: 0 2px 6px rgba(11, 25, 44, 0.1);
 }
 
+/* Narrow centered container for My Courses (/courses) */
+.courses-main-narrow {
+  max-width: 1020px;
+}
+
+.courses-main-narrow .course-card-thumb {
+  max-height: 220px;
+}
+
 /* Course Cards Grid */
 .course-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 22px;
 }
 
@@ -916,6 +925,10 @@
   .course-grid {
     grid-template-columns: 1fr;
     gap: 16px;
+  }
+
+  .courses-main-narrow .course-card-thumb {
+    max-height: 210px;
   }
 }
 
@@ -1462,5 +1475,37 @@
 .uop-support-btn {
   width: 100%;
   justify-content: center;
+}
+
+@media (max-width: 640px) {
+  .resume-study-card {
+    padding: 18px 18px;
+  }
+
+  .btn-resume-study {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .course-action-row {
+    flex-wrap: wrap;
+  }
+
+  .btn-open-course {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .uop-widget {
+    padding: 16px 16px;
+  }
+
+  .wtd-item-meta {
+    white-space: normal;
+  }
+
+  .hero-quick-links .btn {
+    flex: 1 1 160px;
+  }
 }
 

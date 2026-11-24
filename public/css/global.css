@@ -90,8 +90,13 @@ html, body {
   color: var(--text-body);
   background-color: var(--bg-app);
   line-height: 1.65;
+  overflow-x: clip;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+img {
+  max-width: 100%;
 }
 
 /* Typography Defaults: Playfair Display headings, Lato body */

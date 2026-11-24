@@ -605,6 +605,30 @@
   }
 }
 
+@media (max-width: 640px) {
+  .teacher-course-card {
+    padding: 1rem;
+  }
+
+  .grading-field-score,
+  .grading-field-feedback {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .grading-inline-form .btn {
+    width: 100%;
+  }
+
+  .admin-actions {
+    width: 100%;
+  }
+
+  .admin-actions .btn {
+    flex: 1 1 140px;
+  }
+}
+
 @media print {
   .top-navbar, .site-footer, .filters-bar, .admin-actions, .pagination, .action-stack, .status-pill-list, .btn {
     display: none !important;

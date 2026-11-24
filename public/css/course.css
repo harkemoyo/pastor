@@ -1667,13 +1667,35 @@
   .bp-top-divider,
   .bp-course-code,
   .bp-user-name,
-  .bp-user-pill svg,
   .bp-icon-divider {
     display: none;
   }
 
   .bp-top-right {
-    gap: 4px;
+    gap: 2px;
+  }
+
+  .bp-popover,
+  .bp-popover-wide,
+  .bp-popover-profile {
+    position: fixed;
+    top: 72px;
+    left: 10px;
+    right: 10px;
+    width: auto;
+    max-width: none;
+    max-height: calc(100vh - 88px);
+    overflow-y: auto;
+  }
+
+  .bp-nav-submenu,
+  .bp-nav-submenu-right {
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    top: auto;
+    min-width: 0;
+    width: auto;
   }
 
   .bp-toolbar {
@@ -1682,6 +1704,39 @@
     min-height: 50px;
     flex-wrap: wrap;
     gap: 8px;
+  }
+
+  .bp-tab-card {
+    padding: 18px 14px;
+  }
+
+  .discussion-unit-picker,
+  .classlist-search-box,
+  .peer-rating-select,
+  .discussion-reply-input,
+  .peer-feedback-input {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .classlist-instructors-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .bp-msg-composer {
+    flex-direction: column;
+  }
+
+  .bp-msg-composer .btn {
+    width: 100%;
+  }
+
+  .uop-modules-tools {
+    width: 100%;
+  }
+
+  .uop-modules-tools .btn {
+    flex: 1 1 140px;
   }
 }
 
