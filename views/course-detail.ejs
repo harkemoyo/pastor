@@ -17,8 +17,16 @@
 <body class="bp-lms-body">
 
   <!-- =========================================================================
-       1. BRIGHTSPACE TOP NAVBAR (University Logo, Course Code, Global Tools)
+       1. BRIGHTSPACE / UOPEOPLE TOP NAVBAR WITH REAL INTERACTIVE POPOVERS
        ========================================================================= -->
+  <%
+    const swCourses = (typeof switcherCourses !== 'undefined' && switcherCourses) ? switcherCourses : [course];
+    const msgItems = (typeof inboxMessages !== 'undefined' && inboxMessages) ? inboxMessages : [];
+    const discAlerts = (typeof discussionAlerts !== 'undefined' && discussionAlerts) ? discussionAlerts : [];
+    const notifAlerts = (typeof notificationAlerts !== 'undefined' && notificationAlerts) ? notificationAlerts : [];
+    const clsList = (typeof classlist !== 'undefined' && classlist) ? classlist : { instructors: [], students: [] };
+    const primaryInst = course.courseInstructor || (clsList.instructors && clsList.instructors[0]) || null;
+  %>
   <header class="bp-top-bar">
     <div class="bp-top-bar-inner">
       <div class="bp-top-left">
@@ -32,93 +40,367 @@
       </div>
 
       <div class="bp-top-right">
-        <!-- 9-dot Waffle / All My Courses -->
-        <a href="/courses" class="bp-icon-btn" id="bpCourseLauncherBtn" title="All My Courses" aria-label="All My Courses">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="3" y="3" width="4" height="4" rx="1" />
-            <rect x="10" y="3" width="4" height="4" rx="1" />
-            <rect x="17" y="3" width="4" height="4" rx="1" />
-            <rect x="3" y="10" width="4" height="4" rx="1" />
-            <rect x="10" y="10" width="4" height="4" rx="1" />
-            <rect x="17" y="10" width="4" height="4" rx="1" />
-            <rect x="3" y="17" width="4" height="4" rx="1" />
-            <rect x="10" y="17" width="4" height="4" rx="1" />
-            <rect x="17" y="17" width="4" height="4" rx="1" />
-          </svg>
-        </a>
+        <!-- 1. 9-Dot Waffle Course Selector Popover -->
+        <div class="bp-popover-wrap" id="wrapCourseSwitcher">
+          <button type="button"
+                  class="bp-icon-btn"
+                  id="bpCourseLauncherBtn"
+                  data-popover-trigger="popoverCourseSwitcher"
+                  aria-expanded="false"
+                  aria-controls="popoverCourseSwitcher"
+                  title="Select a Course"
+                  aria-label="Select a Course">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <rect x="3" y="3" width="4" height="4" rx="1" />
+              <rect x="10" y="3" width="4" height="4" rx="1" />
+              <rect x="17" y="3" width="4" height="4" rx="1" />
+              <rect x="3" y="10" width="4" height="4" rx="1" />
+              <rect x="10" y="10" width="4" height="4" rx="1" />
+              <rect x="17" y="10" width="4" height="4" rx="1" />
+              <rect x="3" y="17" width="4" height="4" rx="1" />
+              <rect x="10" y="17" width="4" height="4" rx="1" />
+              <rect x="17" y="17" width="4" height="4" rx="1" />
+            </svg>
+          </button>
+
+          <div class="bp-popover bp-popover-wide" id="popoverCourseSwitcher" role="dialog" aria-label="Course Switcher" hidden>
+            <div class="bp-popover-list" id="courseSwitcherList">
+              <% swCourses.forEach(c => { %>
+                <div class="bp-switcher-row <%= Number(c.id) === Number(course.id) ? 'is-current' : '' %>" data-course-id="<%= c.id %>">
+                  <a href="/courses/<%= c.id %>" class="bp-switcher-link" id="switchCourseLink-<%= c.id %>">
+                    <%= c.code %>-01 <%= c.title %> &mdash; <%= c.term %>
+                  </a>
+                  <button type="button"
+                          class="bp-pin-btn"
+                          id="pinCourseBtn-<%= c.id %>"
+                          data-pin-course="<%= c.id %>"
+                          aria-pressed="false"
+                          title="Pin this course to the top"
+                          aria-label="Pin <%= c.code %>">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                      <path d="M12 17v5" />
+                      <path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z" />
+                    </svg>
+                  </button>
+                </div>
+              <% }) %>
+              <div class="bp-switcher-divider"></div>
+              <a href="/library" class="bp-switcher-portal-link" id="switcherLibraryLink">Pastors Theological Library &mdash; Study Resources</a>
+              <a href="/library?type=document" class="bp-switcher-portal-link" id="switcherGuidesLink">Printable Pastoral Study Guides</a>
+              <a href="/" class="bp-switcher-portal-link" id="switcherDashboardLink">Pastoral Training Dashboard</a>
+            </div>
+          </div>
+        </div>
 
         <div class="bp-icon-divider"></div>
 
-        <!-- Instructor / Pastoral Support shortcut -->
-        <button type="button" class="bp-icon-btn" id="bpMessagesBtn" title="Contact Course Instructor" aria-label="Contact Course Instructor">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect width="20" height="16" x="2" y="4" rx="2" />
-            <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
-          </svg>
-        </button>
-
-        <!-- Cohort Discussions shortcut -->
-        <button type="button" class="bp-icon-btn" id="bpDiscussionsIconBtn" title="Open Cohort Discussions" aria-label="Open Cohort Discussions">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" />
-          </svg>
-        </button>
-
-        <!-- Work To Do / Alerts Bell -->
-        <div class="bp-bell-wrapper">
-          <button type="button" class="bp-icon-btn" id="bpNotificationsBtn" title="View Work To Do &amp; Announcements" aria-label="View Work To Do and Announcements">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
-              <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+        <!-- 2. Envelope: Instant Messages & Email Popover -->
+        <div class="bp-popover-wrap" id="wrapMessages">
+          <button type="button"
+                  class="bp-icon-btn"
+                  id="bpMessagesBtn"
+                  data-popover-trigger="popoverMessages"
+                  aria-expanded="false"
+                  aria-controls="popoverMessages"
+                  title="Instant Messages &amp; Email"
+                  aria-label="Instant Messages and Email">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <rect width="20" height="16" x="2" y="4" rx="2" />
+              <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
             </svg>
-            <% if (typeof workToDo !== 'undefined' && workToDo && workToDo.totalCount > 0) { %>
+            <% if (msgItems.length > 0) { %>
               <span class="bp-notification-dot"></span>
             <% } %>
           </button>
-        </div>
 
-        <!-- User Profile Avatar Pill -->
-        <div class="bp-user-pill" title="Logged in as <%= locals.user ? locals.user.full_name : 'Pastor' %>">
-          <div class="bp-avatar">
-            <%= locals.user ? (locals.user.initials || 'HE') : 'HE' %>
+          <div class="bp-popover bp-popover-wide" id="popoverMessages" role="dialog" aria-label="Course Messages" hidden>
+            <div class="bp-msg-header">
+              <button type="button" class="bp-msg-pill-btn is-active" id="btnToggleInstantComposer">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                </svg>
+                <span>Instant Messages</span>
+              </button>
+              <a href="mailto:<%= (primaryInst && primaryInst.email) ? primaryInst.email : 'info@ida-africa.org' %>?subject=<%= encodeURIComponent(course.code + ' Course Inquiry') %>"
+                 class="bp-msg-email-link"
+                 id="btnPopoverEmailInstructor">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <rect width="20" height="16" x="2" y="4" rx="2" />
+                  <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+                </svg>
+                <span>Email</span>
+              </a>
+            </div>
+
+            <form class="bp-msg-composer" id="courseInstantMsgForm" data-course-id="<%= course.id %>">
+              <label for="instantMsgInput" class="bp-sr-only">Send a message to your course instructor</label>
+              <input type="text"
+                     id="instantMsgInput"
+                     class="bp-msg-input"
+                     placeholder="Write a quick message to <%= primaryInst ? primaryInst.full_name : 'your instructor' %>..."
+                     required>
+              <button type="submit" class="btn btn-primary btn-sm" id="btnSendInstantMsg">Send</button>
+            </form>
+
+            <div class="bp-popover-feed" id="courseMessagesFeed">
+              <% if (!msgItems.length) { %>
+                <div class="bp-popover-empty">No recent instructor messages in <%= course.code %> yet.</div>
+              <% } else { %>
+                <% msgItems.slice(0, 6).forEach(m => { %>
+                  <div class="bp-feed-item">
+                    <div class="bp-feed-title">
+                      <strong><%= m.sender %> (<%= m.senderRole %>)</strong> said:
+                    </div>
+                    <p class="bp-feed-text"><%= m.preview %></p>
+                    <span class="bp-feed-time"><%= m.timeLabel %></span>
+                  </div>
+                <% }) %>
+              <% } %>
+            </div>
+
+            <% if (primaryInst && primaryInst.whatsapp_digits) { %>
+              <div class="bp-popover-footer">
+                <a href="https://wa.me/<%= primaryInst.whatsapp_digits %>?text=<%= encodeURIComponent('Hello ' + primaryInst.full_name + ', I have a question about ' + course.code + '.') %>"
+                   target="_blank"
+                   rel="noopener noreferrer"
+                   class="bp-popover-footer-link"
+                   id="btnPopoverWhatsAppInstructor">
+                  Message <%= primaryInst.full_name %> on WhatsApp &nearr;
+                </a>
+              </div>
+            <% } %>
           </div>
-          <span class="bp-user-name">
-            <%= locals.user ? locals.user.full_name : 'Pastor' %>
-          </span>
         </div>
 
-        <a href="/" class="bp-home-link" id="btnBpDashboard" title="Exit to Main LMS Portal">
-          Dashboard
-        </a>
+        <!-- 3. Speech Bubble: Cohort Discussion Subscription Alerts -->
+        <div class="bp-popover-wrap" id="wrapDiscAlerts">
+          <button type="button"
+                  class="bp-icon-btn"
+                  id="bpDiscussionsIconBtn"
+                  data-popover-trigger="popoverDiscussions"
+                  aria-expanded="false"
+                  aria-controls="popoverDiscussions"
+                  title="Cohort Discussion Alerts"
+                  aria-label="Cohort Discussion Alerts">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+            </svg>
+          </button>
+
+          <div class="bp-popover bp-popover-wide" id="popoverDiscussions" role="dialog" aria-label="Cohort Discussions" hidden>
+            <div class="bp-popover-head">Cohort Discussion Activity</div>
+            <div class="bp-popover-feed">
+              <% if (!discAlerts.length) { %>
+                <div class="bp-popover-empty">No cohort discussion posts yet. Be the first pastor to share a reflection!</div>
+              <% } else { %>
+                <% discAlerts.forEach(d => { %>
+                  <button type="button"
+                          class="bp-feed-item bp-feed-item-btn"
+                          data-open-discussion-mod="<%= d.module_id %>"
+                          id="discAlertBtn-<%= d.id %>">
+                    <div class="bp-feed-title"><strong><%= d.author %></strong> in <%= d.module_title %></div>
+                    <p class="bp-feed-text"><%= d.snippet %><%= d.snippet.length >= 110 ? '...' : '' %></p>
+                    <span class="bp-feed-time"><%= d.timeLabel %></span>
+                  </button>
+                <% }) %>
+              <% } %>
+            </div>
+            <div class="bp-popover-footer">
+              <button type="button" class="bp-popover-footer-link" id="btnPopoverOpenDiscussions">
+                Open All Cohort Discussions &rarr;
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. Bell: Update Alerts (Due Quizzes, Assignments, Grade Updates) -->
+        <div class="bp-popover-wrap" id="wrapNotifications">
+          <button type="button"
+                  class="bp-icon-btn"
+                  id="bpNotificationsBtn"
+                  data-popover-trigger="popoverNotifications"
+                  aria-expanded="false"
+                  aria-controls="popoverNotifications"
+                  title="Update Alerts"
+                  aria-label="Update Alerts">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+              <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+            </svg>
+            <% if (notifAlerts.length > 0) { %>
+              <span class="bp-notification-dot"></span>
+            <% } %>
+          </button>
+
+          <div class="bp-popover bp-popover-wide" id="popoverNotifications" role="dialog" aria-label="Update Alerts" hidden>
+            <div class="bp-popover-head">Course Updates &amp; Deadlines</div>
+            <div class="bp-popover-feed">
+              <% if (!notifAlerts.length) { %>
+                <div class="bp-popover-empty">You are all caught up with no pending deadlines!</div>
+              <% } else { %>
+                <% notifAlerts.forEach(alert => { %>
+                  <a href="<%= alert.href %>"
+                     class="bp-notif-item"
+                     id="<%= alert.id %>"
+                     data-notif-course="<%= alert.course_id %>"
+                     data-notif-module="<%= alert.module_id || '' %>"
+                     data-notif-topic="<%= alert.topic_id || '' %>"
+                     data-notif-action="<%= alert.actionType %>">
+                    <span class="bp-notif-icon bp-notif-icon-<%= alert.type %>" aria-hidden="true">
+                      <% if (alert.type === 'quiz' || alert.type === 'exam') { %>
+                        ?
+                      <% } else if (alert.type === 'grade') { %>
+                        &#9733;
+                      <% } else if (alert.type === 'discussion') { %>
+                        &#128172;
+                      <% } else { %>
+                        &#128196;
+                      <% } %>
+                    </span>
+                    <span class="bp-notif-body">
+                      <span class="bp-notif-headline"><%= alert.headline %></span>
+                      <span class="bp-notif-sub"><%= alert.subline %></span>
+                      <span class="bp-feed-time"><%= alert.timeLabel %></span>
+                    </span>
+                  </a>
+                <% }) %>
+              <% } %>
+            </div>
+          </div>
+        </div>
+
+        <div class="bp-icon-divider"></div>
+
+        <!-- 5. User Avatar Profile Popover -->
+        <div class="bp-popover-wrap" id="wrapUserProfile">
+          <button type="button"
+                  class="bp-user-pill"
+                  id="bpUserProfileBtn"
+                  data-popover-trigger="popoverUserProfile"
+                  aria-expanded="false"
+                  aria-controls="popoverUserProfile"
+                  title="Account &amp; Academic Links">
+            <span class="bp-avatar">
+              <%= locals.user ? (locals.user.initials || 'P') : 'P' %>
+            </span>
+            <span class="bp-user-name">
+              <%= locals.user ? locals.user.full_name : 'Pastor' %>
+            </span>
+          </button>
+
+          <div class="bp-popover bp-popover-profile" id="popoverUserProfile" role="dialog" aria-label="User Profile Menu" hidden>
+            <div class="bp-profile-summary">
+              <strong><%= locals.user ? locals.user.full_name : 'Pastor' %></strong>
+              <span>@<%= locals.user ? (locals.user.username || locals.user.student_id || 'student') : 'student' %></span>
+            </div>
+            <div class="bp-profile-links">
+              <a href="/" id="profileMenuDashboard">Pastoral Dashboard</a>
+              <a href="/courses" id="profileMenuCourses">My Courses</a>
+              <a href="/transcript" id="profileMenuTranscript">Academic Progress (Unofficial Transcript)</a>
+              <a href="/courses/<%= course.id %>/certificate" id="profileMenuCertificate">Course Certificate</a>
+              <a href="/logout" class="bp-profile-logout" id="profileMenuLogout">Sign Out</a>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </header>
 
   <!-- =========================================================================
-       2. SECONDARY COURSE NAVIGATION BAR (Deep Navy #192F47)
+       2. SECONDARY COURSE NAVIGATION BAR (Exact UoPeople Organization)
        ========================================================================= -->
   <nav class="bp-course-nav" aria-label="Course sections">
     <div class="bp-nav-container">
       <button type="button" class="bp-nav-tab active" id="tabNavHome" data-tab="home">Home</button>
       <button type="button" class="bp-nav-tab" id="tabNavContent" data-tab="content">Content</button>
-      <button type="button" class="bp-nav-tab" id="tabNavDiscussions" data-tab="discussions">Discussions</button>
-      <button type="button" class="bp-nav-tab" id="tabNavGrades" data-tab="grades">Grades</button>
-      
-      <!-- Click-Toggleable Dropdown: Activities -->
+
+      <!-- Dropdown: Activities -->
       <div class="bp-nav-dropdown-item" id="activitiesDropdownWrap">
-        <button type="button" class="bp-nav-tab has-dropdown" id="btnActivitiesDropdown" aria-expanded="false" aria-controls="activitiesDropdownMenu">
-          Activities <span aria-hidden="true">▾</span>
+        <button type="button"
+                class="bp-nav-tab has-dropdown"
+                id="btnActivitiesDropdown"
+                data-nav-dropdown="activitiesDropdownWrap"
+                aria-expanded="false"
+                aria-controls="activitiesDropdownMenu">
+          Activities <span aria-hidden="true">&#9662;</span>
         </button>
         <div class="bp-nav-submenu" id="activitiesDropdownMenu" role="menu">
           <button type="button" id="btnActivitiesAssignments" role="menuitem" data-activity-action="assignment">Assignments</button>
+          <button type="button" id="btnActivitiesDiscussions" role="menuitem" data-activity-action="discussions">Discussions</button>
           <button type="button" id="btnActivitiesQuizzes" role="menuitem" data-activity-action="quiz">Quizzes &amp; Exams</button>
-          <button type="button" id="btnActivitiesDiscussions" role="menuitem" data-activity-action="discussions">Cohort Discussions</button>
         </div>
       </div>
 
-      <a class="bp-nav-tab" href="/library" id="tabNavLibrary">Library</a>
-      <a class="bp-nav-tab" href="/transcript" id="tabNavTranscript">Transcript</a>
-      <a class="bp-nav-tab" href="/courses/<%= course.id %>/certificate" id="tabNavCertificate">Certificate</a>
+      <button type="button" class="bp-nav-tab" id="tabNavClasslist" data-tab="classlist">Classlist</button>
+      <button type="button" class="bp-nav-tab" id="tabNavGrades" data-tab="grades">Grades</button>
+
+      <!-- Dropdown: Course Tools -->
+      <div class="bp-nav-dropdown-item" id="courseToolsDropdownWrap">
+        <button type="button"
+                class="bp-nav-tab has-dropdown"
+                id="btnCourseToolsDropdown"
+                data-nav-dropdown="courseToolsDropdownWrap"
+                aria-expanded="false"
+                aria-controls="courseToolsDropdownMenu">
+          Course Tools <span aria-hidden="true">&#9662;</span>
+        </button>
+        <div class="bp-nav-submenu" id="courseToolsDropdownMenu" role="menu">
+          <button type="button" id="btnToolAnnouncements" role="menuitem" data-tool-action="announcements">Announcements</button>
+          <button type="button" id="btnToolWorkToDo" role="menuitem" data-tool-action="worktodo">Work To Do &amp; Deadlines</button>
+          <button type="button" id="btnToolOfflineSave" role="menuitem" data-tool-action="offline">Save Course for Offline</button>
+          <a href="/transcript" id="btnToolTranscript" role="menuitem">Academic Progress (Transcript)</a>
+          <a href="/courses/<%= course.id %>/certificate" id="btnToolCertificate" role="menuitem">Course Certificate</a>
+        </div>
+      </div>
+
+      <!-- Dropdown: Learning Resources -->
+      <div class="bp-nav-dropdown-item" id="resourcesDropdownWrap">
+        <button type="button"
+                class="bp-nav-tab has-dropdown"
+                id="btnResourcesDropdown"
+                data-nav-dropdown="resourcesDropdownWrap"
+                aria-expanded="false"
+                aria-controls="resourcesDropdownMenu">
+          Learning Resources <span aria-hidden="true">&#9662;</span>
+        </button>
+        <div class="bp-nav-submenu" id="resourcesDropdownMenu" role="menu">
+          <a href="/library" id="btnResLibrary" role="menuitem">Pastors Theological Library</a>
+          <a href="/library?type=document" id="btnResStudyGuides" role="menuitem">Printable Study Guides</a>
+          <a href="/library?type=link" id="btnResBibleTools" role="menuitem">Bible &amp; Exegesis Tools</a>
+          <button type="button" id="btnResSyllabus" role="menuitem" data-tool-action="modules">Course Syllabus &amp; Modules</button>
+        </div>
+      </div>
+
+      <!-- Dropdown: Help -->
+      <div class="bp-nav-dropdown-item" id="helpDropdownWrap">
+        <button type="button"
+                class="bp-nav-tab has-dropdown"
+                id="btnHelpDropdown"
+                data-nav-dropdown="helpDropdownWrap"
+                aria-expanded="false"
+                aria-controls="helpDropdownMenu">
+          Help <span aria-hidden="true">&#9662;</span>
+        </button>
+        <div class="bp-nav-submenu bp-nav-submenu-right" id="helpDropdownMenu" role="menu">
+          <% if (primaryInst && primaryInst.whatsapp_digits) { %>
+            <a href="https://wa.me/<%= primaryInst.whatsapp_digits %>?text=<%= encodeURIComponent('Hello ' + primaryInst.full_name + ', I need help with ' + course.code + '.') %>"
+               target="_blank" rel="noopener noreferrer" id="btnHelpWhatsApp" role="menuitem">
+              WhatsApp Course Instructor
+            </a>
+          <% } else { %>
+            <a href="https://wa.me/254707821269?text=Hello%20Pastors%20LMS%20Support"
+               target="_blank" rel="noopener noreferrer" id="btnHelpWhatsApp" role="menuitem">
+              WhatsApp Pastoral Support
+            </a>
+          <% } %>
+          <a href="mailto:<%= (primaryInst && primaryInst.email) ? primaryInst.email : 'info@ida-africa.org' %>" id="btnHelpEmail" role="menuitem">
+            Email Faculty Support
+          </a>
+          <a href="/offline" id="btnHelpOffline" role="menuitem">Offline Reading Help</a>
+        </div>
+      </div>
+
+      <a class="bp-nav-tab" href="/library?type=video" id="tabNavMediaLibrary">Media Library</a>
     </div>
   </nav>
 
@@ -701,6 +983,99 @@
             <% } %>
           </tbody>
         </table>
+      </div>
+    </section>
+  </main>
+
+  <!-- =========================================================================
+       7. CLASSLIST TAB (Course Instructors + Enrolled Cohort Pastors)
+       ========================================================================= -->
+  <main class="main-content bp-extra-tab bp-view-hidden" id="viewClasslist" hidden>
+    <section class="bp-tab-card">
+      <div class="bp-tab-head">
+        <div>
+          <h2>Classlist &mdash; <%= course.code %> (<%= course.term || 'AY2027-T1' %>)</h2>
+          <p>Connect with your assigned course &amp; module instructors and fellow pastors studying in your cohort.</p>
+        </div>
+        <div class="classlist-search-box">
+          <label for="classlistSearchInput" class="bp-sr-only">Search classlist</label>
+          <input type="search" id="classlistSearchInput" class="bp-search-input" placeholder="Search pastors by name or church...">
+        </div>
+      </div>
+
+      <!-- Faculty / Instructors Section -->
+      <div class="classlist-section">
+        <h3 class="classlist-section-title">Assigned Faculty &amp; Lecturers</h3>
+        <% if (!clsList.instructors || !clsList.instructors.length) { %>
+          <div class="uop-empty-box">No specific lecturer assigned yet. Contact IDA Faculty Support at info@ida-africa.org.</div>
+        <% } else { %>
+          <div class="classlist-instructors-grid">
+            <% clsList.instructors.forEach((inst, idx) => { %>
+              <article class="classlist-inst-card" id="classlistInst-<%= idx %>">
+                <div class="classlist-inst-head">
+                  <div class="bp-instructor-avatar"><%= inst.initials || 'T' %></div>
+                  <div>
+                    <div class="bp-instructor-label"><%= inst.scopeLabel || 'Instructor' %></div>
+                    <div class="bp-instructor-name"><%= inst.full_name %></div>
+                  </div>
+                </div>
+                <div class="bp-instructor-actions">
+                  <% if (inst.whatsapp_digits) { %>
+                    <a href="https://wa.me/<%= inst.whatsapp_digits %>?text=<%= encodeURIComponent('Hello ' + inst.full_name + ', I am studying ' + course.code + '.') %>"
+                       target="_blank" rel="noopener noreferrer" class="bp-instructor-wa" id="classlistWa-<%= idx %>">
+                      WhatsApp
+                    </a>
+                  <% } %>
+                  <% if (inst.email) { %>
+                    <a href="mailto:<%= inst.email %>?subject=<%= encodeURIComponent(course.code + ' Student Question') %>"
+                       class="bp-instructor-email" id="classlistEmail-<%= idx %>">
+                      Email
+                    </a>
+                  <% } %>
+                </div>
+              </article>
+            <% }) %>
+          </div>
+        <% } %>
+      </div>
+
+      <!-- Enrolled Cohort Pastors Section -->
+      <div class="classlist-section">
+        <h3 class="classlist-section-title">Cohort Pastors (<%= (clsList.students || []).length %>)</h3>
+        <% if (!clsList.students || !clsList.students.length) { %>
+          <div class="uop-empty-box">No classmates listed yet for this cohort.</div>
+        <% } else { %>
+          <div class="classlist-table-wrap">
+            <table class="classlist-table" id="classlistStudentsTable">
+              <thead>
+                <tr>
+                  <th>Pastor / Student</th>
+                  <th>Role</th>
+                  <th>Church / Ministry</th>
+                  <th>Cohort</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% clsList.students.forEach(st => { %>
+                  <tr class="classlist-student-row">
+                    <td>
+                      <div class="classlist-person-cell">
+                        <span class="classlist-avatar"><%= st.initials %></span>
+                        <div>
+                          <strong><%= st.full_name %></strong>
+                          <div class="classlist-handle">@<%= st.username %></div>
+                        </div>
+                      </div>
+                    </td>
+                    <td><span class="badge badge-purple"><%= st.ministry_role %></span></td>
+                    <td><%= st.church_name %></td>
+                    <td><%= st.cohort %></td>
+                  </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+        <% } %>
       </div>
     </section>
   </main>

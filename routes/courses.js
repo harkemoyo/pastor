@@ -15,9 +15,114 @@ const {
 } = require('../utils/lms-store');
 
 const COURSES_FILE = path.join(__dirname, '../data/courses.json');
+const USERS_FILE = path.join(__dirname, '../data/users.json');
+const ENROLMENTS_FILE = path.join(__dirname, '../data/enrolments.json');
+const MESSAGES_FILE = path.join(__dirname, '../data/course-messages.json');
+const FALLBACK_MESSAGES_FILE = path.join(os.tmpdir(), 'pastors-lms-course-messages.json');
 const PROGRESS_FILE = path.join(__dirname, '../data/student-progress.json');
 const FALLBACK_PROGRESS_FILE = path.join(os.tmpdir(), 'pastors-lms-progress.json');
 const PROGRESS_COOKIE_NAME = 'pastors_prog';
+
+function readJsonSafe(filePath, fallback) {
+  try {
+    if (fs.existsSync(filePath)) {
+      const raw = fs.readFileSync(filePath, 'utf8');
+      if (raw && raw.trim()) return JSON.parse(raw);
+    }
+  } catch {
+    // ignore
+  }
+  return fallback;
+}
+
+function getCourseMessages(courseId) {
+  let all = readJsonSafe(MESSAGES_FILE, null);
+  if (!Array.isArray(all)) all = readJsonSafe(FALLBACK_MESSAGES_FILE, []);
+  return all
+    .filter(m => Number(m.course_id) === Number(courseId))
+    .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+}
+
+function saveCourseMessage(msg) {
+  let all = readJsonSafe(MESSAGES_FILE, null);
+  if (!Array.isArray(all)) all = readJsonSafe(FALLBACK_MESSAGES_FILE, []);
+  all.unshift(msg);
+  const payload = JSON.stringify(all.slice(0, 200), null, 2);
+  try {
+    fs.writeFileSync(MESSAGES_FILE, payload, 'utf8');
+    return true;
+  } catch {
+    try {
+      fs.writeFileSync(FALLBACK_MESSAGES_FILE, payload, 'utf8');
+      return true;
+    } catch {
+      return false;
+    }
+  }
+}
+
+function formatRelativeTime(isoStr) {
+  if (!isoStr) return 'Recently';
+  const d = new Date(isoStr);
+  if (Number.isNaN(d.getTime())) return String(isoStr);
+  const diffMin = Math.max(0, Math.floor((Date.now() - d.getTime()) / 60000));
+  if (diffMin < 1) return 'Just now';
+  if (diffMin < 60) return `${diffMin} min ago`;
+  const diffHr = Math.floor(diffMin / 60);
+  if (diffHr < 24) return `${diffHr} hour${diffHr === 1 ? '' : 's'} ago`;
+  const diffDay = Math.floor(diffHr / 24);
+  if (diffDay < 7) return `${diffDay} day${diffDay === 1 ? '' : 's'} ago`;
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function buildCourseClasslist(rawCourse, course) {
+  const instructorsMap = new Map();
+  if (course.courseInstructor) {
+    instructorsMap.set(course.courseInstructor.username, {
+      ...course.courseInstructor,
+      scopeLabel: 'Course Instructor'
+    });
+  }
+  (course.modulesWithTopics || []).forEach(m => {
+    if (m.instructor && !instructorsMap.has(m.instructor.username)) {
+      instructorsMap.set(m.instructor.username, {
+        ...m.instructor,
+        scopeLabel: `Module Lecturer (${m.title})`
+      });
+    }
+  });
+
+  const users = readJsonSafe(USERS_FILE, []);
+  const enrolments = readJsonSafe(ENROLMENTS_FILE, []);
+  const activeEnrolForCourse = enrolments.filter(
+    e => Number(e.course_id) === Number(rawCourse.id) && (!e.status || e.status === 'active')
+  );
+  const enrolledUsernames = new Set(activeEnrolForCourse.map(e => String(e.student_username || '').toLowerCase()));
+
+  const students = (Array.isArray(users) ? users : [])
+    .filter(u => u && u.role === 'student' && u.status !== 'rejected' && u.status !== 'disabled')
+    .filter(u => enrolledUsernames.size === 0 || enrolledUsernames.has(String(u.username || '').toLowerCase()))
+    .map(u => {
+      const fullName = u.full_name || [u.first_name, u.last_name].filter(Boolean).join(' ') || u.username;
+      const initials = u.initials || fullName.split(' ').map(p => p[0]).join('').slice(0, 2).toUpperCase() || 'P';
+      return {
+        full_name: fullName,
+        initials,
+        username: u.username,
+        student_id: u.student_id || u.username,
+        church_name: u.church_name || 'Local Church Ministry',
+        cohort: u.cohort || 'East Africa Pastoral Cohort',
+        ministry_role: u.ministry_role || 'Pastor',
+        country_code: u.country_code || 'KE',
+        email: u.email || ''
+      };
+    });
+
+  return {
+    instructors: Array.from(instructorsMap.values()),
+    students
+  };
+}
 
 // Helper to get courses and tasks data
 function getLMSData() {
@@ -429,10 +534,11 @@ router.get('/courses/:id', requireAuth, async (req, res) => {
   course.userRole = req.session?.user?.role || 'student';
 
   const username = req.session.user.username || req.session.user.email;
-  const [liveAnnouncements, mySubs, courseDiscussions] = await Promise.all([
+  const [liveAnnouncements, mySubs, courseDiscussions, allUserSubs] = await Promise.all([
     getAnnouncements(courseId),
     getSubmissions({ course_id: courseId, student_username: username }),
-    getDiscussions(courseId)
+    getDiscussions(courseId),
+    getSubmissions({ student_username: username })
   ]);
   const myDiscussions = courseDiscussions.filter(
     d => String(d.author_username || '').toLowerCase() === String(username).toLowerCase()
@@ -443,15 +549,140 @@ router.get('/courses/:id', requireAuth, async (req, res) => {
     discussions: myDiscussions
   });
 
+  // Enrolled course switcher list (9-dot waffle popover)
+  const switcherCourses = allowedCourses.map(c => ({
+    id: c.id,
+    code: c.code,
+    title: c.title,
+    term: c.term || 'AY2027-T1',
+    status: c.status || 'current'
+  }));
+
+  // Notifications bell alerts across all enrolled courses (Quizzes, Assignments, Grades)
+  const enrichedAllowed = allowedCourses.map(c => enrichCourseStats(c, userProg));
+  const globalWorkToDo = buildWorkToDo(enrichedAllowed, {
+    submissions: allUserSubs,
+    discussions: myDiscussions
+  });
+  const notificationAlerts = [];
+  [...(globalWorkToDo.upcoming || []), ...(globalWorkToDo.overdue || [])].slice(0, 6).forEach(item => {
+    notificationAlerts.push({
+      id: `notif-${item.uid}`,
+      type: item.type,
+      headline: item.type === 'quiz' || item.type === 'exam'
+        ? `Quiz due soon. "${item.title}" (${item.dueLabel}).`
+        : item.type === 'discussion'
+          ? `Discussion activity: "${item.title}" (${item.dueLabel}).`
+          : `"${item.title}" is ${item.dueLabel.toLowerCase()}.`,
+      subline: `${item.course_code} ${item.course_title}`,
+      timeLabel: item.dueLabel,
+      href: item.href,
+      course_id: item.course_id,
+      module_id: item.module_id,
+      topic_id: item.topic_id,
+      actionType: item.actionType
+    });
+  });
+  notificationAlerts.push({
+    id: `notif-grade-${course.id}`,
+    type: 'grade',
+    headline: gradeSummary && gradeSummary.averagePercent !== null
+      ? `"Final Calculated Grade" updated. Your grade is: ${gradeSummary.averagePercent}% (${gradeSummary.letterGrade}).`
+      : `"Course Progress" updated: ${course.percent}% (${course.completedTopics}/${course.totalTopics} topics completed).`,
+    subline: `${course.code} ${course.title}`,
+    timeLabel: 'Gradebook',
+    href: `/courses/${course.id}?tab=grades`,
+    course_id: course.id,
+    actionType: 'open-grades'
+  });
+
+  // Envelope / Instant Messages popover items
+  const savedMessages = getCourseMessages(courseId);
+  const inboxMessages = [
+    ...savedMessages.map(m => ({
+      id: m.id,
+      sender: m.sender_name,
+      senderRole: m.sender_role === 'student' ? 'Cohort Pastor' : 'Instructor',
+      preview: m.body,
+      timeLabel: formatRelativeTime(m.created_at)
+    })),
+    ...(liveAnnouncements || []).map(a => ({
+      id: `ann-${a.id}`,
+      sender: a.author_name || 'Course Instructor',
+      senderRole: 'Instructor',
+      preview: `${a.title}: ${a.body}`,
+      timeLabel: formatRelativeTime(a.created_at)
+    }))
+  ];
+  if (course.announcement) {
+    inboxMessages.push({
+      id: `base-ann-${course.id}`,
+      sender: course.courseInstructor ? course.courseInstructor.full_name : 'IDA Academic Faculty',
+      senderRole: 'Instructor',
+      preview: `${course.announcement.title} — ${course.announcement.content}`,
+      timeLabel: course.announcement.date || 'This Term'
+    });
+  }
+
+  // Speech bubble popover: latest discussion posts
+  const discussionAlerts = (courseDiscussions || []).slice(0, 6).map(p => {
+    const mod = (course.modulesWithTopics || []).find(m => Number(m.id) === Number(p.module_id));
+    return {
+      id: p.id,
+      author: p.author_name || 'Cohort Pastor',
+      module_id: p.module_id,
+      module_title: mod ? mod.title : `Unit ${p.module_id}`,
+      snippet: String(p.body || '').slice(0, 110),
+      timeLabel: formatRelativeTime(p.created_at)
+    };
+  });
+
+  // Classlist tab (instructors + enrolled cohort pastors)
+  const classlist = buildCourseClasslist(rawCourse, course);
+
   res.render('course-detail', {
     title: `${course.code} - ${course.title} | Pastors LMS`,
     course,
+    switcherCourses,
+    classlist,
+    inboxMessages,
+    discussionAlerts,
+    notificationAlerts,
     liveAnnouncements,
     gradeSummary,
     mySubmissions: mySubs,
     workToDo,
     courseTasks: [],
     allTasks: data.tasks || []
+  });
+});
+
+// POST /courses/:id/messages - Send an Instant Message inside the course Messages popover
+router.post('/courses/:id/messages', requireAuth, (req, res) => {
+  const courseId = parseInt(req.params.id, 10);
+  const body = String((req.body && req.body.body) || '').trim();
+  if (body.length < 2) {
+    return res.status(400).json({ success: false, error: 'Please enter a message before sending.' });
+  }
+  const msg = {
+    id: `msg-${Date.now()}`,
+    course_id: courseId,
+    sender_username: req.session.user.username || req.session.user.email,
+    sender_name: req.session.user.full_name || 'Pastor',
+    sender_role: req.session.user.role || 'student',
+    body: body.slice(0, 1000),
+    created_at: new Date().toISOString()
+  };
+  saveCourseMessage(msg);
+  res.json({
+    success: true,
+    message: {
+      id: msg.id,
+      sender: msg.sender_name,
+      senderRole: msg.sender_role === 'student' ? 'Cohort Pastor' : 'Instructor',
+      preview: msg.body,
+      timeLabel: 'Just now'
+    }
   });
 });
 

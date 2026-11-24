@@ -4,10 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title><%= title %></title>
-  <link rel="stylesheet" href="/css/global.css">
-  <link rel="stylesheet" href="/css/dashboard.css">
-  <link rel="stylesheet" href="/css/transcript.css">
-  <link rel="stylesheet" href="/css/footer.css">
+  <link rel="stylesheet" href="/css/global.css?v=<%= locals.assetVersion || '4' %>">
+  <link rel="stylesheet" href="/css/dashboard.css?v=<%= locals.assetVersion || '4' %>">
+  <link rel="stylesheet" href="/css/transcript.css?v=<%= locals.assetVersion || '4' %>">
+  <link rel="stylesheet" href="/css/footer.css?v=<%= locals.assetVersion || '4' %>">
   <link rel="icon" type="image/x-icon" href="/images/favicon.ico">
 </head>
 <body class="app-container">
@@ -23,7 +23,7 @@
         <% } %>
       </div>
       <button type="button" class="btn btn-primary" id="btnPrintTranscript" onclick="window.print()">
-        🖨️ Print / Save Official PDF
+        🖨️ <%= isAdminView ? 'Print / Save Official PDF' : 'Print / Save Student Copy' %>
       </button>
     </div>
 
@@ -39,8 +39,10 @@
           </div>
         </div>
         <div class="transcript-doc-label">
-          <span class="doc-badge">OFFICIAL ACADEMIC TRANSCRIPT</span>
-          <p class="doc-date">Issued: <%= issuedDate %></p>
+          <span class="doc-badge">
+            <%= isAdminView ? 'OFFICIAL ACADEMIC TRANSCRIPT' : 'UNOFFICIAL TRANSCRIPT — STUDENT COPY' %>
+          </span>
+          <p class="doc-date">Generated: <%= issuedDate %></p>
         </div>
       </header>
 
@@ -115,19 +117,25 @@
         </div>
       </section>
 
-      <!-- Verification & Signature Lines -->
-      <footer class="transcript-signatures">
-        <div class="sig-block">
-          <div class="sig-line"></div>
-          <strong>Academic Registrar</strong>
-          <span>Intentional Discipleship Africa</span>
+      <!-- Verification & Signature Lines (Official Admin Registrar Copy Only) -->
+      <% if (isAdminView) { %>
+        <footer class="transcript-signatures">
+          <div class="sig-block">
+            <div class="sig-line"></div>
+            <strong>Academic Registrar</strong>
+            <span>Intentional Discipleship Africa</span>
+          </div>
+          <div class="sig-block">
+            <div class="sig-line"></div>
+            <strong>Dean of Pastoral Training</strong>
+            <span>Pastors LMS &middot; East Africa</span>
+          </div>
+        </footer>
+      <% } else { %>
+        <div class="alert alert-info">
+          <strong>Student Progress Copy:</strong> This unofficial transcript is for your personal study tracking. For a signed and stamped Official Academic Transcript, please contact the Academic Registrar at <strong>info@ida-africa.org</strong>.
         </div>
-        <div class="sig-block">
-          <div class="sig-line"></div>
-          <strong>Dean of Pastoral Training</strong>
-          <span>Pastors LMS &middot; East Africa</span>
-        </div>
-      </footer>
+      <% } %>
 
       <p class="transcript-scripture">
         &ldquo;Do your best to present yourself to God as one approved, a worker who does not need to be ashamed and who correctly handles the word of truth.&rdquo; &mdash; 2 Timothy 2:15

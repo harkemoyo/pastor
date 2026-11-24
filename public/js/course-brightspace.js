@@ -51,19 +51,21 @@ function initBrightspaceTabs() {
   const tabHome = document.getElementById('tabNavHome');
   const tabContent = document.getElementById('tabNavContent');
   const tabDiscussions = document.getElementById('tabNavDiscussions');
+  const tabClasslist = document.getElementById('tabNavClasslist');
   const tabGrades = document.getElementById('tabNavGrades');
   const viewHome = document.getElementById('viewHome');
   const viewContent = document.getElementById('viewContent');
   const viewDiscussions = document.getElementById('viewDiscussions');
+  const viewClasslist = document.getElementById('viewClasslist');
   const viewGrades = document.getElementById('viewGrades');
   const btnGoContent = document.getElementById('btnGoToContentFromHome');
 
   if (!tabHome || !tabContent) return;
 
   function showTab(tabName) {
-    const allTabs = [tabHome, tabContent, tabDiscussions, tabGrades].filter(Boolean);
+    const allTabs = [tabHome, tabContent, tabDiscussions, tabClasslist, tabGrades].filter(Boolean);
     allTabs.forEach(t => t.classList.remove('active'));
-    [viewHome, viewContent, viewDiscussions, viewGrades].forEach(v => {
+    [viewHome, viewContent, viewDiscussions, viewClasslist, viewGrades].forEach(v => {
       if (v) {
         v.classList.add('bp-view-hidden');
         v.hidden = true;
@@ -78,6 +80,8 @@ function initBrightspaceTabs() {
       }
     } else if (tabName === 'discussions') {
       if (tabDiscussions) tabDiscussions.classList.add('active');
+      const actBtn = document.getElementById('btnActivitiesDropdown');
+      if (!tabDiscussions && actBtn) actBtn.classList.add('active');
       if (viewDiscussions) {
         viewDiscussions.classList.remove('bp-view-hidden');
         viewDiscussions.hidden = false;
@@ -85,6 +89,12 @@ function initBrightspaceTabs() {
       const modSelect = document.getElementById('discussionModuleSelect');
       if (modSelect && currentModuleId) modSelect.value = String(currentModuleId);
       loadDiscussionForum();
+    } else if (tabName === 'classlist') {
+      if (tabClasslist) tabClasslist.classList.add('active');
+      if (viewClasslist) {
+        viewClasslist.classList.remove('bp-view-hidden');
+        viewClasslist.hidden = false;
+      }
     } else if (tabName === 'grades') {
       if (tabGrades) tabGrades.classList.add('active');
       if (viewGrades) {
@@ -106,6 +116,7 @@ function initBrightspaceTabs() {
   tabHome.addEventListener('click', () => showTab('home'));
   tabContent.addEventListener('click', () => showTab('content'));
   if (tabDiscussions) tabDiscussions.addEventListener('click', () => showTab('discussions'));
+  if (tabClasslist) tabClasslist.addEventListener('click', () => showTab('classlist'));
   if (tabGrades) tabGrades.addEventListener('click', () => showTab('grades'));
   if (btnGoContent) {
     btnGoContent.addEventListener('click', () => showTab('content'));
@@ -113,75 +124,249 @@ function initBrightspaceTabs() {
 }
 
 /**
- * 1b. Click-Toggleable Activities Dropdown & Top Bar Utility Icons
+ * 1b. All UoPeople Top-Bar Popovers, Nav Dropdowns, Pinned Courses,
+ *     Instant Messages, Notifications & Classlist Search
  */
 function initBrightspaceTopActions() {
-  const dropWrap = document.getElementById('activitiesDropdownWrap');
-  const dropBtn = document.getElementById('btnActivitiesDropdown');
-  const dropMenu = document.getElementById('activitiesDropdownMenu');
-
-  function closeActivitiesMenu() {
-    if (dropWrap) dropWrap.classList.remove('open');
-    if (dropBtn) dropBtn.setAttribute('aria-expanded', 'false');
+  function closeAllMenus() {
+    document.querySelectorAll('.bp-popover-wrap.open').forEach(w => {
+      w.classList.remove('open');
+      const btn = w.querySelector('[data-popover-trigger]');
+      const pop = w.querySelector('.bp-popover');
+      if (btn) btn.setAttribute('aria-expanded', 'false');
+      if (pop) pop.hidden = true;
+    });
+    document.querySelectorAll('.bp-nav-dropdown-item.open').forEach(d => {
+      d.classList.remove('open');
+      const btn = d.querySelector('[data-nav-dropdown]');
+      if (btn) btn.setAttribute('aria-expanded', 'false');
+    });
   }
 
-  if (dropWrap && dropBtn && dropMenu) {
-    dropBtn.addEventListener('click', (e) => {
+  // Top-bar popovers (9-dot Course Switcher, Messages, Discussion Alerts, Notifications, User Profile)
+  document.querySelectorAll('[data-popover-trigger]').forEach(btn => {
+    const targetId = btn.getAttribute('data-popover-trigger');
+    const popover = targetId ? document.getElementById(targetId) : null;
+    const wrap = btn.closest('.bp-popover-wrap');
+    if (!popover || !wrap) return;
+
+    btn.addEventListener('click', (e) => {
       e.stopPropagation();
-      const willOpen = !dropWrap.classList.contains('open');
-      dropWrap.classList.toggle('open', willOpen);
-      dropBtn.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+      const willOpen = !wrap.classList.contains('open');
+      closeAllMenus();
+      if (willOpen) {
+        wrap.classList.add('open');
+        popover.hidden = false;
+        btn.setAttribute('aria-expanded', 'true');
+      }
     });
 
-    dropMenu.querySelectorAll('[data-activity-action]').forEach(item => {
-      item.addEventListener('click', () => {
-        const action = item.getAttribute('data-activity-action');
-        closeActivitiesMenu();
-        if (action === 'discussions') {
-          if (typeof window.switchBrightspaceTab === 'function') window.switchBrightspaceTab('discussions');
-        } else if (action) {
-          selectTopicByType(action);
+    popover.addEventListener('click', (e) => e.stopPropagation());
+  });
+
+  // Secondary nav bar dropdowns (Activities, Course Tools, Learning Resources, Help)
+  document.querySelectorAll('[data-nav-dropdown]').forEach(btn => {
+    const wrapId = btn.getAttribute('data-nav-dropdown');
+    const wrap = wrapId ? document.getElementById(wrapId) : btn.closest('.bp-nav-dropdown-item');
+    if (!wrap) return;
+
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const willOpen = !wrap.classList.contains('open');
+      closeAllMenus();
+      if (willOpen) {
+        wrap.classList.add('open');
+        btn.setAttribute('aria-expanded', 'true');
+      }
+    });
+  });
+
+  // Activities submenu actions
+  document.querySelectorAll('[data-activity-action]').forEach(item => {
+    item.addEventListener('click', () => {
+      const action = item.getAttribute('data-activity-action');
+      closeAllMenus();
+      if (action === 'discussions') {
+        if (typeof window.switchBrightspaceTab === 'function') window.switchBrightspaceTab('discussions');
+      } else if (action) {
+        selectTopicByType(action);
+      }
+    });
+  });
+
+  // Course Tools & Learning Resources button actions
+  document.querySelectorAll('[data-tool-action]').forEach(item => {
+    item.addEventListener('click', () => {
+      const action = item.getAttribute('data-tool-action');
+      closeAllMenus();
+      if (action === 'announcements') {
+        if (typeof window.switchBrightspaceTab === 'function') window.switchBrightspaceTab('home');
+        const el = document.getElementById('homeAnnouncementsWidget');
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else if (action === 'worktodo') {
+        if (typeof window.switchBrightspaceTab === 'function') window.switchBrightspaceTab('home');
+        const el = document.getElementById('workToDoWidget');
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else if (action === 'modules') {
+        if (typeof window.switchBrightspaceTab === 'function') window.switchBrightspaceTab('home');
+        const el = document.getElementById('homeModulesWidget');
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else if (action === 'offline') {
+        if (typeof window.switchBrightspaceTab === 'function') window.switchBrightspaceTab('home');
+        const btnOff = document.getElementById('btnSaveCourseOffline');
+        if (btnOff) btnOff.click();
+      }
+    });
+  });
+
+  // Course Switcher Pinning (persisted in localStorage, sorts pinned courses to top)
+  const PIN_KEY = 'pastors_lms_pinned_courses_v1';
+  const switcherList = document.getElementById('courseSwitcherList');
+  if (switcherList) {
+    let pinned = [];
+    try {
+      const parsed = JSON.parse(localStorage.getItem(PIN_KEY) || '[]');
+      if (Array.isArray(parsed)) pinned = parsed.map(String);
+    } catch {
+      pinned = [];
+    }
+
+    function applyPinnedOrder() {
+      const rows = Array.from(switcherList.querySelectorAll('.bp-switcher-row[data-course-id]'));
+      const divider = switcherList.querySelector('.bp-switcher-divider');
+      rows.forEach(row => {
+        const cid = String(row.getAttribute('data-course-id'));
+        const isPinned = pinned.includes(cid);
+        const btn = row.querySelector('.bp-pin-btn');
+        if (btn) {
+          btn.classList.toggle('is-pinned', isPinned);
+          btn.setAttribute('aria-pressed', isPinned ? 'true' : 'false');
         }
+      });
+      rows
+        .sort((a, b) => {
+          const ap = pinned.includes(String(a.getAttribute('data-course-id'))) ? 0 : 1;
+          const bp = pinned.includes(String(b.getAttribute('data-course-id'))) ? 0 : 1;
+          return ap - bp;
+        })
+        .forEach(r => {
+          if (divider) switcherList.insertBefore(r, divider);
+          else switcherList.appendChild(r);
+        });
+    }
+
+    switcherList.querySelectorAll('.bp-pin-btn[data-pin-course]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const cid = String(btn.getAttribute('data-pin-course'));
+        if (pinned.includes(cid)) pinned = pinned.filter(x => x !== cid);
+        else pinned.unshift(cid);
+        try { localStorage.setItem(PIN_KEY, JSON.stringify(pinned)); } catch {}
+        applyPinnedOrder();
       });
     });
 
-    document.addEventListener('click', (e) => {
-      if (!dropWrap.contains(e.target)) closeActivitiesMenu();
-    });
+    applyPinnedOrder();
+  }
 
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') closeActivitiesMenu();
+  // Instant Message Form inside Messages Popover
+  const msgForm = document.getElementById('courseInstantMsgForm');
+  const msgInput = document.getElementById('instantMsgInput');
+  const msgFeed = document.getElementById('courseMessagesFeed');
+  if (msgForm && msgInput && msgFeed) {
+    msgForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const body = msgInput.value.trim();
+      const cid = msgForm.getAttribute('data-course-id');
+      if (body.length < 2 || !cid) return;
+      const sendBtn = document.getElementById('btnSendInstantMsg');
+      if (sendBtn) sendBtn.disabled = true;
+
+      try {
+        const res = await fetch(`/courses/${cid}/messages`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ body })
+        });
+        const data = await res.json();
+        if (res.ok && data && data.success && data.message) {
+          msgInput.value = '';
+          const empty = msgFeed.querySelector('.bp-popover-empty');
+          if (empty) empty.remove();
+          const itemEl = document.createElement('div');
+          itemEl.className = 'bp-feed-item';
+          itemEl.innerHTML = `<div class="bp-feed-title"><strong>${escapeUiText(data.message.sender)} (${escapeUiText(data.message.senderRole)})</strong> said:</div><p class="bp-feed-text">${escapeUiText(data.message.preview)}</p><span class="bp-feed-time">Just now</span>`;
+          msgFeed.prepend(itemEl);
+        }
+      } catch {
+        alert('Could not send message right now. Please check your connection.');
+      } finally {
+        if (sendBtn) sendBtn.disabled = false;
+      }
     });
   }
 
-  // Top-bar quick actions
-  const btnDiscussionsIcon = document.getElementById('bpDiscussionsIconBtn');
-  if (btnDiscussionsIcon) {
-    btnDiscussionsIcon.addEventListener('click', () => {
+  // Discussion Alerts popover clicks -> open exact discussion module
+  document.querySelectorAll('[data-open-discussion-mod]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const modId = btn.getAttribute('data-open-discussion-mod');
+      closeAllMenus();
+      const modSelect = document.getElementById('discussionModuleSelect');
+      if (modSelect && modId) modSelect.value = String(modId);
+      if (typeof window.switchBrightspaceTab === 'function') window.switchBrightspaceTab('discussions');
+    });
+  });
+
+  const openDiscFooterBtn = document.getElementById('btnPopoverOpenDiscussions');
+  if (openDiscFooterBtn) {
+    openDiscFooterBtn.addEventListener('click', () => {
+      closeAllMenus();
       if (typeof window.switchBrightspaceTab === 'function') window.switchBrightspaceTab('discussions');
     });
   }
 
-  const btnNotifications = document.getElementById('bpNotificationsBtn');
-  if (btnNotifications) {
-    btnNotifications.addEventListener('click', () => {
-      if (typeof window.switchBrightspaceTab === 'function') window.switchBrightspaceTab('home');
-      const wtd = document.getElementById('workToDoWidget') || document.getElementById('homeAnnouncementsWidget');
-      if (wtd) wtd.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  // Notification Bell item clicks -> deep-link seamlessly if same course
+  const currentCourse = window.PASTORS_LMS_COURSE;
+  document.querySelectorAll('.bp-notif-item').forEach(link => {
+    link.addEventListener('click', (e) => {
+      const targetCourseId = link.getAttribute('data-notif-course');
+      const action = link.getAttribute('data-notif-action');
+      if (!currentCourse || String(targetCourseId) !== String(currentCourse.id)) return;
+
+      e.preventDefault();
+      closeAllMenus();
+      const modId = link.getAttribute('data-notif-module');
+      const topicId = link.getAttribute('data-notif-topic');
+      if (action === 'open-grades') {
+        if (typeof window.switchBrightspaceTab === 'function') window.switchBrightspaceTab('grades');
+      } else if (action === 'open-discussion') {
+        const modSelect = document.getElementById('discussionModuleSelect');
+        if (modSelect && modId) modSelect.value = String(modId);
+        if (typeof window.switchBrightspaceTab === 'function') window.switchBrightspaceTab('discussions');
+      } else if (modId) {
+        openSpecificModuleAndTopic(modId, topicId);
+      }
+    });
+  });
+
+  // Classlist live search
+  const classlistSearch = document.getElementById('classlistSearchInput');
+  const classlistTable = document.getElementById('classlistStudentsTable');
+  if (classlistSearch && classlistTable) {
+    classlistSearch.addEventListener('input', () => {
+      const q = classlistSearch.value.trim().toLowerCase();
+      classlistTable.querySelectorAll('tbody tr.classlist-student-row').forEach(row => {
+        const match = !q || row.textContent.toLowerCase().includes(q);
+        row.hidden = !match;
+      });
     });
   }
 
-  const btnMessages = document.getElementById('bpMessagesBtn');
-  if (btnMessages) {
-    btnMessages.addEventListener('click', () => {
-      const waSidebar = document.getElementById('btnSidebarWhatsAppInstructor') || document.getElementById('btnSidebarContactMentor');
-      if (typeof window.switchBrightspaceTab === 'function') window.switchBrightspaceTab('home');
-      if (waSidebar) {
-        waSidebar.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        waSidebar.focus();
-      }
-    });
-  }
+  document.addEventListener('click', closeAllMenus);
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeAllMenus();
+  });
 }
 
 /**
@@ -1248,6 +1433,13 @@ function applyUrlDeepLink() {
     if (modSelect && openModule) modSelect.value = String(openModule);
     if (typeof window.switchBrightspaceTab === 'function') {
       window.switchBrightspaceTab('discussions');
+    }
+    return;
+  }
+
+  if (tab === 'classlist') {
+    if (typeof window.switchBrightspaceTab === 'function') {
+      window.switchBrightspaceTab('classlist');
     }
     return;
   }
