@@ -15,11 +15,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  document.querySelectorAll('.progress-bar[data-percent]').forEach(bar => {
+  document.querySelectorAll('.progress-bar[data-percent], .uop-module-progress-bar[data-percent]').forEach(bar => {
     bar.style.width = `${bar.getAttribute('data-percent')}%`;
   });
 
   initBrightspaceTabs();
+  initBrightspaceTopActions();
+  initMobileUnitsDrawer();
   initBrightspaceTree();
   initBrightspaceSearch();
   initBrightspaceToolbar();
@@ -27,6 +29,9 @@ document.addEventListener('DOMContentLoaded', () => {
   initBrightspaceInteractiveForms();
   initDiscussionForum();
   initOfflineCourseSave();
+  initHomeModuleCards();
+  initCourseWorkToDoLinks();
+  applyUrlDeepLink();
   fetchMyCourseSubmissions();
 });
 
@@ -58,27 +63,41 @@ function initBrightspaceTabs() {
   function showTab(tabName) {
     const allTabs = [tabHome, tabContent, tabDiscussions, tabGrades].filter(Boolean);
     allTabs.forEach(t => t.classList.remove('active'));
-    if (viewHome) viewHome.style.display = 'none';
-    if (viewContent) viewContent.style.display = 'none';
-    if (viewDiscussions) viewDiscussions.style.display = 'none';
-    if (viewGrades) viewGrades.style.display = 'none';
+    [viewHome, viewContent, viewDiscussions, viewGrades].forEach(v => {
+      if (v) {
+        v.classList.add('bp-view-hidden');
+        v.hidden = true;
+      }
+    });
 
     if (tabName === 'home') {
       tabHome.classList.add('active');
-      if (viewHome) viewHome.style.display = 'block';
+      if (viewHome) {
+        viewHome.classList.remove('bp-view-hidden');
+        viewHome.hidden = false;
+      }
     } else if (tabName === 'discussions') {
       if (tabDiscussions) tabDiscussions.classList.add('active');
-      if (viewDiscussions) viewDiscussions.style.display = 'block';
+      if (viewDiscussions) {
+        viewDiscussions.classList.remove('bp-view-hidden');
+        viewDiscussions.hidden = false;
+      }
       const modSelect = document.getElementById('discussionModuleSelect');
       if (modSelect && currentModuleId) modSelect.value = String(currentModuleId);
       loadDiscussionForum();
     } else if (tabName === 'grades') {
       if (tabGrades) tabGrades.classList.add('active');
-      if (viewGrades) viewGrades.style.display = 'block';
+      if (viewGrades) {
+        viewGrades.classList.remove('bp-view-hidden');
+        viewGrades.hidden = false;
+      }
       fetchMyCourseSubmissions(true);
     } else {
       tabContent.classList.add('active');
-      if (viewContent) viewContent.style.display = 'flex';
+      if (viewContent) {
+        viewContent.classList.remove('bp-view-hidden');
+        viewContent.hidden = false;
+      }
     }
   }
 
@@ -91,6 +110,103 @@ function initBrightspaceTabs() {
   if (btnGoContent) {
     btnGoContent.addEventListener('click', () => showTab('content'));
   }
+}
+
+/**
+ * 1b. Click-Toggleable Activities Dropdown & Top Bar Utility Icons
+ */
+function initBrightspaceTopActions() {
+  const dropWrap = document.getElementById('activitiesDropdownWrap');
+  const dropBtn = document.getElementById('btnActivitiesDropdown');
+  const dropMenu = document.getElementById('activitiesDropdownMenu');
+
+  function closeActivitiesMenu() {
+    if (dropWrap) dropWrap.classList.remove('open');
+    if (dropBtn) dropBtn.setAttribute('aria-expanded', 'false');
+  }
+
+  if (dropWrap && dropBtn && dropMenu) {
+    dropBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const willOpen = !dropWrap.classList.contains('open');
+      dropWrap.classList.toggle('open', willOpen);
+      dropBtn.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+    });
+
+    dropMenu.querySelectorAll('[data-activity-action]').forEach(item => {
+      item.addEventListener('click', () => {
+        const action = item.getAttribute('data-activity-action');
+        closeActivitiesMenu();
+        if (action === 'discussions') {
+          if (typeof window.switchBrightspaceTab === 'function') window.switchBrightspaceTab('discussions');
+        } else if (action) {
+          selectTopicByType(action);
+        }
+      });
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!dropWrap.contains(e.target)) closeActivitiesMenu();
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeActivitiesMenu();
+    });
+  }
+
+  // Top-bar quick actions
+  const btnDiscussionsIcon = document.getElementById('bpDiscussionsIconBtn');
+  if (btnDiscussionsIcon) {
+    btnDiscussionsIcon.addEventListener('click', () => {
+      if (typeof window.switchBrightspaceTab === 'function') window.switchBrightspaceTab('discussions');
+    });
+  }
+
+  const btnNotifications = document.getElementById('bpNotificationsBtn');
+  if (btnNotifications) {
+    btnNotifications.addEventListener('click', () => {
+      if (typeof window.switchBrightspaceTab === 'function') window.switchBrightspaceTab('home');
+      const wtd = document.getElementById('workToDoWidget') || document.getElementById('homeAnnouncementsWidget');
+      if (wtd) wtd.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }
+
+  const btnMessages = document.getElementById('bpMessagesBtn');
+  if (btnMessages) {
+    btnMessages.addEventListener('click', () => {
+      const waSidebar = document.getElementById('btnSidebarWhatsAppInstructor') || document.getElementById('btnSidebarContactMentor');
+      if (typeof window.switchBrightspaceTab === 'function') window.switchBrightspaceTab('home');
+      if (waSidebar) {
+        waSidebar.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        waSidebar.focus();
+      }
+    });
+  }
+}
+
+/**
+ * 1c. Mobile Collapsible Course Units Drawer (<= 900px)
+ */
+function initMobileUnitsDrawer() {
+  const toggleBtn = document.getElementById('btnMobileUnitsToggle');
+  const treeBody = document.getElementById('bpSidebarTreeBody');
+  if (!toggleBtn || !treeBody) return;
+
+  toggleBtn.addEventListener('click', () => {
+    const willExpand = treeBody.classList.contains('is-collapsed');
+    treeBody.classList.toggle('is-collapsed', !willExpand);
+    toggleBtn.setAttribute('aria-expanded', willExpand ? 'true' : 'false');
+  });
+
+  // Auto-collapse drawer after picking a lesson on mobile so pastor reads right away
+  document.querySelectorAll('.bp-topic-item').forEach(item => {
+    item.addEventListener('click', () => {
+      if (window.innerWidth <= 900) {
+        treeBody.classList.add('is-collapsed');
+        toggleBtn.setAttribute('aria-expanded', 'false');
+      }
+    });
+  });
 }
 
 /**
@@ -176,11 +292,13 @@ function loadTopic(moduleId, topicId, topicElement) {
     return;
   }
 
-  // 3. Update Breadcrumb
+  // 3. Update Breadcrumb & Mobile Units Toggle Label
   const unitBreadcrumb = document.getElementById('toolbarUnitTitle');
   const topicBreadcrumb = document.getElementById('toolbarTopicTitle');
+  const mobileLabel = document.getElementById('mobileUnitsToggleLabel');
   if (unitBreadcrumb) unitBreadcrumb.textContent = targetMod.title;
   if (topicBreadcrumb) topicBreadcrumb.textContent = targetTopic.title;
+  if (mobileLabel) mobileLabel.textContent = `Units & Lessons — ${targetMod.title}`;
 
   // 4. Update Amber Banner Badge
   const bannerBadge = document.getElementById('bannerBadgeTitle');
@@ -331,6 +449,29 @@ function refreshCourseProgressUI() {
   if (homePct) homePct.textContent = `${coursePct}%`;
   if (homeVal) homeVal.textContent = `${completedCount} / ${totalCount}`;
   if (homeBar) homeBar.style.width = `${coursePct}%`;
+
+  // Sync each Course Home Module Card progress bar + count
+  document.querySelectorAll('.bp-unit-node').forEach(unitNode => {
+    const modId = unitNode.getAttribute('data-module-id');
+    if (!modId) return;
+    const modTopics = unitNode.querySelectorAll('.bp-topic-item');
+    const modDone = unitNode.querySelectorAll('.bp-topic-item.completed');
+    const mPct = modTopics.length > 0 ? Math.round((modDone.length / modTopics.length) * 100) : 0;
+    const cardBar = document.getElementById(`homeModBar-${modId}`);
+    const cardCount = document.getElementById(`homeModCount-${modId}`);
+    if (cardBar) cardBar.style.width = `${mPct}%`;
+    if (cardCount) cardCount.textContent = `${modDone.length}/${modTopics.length} Topics Completed`;
+  });
+
+  // Hide any completed items in the Work To Do widget
+  const course = window.PASTORS_LMS_COURSE;
+  if (course && course.id) {
+    completedTopics.forEach(item => {
+      const mId = item.getAttribute('data-module-id');
+      const tId = item.getAttribute('data-topic-id');
+      markWorkToDoDone(course.id, mId, tId);
+    });
+  }
 }
 
 async function setTopicCompletion(targetItem, shouldBeCompleted) {
@@ -738,6 +879,7 @@ function initDiscussionForum() {
           statusEl.hidden = false;
           statusEl.textContent = '✓ Posted to your cohort discussion!';
         }
+        markWorkToDoDone(course.id, moduleId, 'discussion');
         loadDiscussionForum();
       } catch (err) {
         alert(err.message || 'Unable to post discussion right now.');
@@ -886,7 +1028,7 @@ function initOfflineCourseSave() {
     btn.disabled = true;
     btn.textContent = 'Saving for offline reading...';
     try {
-      const cache = await caches.open('pastors-lms-lessons-v1');
+      const cache = await caches.open('pastors-lms-lessons-v2');
       await cache.addAll([
         courseUrl,
         '/courses',
@@ -899,12 +1041,14 @@ function initOfflineCourseSave() {
       ]);
       btn.textContent = '✓ Saved for Offline Reading';
       if (statusEl) {
+        statusEl.hidden = false;
         statusEl.textContent = '✓ This course and all its unit readings are saved on your device! You can open it even without internet.';
       }
     } catch {
       btn.disabled = false;
-      btn.textContent = '📥 Save Course for Offline Reading';
+      btn.textContent = '📥 Save for Offline';
       if (statusEl) {
+        statusEl.hidden = false;
         statusEl.textContent = 'Could not save right now. Check your connection and try again.';
       }
     }
@@ -986,4 +1130,141 @@ function updateModuleInstructorCard(course, targetMod) {
   }
 
   card.hidden = false;
+}
+
+/**
+ * Mark a completed activity hidden in the right-rail Work To Do widget
+ */
+function markWorkToDoDone(courseId, moduleId, topicId) {
+  const selector = `.wtd-item[data-course-id="${CSS.escape(String(courseId))}"][data-module-id="${CSS.escape(String(moduleId))}"][data-topic-id="${CSS.escape(String(topicId))}"]`;
+  document.querySelectorAll(selector).forEach(el => {
+    el.hidden = true;
+  });
+  if (typeof window.syncWorkToDoCounts === 'function') {
+    window.syncWorkToDoCounts();
+  }
+}
+
+/**
+ * Jump directly to a specific module (and optional topic) inside Content tab
+ */
+function openSpecificModuleAndTopic(moduleId, topicId) {
+  const unitNode = document.querySelector(`.bp-unit-node[data-module-id="${CSS.escape(String(moduleId))}"]`);
+  if (unitNode) {
+    // Expand that module in the syllabus tree
+    document.querySelectorAll('.bp-unit-node').forEach(u => {
+      u.classList.remove('active-unit', 'expanded');
+      const list = u.querySelector('.bp-topic-sublist');
+      if (list) list.style.display = 'none';
+    });
+    unitNode.classList.add('active-unit', 'expanded');
+    const sublist = unitNode.querySelector('.bp-topic-sublist');
+    if (sublist) sublist.style.display = 'flex';
+  }
+
+  let targetItem = null;
+  if (topicId) {
+    targetItem = document.querySelector(`.bp-topic-item[data-module-id="${CSS.escape(String(moduleId))}"][data-topic-id="${CSS.escape(String(topicId))}"]`)
+      || document.querySelector(`.bp-topic-item[data-topic-id="${CSS.escape(String(topicId))}"]`);
+  }
+  if (!targetItem && unitNode) {
+    targetItem = unitNode.querySelector('.bp-topic-item');
+  }
+
+  if (typeof window.switchBrightspaceTab === 'function') {
+    window.switchBrightspaceTab('content');
+  }
+  if (targetItem) {
+    loadTopic(
+      targetItem.getAttribute('data-module-id'),
+      targetItem.getAttribute('data-topic-id'),
+      targetItem
+    );
+    targetItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+}
+
+/**
+ * Make every Course Home Module Card clickable to jump straight into that unit
+ */
+function initHomeModuleCards() {
+  document.querySelectorAll('.uop-module-card[data-open-module]').forEach(card => {
+    const modId = card.getAttribute('data-open-module');
+    if (!modId) return;
+    card.addEventListener('click', () => openSpecificModuleAndTopic(modId, null));
+    card.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        openSpecificModuleAndTopic(modId, null);
+      }
+    });
+  });
+}
+
+/**
+ * Intercept Work To Do clicks on the Course Home page for instant tab/topic navigation
+ */
+function initCourseWorkToDoLinks() {
+  const widget = document.getElementById('workToDoWidget');
+  if (!widget || widget.getAttribute('data-course-context') !== 'true') return;
+
+  const course = window.PASTORS_LMS_COURSE;
+  if (!course) return;
+
+  widget.querySelectorAll('.wtd-item-link').forEach(link => {
+    link.addEventListener('click', (e) => {
+      const targetCourseId = link.getAttribute('data-course-id');
+      if (String(targetCourseId) !== String(course.id)) return; // let normal link navigate to other course
+
+      e.preventDefault();
+      const action = link.getAttribute('data-wtd-action');
+      const modId = link.getAttribute('data-module-id');
+      const topicId = link.getAttribute('data-topic-id');
+
+      if (action === 'open-discussion') {
+        const modSelect = document.getElementById('discussionModuleSelect');
+        if (modSelect && modId) modSelect.value = String(modId);
+        if (typeof window.switchBrightspaceTab === 'function') {
+          window.switchBrightspaceTab('discussions');
+        }
+      } else {
+        openSpecificModuleAndTopic(modId, topicId);
+      }
+    });
+  });
+}
+
+/**
+ * Honor URL deep links from Dashboard Work To Do (?openModule=...&openTopic=..., ?tab=discussions&module=...)
+ */
+function applyUrlDeepLink() {
+  const params = new URLSearchParams(window.location.search);
+  const tab = params.get('tab');
+  const openModule = params.get('openModule') || params.get('module');
+  const openTopic = params.get('openTopic');
+
+  if (tab === 'discussions') {
+    const modSelect = document.getElementById('discussionModuleSelect');
+    if (modSelect && openModule) modSelect.value = String(openModule);
+    if (typeof window.switchBrightspaceTab === 'function') {
+      window.switchBrightspaceTab('discussions');
+    }
+    return;
+  }
+
+  if (tab === 'grades') {
+    if (typeof window.switchBrightspaceTab === 'function') {
+      window.switchBrightspaceTab('grades');
+    }
+    return;
+  }
+
+  if (openModule || openTopic) {
+    openSpecificModuleAndTopic(openModule || currentModuleId || '1', openTopic);
+    return;
+  }
+
+  if (tab === 'content' && typeof window.switchBrightspaceTab === 'function') {
+    window.switchBrightspaceTab('content');
+  }
 }

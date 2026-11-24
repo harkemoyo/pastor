@@ -184,6 +184,147 @@ function enrichCourseStats(course, userProg = {}) {
   };
 }
 
+function parseActivityDate(raw) {
+  if (!raw) return null;
+  const cleaned = String(raw).replace(/^Due:\s*/i, '').trim();
+  if (!cleaned || /term schedule/i.test(cleaned)) return null;
+  // ISO YYYY-MM-DD (treat as local noon to avoid timezone day-shift)
+  if (/^\d{4}-\d{2}-\d{2}$/.test(cleaned)) {
+    const [y, m, d] = cleaned.split('-').map(Number);
+    return new Date(y, m - 1, d, 12, 0, 0);
+  }
+  const parsed = new Date(cleaned);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function formatShortDate(dateObj) {
+  return dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+function formatRangeDate(dateObj) {
+  return dateObj.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+}
+
+/**
+ * Build real UoPeople-style "Work To Do" items (Overdue + Upcoming) from
+ * uncompleted assignments, quizzes, exams, and weekly cohort discussions.
+ */
+function buildWorkToDo(enrichedCourses, { submissions = [], discussions = [] } = {}) {
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+
+  const submittedKeySet = new Set(
+    submissions.map(s => `${Number(s.course_id)}:${String(s.topic_id)}`)
+  );
+  const discussionModSet = new Set(
+    discussions.map(d => `${Number(d.course_id)}:${Number(d.module_id)}`)
+  );
+
+  const overdue = [];
+  const upcoming = [];
+
+  (enrichedCourses || []).forEach(course => {
+    const courseStart = parseActivityDate(course.start_date) || new Date(startOfToday.getTime());
+    const modules = Array.isArray(course.modulesWithTopics) ? course.modulesWithTopics : [];
+
+    modules.forEach((mod, modIdx) => {
+      const unitNum = Math.max(1, (Number(mod.sort_order) || (modIdx + 1)) - 1);
+      const isIntro = (Number(mod.sort_order) || (modIdx + 1)) === 1;
+      const unlockDate = parseActivityDate(mod.unlock_date);
+      const startsLabel = unlockDate && unlockDate > startOfToday
+        ? `Starts ${formatShortDate(unlockDate)}`
+        : '';
+
+      const fallbackModDue =
+        parseActivityDate(mod.due_date) ||
+        new Date(courseStart.getFullYear(), courseStart.getMonth(), courseStart.getDate() + (unitNum * 7), 12, 0, 0);
+
+      let hasExplicitDiscussion = false;
+
+      (mod.topics || []).forEach(topic => {
+        const tType = topic.type;
+        if (!['assignment', 'journal', 'quiz', 'exam', 'discussion'].includes(tType)) return;
+        if (tType === 'discussion') hasExplicitDiscussion = true;
+
+        const key = `${Number(course.id)}:${String(topic.id)}`;
+        if (topic.completed || submittedKeySet.has(key)) return;
+        if (tType === 'discussion' && discussionModSet.has(`${Number(course.id)}:${Number(mod.id)}`)) return;
+
+        const dueDate = parseActivityDate(topic.dueDate) || fallbackModDue;
+        const isOverdue = dueDate < startOfToday;
+        const actionType = tType === 'discussion' ? 'open-discussion' : 'open-topic';
+        const href = tType === 'discussion'
+          ? `/courses/${course.id}?tab=discussions&module=${mod.id}`
+          : `/courses/${course.id}?openModule=${mod.id}&openTopic=${encodeURIComponent(topic.id)}`;
+
+        const item = {
+          uid: `${course.id}-${mod.id}-${topic.id}`,
+          title: topic.title,
+          type: tType === 'journal' ? 'assignment' : tType,
+          course_id: course.id,
+          course_code: course.code,
+          course_title: course.title,
+          module_id: mod.id,
+          topic_id: String(topic.id),
+          dueDateMs: dueDate.getTime(),
+          dueLabel: `Due ${formatShortDate(dueDate)}`,
+          startsLabel,
+          actionType,
+          href
+        };
+
+        if (isOverdue) overdue.push(item);
+        else upcoming.push(item);
+      });
+
+      // UoPeople weekly Discussion Forum item for every learning unit (skip Course Intro)
+      if (!isIntro && !hasExplicitDiscussion && !discussionModSet.has(`${Number(course.id)}:${Number(mod.id)}`)) {
+        const dueDate = fallbackModDue;
+        const isOverdue = dueDate < startOfToday;
+        const item = {
+          uid: `${course.id}-${mod.id}-discussion`,
+          title: `Discussion Forum Unit ${unitNum}`,
+          type: 'discussion',
+          course_id: course.id,
+          course_code: course.code,
+          course_title: course.title,
+          module_id: mod.id,
+          topic_id: 'discussion',
+          dueDateMs: dueDate.getTime(),
+          dueLabel: `Due ${formatShortDate(dueDate)}`,
+          startsLabel,
+          actionType: 'open-discussion',
+          href: `/courses/${course.id}?tab=discussions&module=${mod.id}`
+        };
+        if (isOverdue) overdue.push(item);
+        else upcoming.push(item);
+      }
+    });
+  });
+
+  overdue.sort((a, b) => a.dueDateMs - b.dueDateMs);
+  upcoming.sort((a, b) => a.dueDateMs - b.dueDateMs);
+
+  const visibleOverdue = overdue.slice(0, 6);
+  const visibleUpcoming = upcoming.slice(0, 8);
+
+  let upcomingRangeLabel = 'Upcoming Work';
+  if (visibleUpcoming.length > 0) {
+    const first = new Date(visibleUpcoming[0].dueDateMs);
+    const last = new Date(visibleUpcoming[visibleUpcoming.length - 1].dueDateMs);
+    upcomingRangeLabel = first.toDateString() === last.toDateString()
+      ? formatRangeDate(first)
+      : `${formatRangeDate(first)} - ${formatRangeDate(last)}`;
+  }
+
+  return {
+    overdue: visibleOverdue,
+    upcoming: visibleUpcoming,
+    upcomingRangeLabel,
+    totalCount: visibleOverdue.length + visibleUpcoming.length
+  };
+}
+
 // GET / - Dashboard
 router.get('/', requireAuth, async (req, res) => {
   const data = getLMSData();
@@ -191,21 +332,19 @@ router.get('/', requireAuth, async (req, res) => {
   const { courses: visibleCourses } = getEnrolledCoursesForUser(data.courses || [], req.session.user);
   const enrichedCourses = visibleCourses.map(c => enrichCourseStats(c, userProg));
 
-  // Build real upcoming deadlines from module due_date fields + static tasks
-  const moduleDeadlines = [];
-  enrichedCourses.forEach(c => {
-    (c.modules || []).forEach(m => {
-      if (m.due_date) {
-        moduleDeadlines.push({
-          title: `${c.code}: ${m.title}`,
-          due_date: m.due_date,
-          course_id: c.id,
-          type: 'module'
-        });
-      }
-    });
+  const username = req.session.user.username || req.session.user.email;
+  const userSubs = await getSubmissions({ student_username: username });
+  const allUserDiscussions = [];
+  for (const c of enrichedCourses) {
+    const posts = (await getDiscussions(c.id)).filter(
+      d => String(d.author_username || '').toLowerCase() === String(username).toLowerCase()
+    );
+    allUserDiscussions.push(...posts);
+  }
+  const workToDo = buildWorkToDo(enrichedCourses, {
+    submissions: userSubs,
+    discussions: allUserDiscussions
   });
-  const tasks = [...moduleDeadlines, ...(data.tasks || [])];
 
   // Summary statistics for dashboard cards
   const totalEnrolled = enrichedCourses.length;
@@ -220,7 +359,8 @@ router.get('/', requireAuth, async (req, res) => {
     courses: enrichedCourses,
     currentCourses,
     pastCourses,
-    tasks,
+    tasks: data.tasks || [],
+    workToDo,
     stats: {
       totalEnrolled,
       currentCount: currentCourses.length,
@@ -260,6 +400,7 @@ router.get('/courses/:id', requireAuth, async (req, res) => {
       error: 'The requested pastoral training course was not found.',
       courses: data.courses.map(c => enrichCourseStats(c, userProg)),
       tasks: data.tasks || [],
+      workToDo: { overdue: [], upcoming: [], upcomingRangeLabel: 'Upcoming Work', totalCount: 0 },
       stats: { totalEnrolled: data.courses.length, overallPercent: 0 }
     });
   }
@@ -297,11 +438,10 @@ router.get('/courses/:id', requireAuth, async (req, res) => {
     d => String(d.author_username || '').toLowerCase() === String(username).toLowerCase()
   );
   const gradeSummary = computeCourseGradeSummary(mySubs, myDiscussions);
-
-  const moduleTasks = (rawCourse.modules || [])
-    .filter(m => m.due_date)
-    .map(m => ({ title: `${rawCourse.code}: ${m.title}`, due_date: m.due_date, course_id: courseId }));
-  const courseTasks = [...moduleTasks, ...(data.tasks || []).filter(t => t.course_id === courseId)];
+  const workToDo = buildWorkToDo([course], {
+    submissions: mySubs,
+    discussions: myDiscussions
+  });
 
   res.render('course-detail', {
     title: `${course.code} - ${course.title} | Pastors LMS`,
@@ -309,7 +449,8 @@ router.get('/courses/:id', requireAuth, async (req, res) => {
     liveAnnouncements,
     gradeSummary,
     mySubmissions: mySubs,
-    courseTasks,
+    workToDo,
+    courseTasks: [],
     allTasks: data.tasks || []
   });
 });

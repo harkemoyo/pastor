@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/css/global.css?v=<%= locals.assetVersion || '4' %>">
+  <link rel="stylesheet" href="/css/footer.css?v=<%= locals.assetVersion || '4' %>">
+  <link rel="stylesheet" href="/css/dashboard.css?v=<%= locals.assetVersion || '4' %>">
+  <link rel="stylesheet" href="/css/library.css?v=<%= locals.assetVersion || '4' %>">
+  <link rel="icon" type="image/x-icon" href="/images/favicon.ico">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <meta name="theme-color" content="#192F47">
+</head>
+
+<body class="app-container">
+  <%- include('partials/header') %>
+
+  <main class="main-content">
+    <div class="reader-shell">
+      <div class="reader-topbar">
+        <a href="/library" class="btn btn-secondary" id="btnBackToLibrary">&larr; Back to Library</a>
+        <div class="reader-topbar-actions">
+          <button type="button" class="btn btn-secondary" id="btnSaveGuideOffline" data-guide-url="/library/read/<%= item.id %>">
+            Save for Offline
+          </button>
+          <button type="button" class="btn btn-primary" id="btnPrintStudyGuide">
+            Print / Save PDF
+          </button>
+        </div>
+      </div>
+
+      <article class="reader-article">
+        <header class="reader-header">
+          <div class="library-card-badges">
+            <span class="library-type-pill library-type-document">Study Guide</span>
+            <% if (item.course) { %>
+              <span class="library-course-pill"><%= item.course.code %> &mdash; <%= item.course.title %></span>
+            <% } %>
+          </div>
+          <h1><%= item.title %></h1>
+          <div class="reader-meta">
+            Prepared by <strong><%= item.added_by_name || 'IDA Faculty' %></strong>
+            <% if (item.duration) { %> &middot; <%= item.duration %><% } %>
+          </div>
+        </header>
+
+        <div class="reader-body">
+          <% if (item.content_html) { %>
+            <%- item.content_html %>
+          <% } else { %>
+            <p><%= item.description || 'Open the linked document below to read this study guide.' %></p>
+            <% if (item.url && !item.url.startsWith('/library/read/')) { %>
+              <a href="<%= item.url %>" target="_blank" rel="noopener noreferrer" class="btn btn-primary" id="btnOpenOriginalGuide">
+                Open Original Document &nearr;
+              </a>
+            <% } %>
+          <% } %>
+        </div>
+      </article>
+    </div>
+  </main>
+
+  <%- include('partials/footer') %>
+  <script src="/js/library.js?v=<%= locals.assetVersion || '4' %>"></script>
+</body>
+
+</html>

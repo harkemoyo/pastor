@@ -1,49 +1,163 @@
-<aside class="sidebar-panel">
-  <div class="sidebar-title">
-    <span>Work To Do</span>
-    <span class="sidebar-count-badge"><%= (typeof tasks !== 'undefined' && tasks) ? tasks.length : 0 %> pending</span>
-  </div>
+<aside class="uop-right-rail" aria-label="Course time and work to do">
+  <!-- 1. Pastors LMS Live Time Widget (UoPeople Time style) -->
+  <section class="uop-widget uop-time-widget" id="lmsTimeWidget">
+    <button type="button" class="uop-widget-toggle" id="btnToggleLmsTime" aria-expanded="true" aria-controls="lmsTimeBody">
+      <span>Pastors LMS Time</span>
+      <svg class="uop-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true">
+        <polyline points="6 9 12 15 18 9" />
+      </svg>
+    </button>
+    <div class="uop-widget-body uop-time-body" id="lmsTimeBody">
+      <div class="uop-time-date" id="uopWidgetDate">Loading date...</div>
+      <div class="uop-time-clock" id="uopWidgetClock">--:--:--</div>
+      <div class="uop-time-zone" id="uopWidgetZone">East Africa Time (EAT)</div>
+    </div>
+  </section>
 
-  <div class="task-list">
-    <% if (typeof tasks !== 'undefined' && tasks && tasks.length > 0) { %>
-      <% tasks.forEach(task => { %>
-        <div class="task-card">
-          <div class="task-header">
-            <span class="task-type-badge <%= task.type %>">
-              <%= task.type === 'forum' ? 'Discussion' : (task.type === 'quiz' ? 'Self-Quiz' : 'Assignment') %>
-            </span>
-            <span class="task-due">
-              <% if (task.starts) { %>
-                Starts <%= task.starts %>
-              <% } else { %>
-                Due <%= new Date(task.due_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) %>
-              <% } %>
-            </span>
-          </div>
-          <div class="task-title"><%= task.title %></div>
-          <div class="task-course-code"><%= task.course_code %></div>
+  <!-- 2. Work To Do Widget (Real Clickable Overdue + Upcoming Coursework) -->
+  <%
+    const wtd = (typeof workToDo !== 'undefined' && workToDo)
+      ? workToDo
+      : { overdue: [], upcoming: [], upcomingRangeLabel: 'Upcoming Work', totalCount: 0 };
+    const isCourseContext = (typeof isCoursePage !== 'undefined' && isCoursePage);
+  %>
+  <section class="uop-widget uop-wtd-widget" id="workToDoWidget" data-course-context="<%= isCourseContext ? 'true' : 'false' %>">
+    <button type="button" class="uop-widget-toggle" id="btnToggleWorkToDo" aria-expanded="true" aria-controls="workToDoBody">
+      <span>Work To Do</span>
+      <svg class="uop-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true">
+        <polyline points="6 9 12 15 18 9" />
+      </svg>
+    </button>
+
+    <div class="uop-widget-body" id="workToDoBody">
+      <% if ((!wtd.overdue || wtd.overdue.length === 0) && (!wtd.upcoming || wtd.upcoming.length === 0)) { %>
+        <div class="wtd-empty-state" id="wtdEmptyState">
+          <p>🎉 All caught up! You have no pending coursework right now.</p>
         </div>
-      <% }); %>
-    <% } else { %>
-      <p style="font-size: 0.86rem; color: var(--text-muted); text-align: center; padding: 20px 0;">
-        🎉 All caught up! No pending coursework.
-      </p>
-    <% } %>
-  </div>
+      <% } else { %>
+        <!-- Overdue Group -->
+        <% if (wtd.overdue && wtd.overdue.length > 0) { %>
+          <div class="wtd-group" id="wtdOverdueGroup">
+            <div class="wtd-group-header">
+              <span class="wtd-group-title">Overdue</span>
+              <span class="wtd-count-badge wtd-badge-overdue" id="wtdOverdueCount"><%= wtd.overdue.length %></span>
+            </div>
+            <ul class="wtd-list" id="wtdOverdueList">
+              <% wtd.overdue.forEach(item => { %>
+                <li class="wtd-item" data-wtd-uid="<%= item.uid %>" data-course-id="<%= item.course_id %>" data-module-id="<%= item.module_id %>" data-topic-id="<%= item.topic_id %>">
+                  <a href="<%= item.href %>"
+                     class="wtd-item-link"
+                     id="wtdLink-<%= item.uid %>"
+                     data-wtd-action="<%= item.actionType %>"
+                     data-course-id="<%= item.course_id %>"
+                     data-module-id="<%= item.module_id %>"
+                     data-topic-id="<%= item.topic_id %>">
+                    <span class="wtd-icon wtd-icon-<%= item.type %>" aria-hidden="true">
+                      <% if (item.type === 'quiz' || item.type === 'exam') { %>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9.5 13.5a2 2 0 1 1 2.5 1.94V17"/><line x1="12" y1="19.5" x2="12.01" y2="19.5"/>
+                        </svg>
+                      <% } else if (item.type === 'discussion') { %>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                        </svg>
+                      <% } else { %>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/>
+                        </svg>
+                      <% } %>
+                    </span>
+                    <span class="wtd-item-content">
+                      <span class="wtd-item-title"><%= item.title %></span>
+                      <span class="wtd-item-meta"><%= item.dueLabel %> &bull; <%= item.course_code %> <%= item.course_title %></span>
+                      <% if (item.startsLabel) { %>
+                        <span class="wtd-starts-pill"><%= item.startsLabel %></span>
+                      <% } %>
+                    </span>
+                  </a>
+                  <button type="button" class="wtd-dismiss-btn" data-dismiss-uid="<%= item.uid %>" id="dismissOverdue-<%= item.uid %>" title="Dismiss overdue reminder" aria-label="Dismiss <%= item.title %>">
+                    &times;
+                  </button>
+                </li>
+              <% }) %>
+            </ul>
+          </div>
+        <% } %>
 
-  <!-- Pastoral Mentorship & Support -->
-  <div class="ministry-help-box">
+        <!-- Upcoming Work Group -->
+        <% if (wtd.upcoming && wtd.upcoming.length > 0) { %>
+          <div class="wtd-group" id="wtdUpcomingGroup">
+            <div class="wtd-group-header">
+              <span class="wtd-group-title"><%= wtd.upcomingRangeLabel || 'Upcoming Work' %></span>
+              <span class="wtd-count-badge wtd-badge-upcoming" id="wtdUpcomingCount"><%= wtd.upcoming.length %></span>
+            </div>
+            <ul class="wtd-list" id="wtdUpcomingList">
+              <% wtd.upcoming.forEach(item => { %>
+                <li class="wtd-item" data-wtd-uid="<%= item.uid %>" data-course-id="<%= item.course_id %>" data-module-id="<%= item.module_id %>" data-topic-id="<%= item.topic_id %>">
+                  <a href="<%= item.href %>"
+                     class="wtd-item-link"
+                     id="wtdLink-<%= item.uid %>"
+                     data-wtd-action="<%= item.actionType %>"
+                     data-course-id="<%= item.course_id %>"
+                     data-module-id="<%= item.module_id %>"
+                     data-topic-id="<%= item.topic_id %>">
+                    <span class="wtd-icon wtd-icon-<%= item.type %>" aria-hidden="true">
+                      <% if (item.type === 'quiz' || item.type === 'exam') { %>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9.5 13.5a2 2 0 1 1 2.5 1.94V17"/><line x1="12" y1="19.5" x2="12.01" y2="19.5"/>
+                        </svg>
+                      <% } else if (item.type === 'discussion') { %>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                        </svg>
+                      <% } else { %>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/>
+                        </svg>
+                      <% } %>
+                    </span>
+                    <span class="wtd-item-content">
+                      <span class="wtd-item-title"><%= item.title %></span>
+                      <span class="wtd-item-meta"><%= item.dueLabel %> &bull; <%= item.course_code %> <%= item.course_title %></span>
+                      <% if (item.startsLabel) { %>
+                        <span class="wtd-starts-pill"><%= item.startsLabel %></span>
+                      <% } %>
+                    </span>
+                  </a>
+                </li>
+              <% }) %>
+            </ul>
+          </div>
+        <% } %>
+
+        <div class="wtd-empty-state" id="wtdEmptyState" hidden>
+          <p>🎉 All caught up! You have completed all pending items here.</p>
+        </div>
+      <% } %>
+    </div>
+  </section>
+
+  <!-- 3. Faculty Shepherd Support -->
+  <section class="uop-widget uop-support-widget">
     <div class="help-box-title">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
         <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
       </svg>
-      Faculty Shepherd Support
+      <span>Faculty Shepherd Support</span>
     </div>
-    <div class="help-box-text">
-      Questions on sermon preparation or doctrinal exegesis? Reach out to your cohort mentor via WhatsApp or email.
-    </div>
-    <a href="mailto:mentors@pastorslms.com" class="btn btn-outline btn-sm" style="width: 100%; justify-content: center;">
-      Contact Cohort Mentor
-    </a>
-  </div>
+    <p class="help-box-text">
+      Need guidance on Scripture reading, sermon preparation, or coursework? Message your instructor directly.
+    </p>
+    <% if (typeof courseInstructor !== 'undefined' && courseInstructor && courseInstructor.whatsapp_digits) { %>
+      <a href="https://wa.me/<%= courseInstructor.whatsapp_digits %>?text=Hello%20<%= encodeURIComponent(courseInstructor.full_name) %>,%20I%20need%20help%20with%20my%20coursework."
+         target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm uop-support-btn" id="btnSidebarWhatsAppInstructor">
+        💬 WhatsApp <%= courseInstructor.full_name %>
+      </a>
+    <% } else { %>
+      <a href="https://wa.me/254707821269?text=Hello%20Pastors%20LMS%20Mentor,%20I%20need%20help%20with%20my%20studies."
+         target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-sm uop-support-btn" id="btnSidebarContactMentor">
+        💬 Contact Cohort Mentor
+      </a>
+    <% } %>
+  </section>
 </aside>

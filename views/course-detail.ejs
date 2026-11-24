@@ -5,10 +5,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title><%= course.code %> - <%= course.title %> | Pastors LMS</title>
-  <link rel="stylesheet" href="/css/global.css">
-  <link rel="stylesheet" href="/css/footer.css">
-  <link rel="stylesheet" href="/css/dashboard.css">
-  <link rel="stylesheet" href="/css/course.css">
+  <link rel="stylesheet" href="/css/global.css?v=<%= locals.assetVersion || '3' %>">
+  <link rel="stylesheet" href="/css/footer.css?v=<%= locals.assetVersion || '3' %>">
+  <link rel="stylesheet" href="/css/dashboard.css?v=<%= locals.assetVersion || '3' %>">
+  <link rel="stylesheet" href="/css/course.css?v=<%= locals.assetVersion || '3' %>">
   <link rel="icon" type="image/x-icon" href="/images/favicon.ico">
   <link rel="manifest" href="/manifest.webmanifest">
   <meta name="theme-color" content="#192F47">
@@ -20,96 +20,99 @@
        1. BRIGHTSPACE TOP NAVBAR (University Logo, Course Code, Global Tools)
        ========================================================================= -->
   <header class="bp-top-bar">
-    <div class="bp-top-left">
-      <a href="/" class="bp-brand" title="Return to Dashboard">
-        <img src="/images/IDA-Logo-Complete.webp" alt="Pastors LMS - Intentional Discipleship Africa" class="bp-logo" width="93" height="72">
-      </a>
-      <div class="bp-top-divider"></div>
-      <div class="bp-course-identity">
-        <span class="bp-course-code"><%= course.code %>-01 - <%= course.term || 'AY2027-T1' %></span>
-      </div>
-    </div>
-
-    <div class="bp-top-right">
-      <!-- 9-dot Waffle / Course Launcher -->
-      <button class="bp-icon-btn" id="bpCourseLauncherBtn" title="Select Course / Course Selector" aria-label="Course Selector">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <rect x="3" y="3" width="4" height="4" rx="1" />
-          <rect x="10" y="3" width="4" height="4" rx="1" />
-          <rect x="17" y="3" width="4" height="4" rx="1" />
-          <rect x="3" y="10" width="4" height="4" rx="1" />
-          <rect x="10" y="10" width="4" height="4" rx="1" />
-          <rect x="17" y="10" width="4" height="4" rx="1" />
-          <rect x="3" y="17" width="4" height="4" rx="1" />
-          <rect x="10" y="17" width="4" height="4" rx="1" />
-          <rect x="17" y="17" width="4" height="4" rx="1" />
-        </svg>
-      </button>
-
-      <div class="bp-icon-divider"></div>
-
-      <!-- Messages / Mail -->
-      <a href="#messages" class="bp-icon-btn" title="Internal Pastoral Email & Messages" onclick="alert('Pastoral Messages & Cohort Inquiries: You have no unread messages from your faculty mentor.')">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <rect width="20" height="16" x="2" y="4" rx="2" />
-          <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
-        </svg>
-      </a>
-
-      <!-- Cohort Discussions Bubble -->
-      <a href="#chat" class="bp-icon-btn" title="Instant Cohort Exchange" onclick="alert('Discussion Forum: 4 active discussions in this module.')">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" />
-        </svg>
-      </a>
-
-      <!-- Notifications Bell with Orange Dot Badge -->
-      <div class="bp-bell-wrapper">
-        <button class="bp-icon-btn" id="bpNotificationsBtn" title="Course Alerts & Updates" onclick="alert('Updates: Unit 1 Self-Quiz is due on Oct 15, 2026.')">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
-            <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
-          </svg>
-          <span class="bp-notification-dot"></span>
-        </button>
-      </div>
-
-      <!-- User Profile Avatar Pill -->
-      <div class="bp-user-pill" title="Logged in as <%= locals.user ? locals.user.full_name : 'Pastor' %>">
-        <div class="bp-avatar">
-          <%= locals.user ? (locals.user.initials || 'HE') : 'HE' %>
+    <div class="bp-top-bar-inner">
+      <div class="bp-top-left">
+        <a href="/" class="bp-brand" id="bpBrandLogoLink" title="Return to Dashboard">
+          <img src="/images/IDA-Logo-Complete.webp" alt="Pastors LMS - Intentional Discipleship Africa" class="bp-logo" width="93" height="72">
+        </a>
+        <div class="bp-top-divider"></div>
+        <div class="bp-course-identity">
+          <span class="bp-course-code"><%= course.code %>-01 &mdash; <%= course.term || 'AY2027-T1' %></span>
         </div>
-        <span class="bp-user-name">
-          <%= locals.user ? locals.user.full_name : 'Hark Emoyo' %>
-        </span>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-          <polyline points="6 9 12 15 18 9" />
-        </svg>
       </div>
 
-      <a href="/" class="bp-home-link" title="Exit to Main LMS Portal">
-        Dashboard
-      </a>
+      <div class="bp-top-right">
+        <!-- 9-dot Waffle / All My Courses -->
+        <a href="/courses" class="bp-icon-btn" id="bpCourseLauncherBtn" title="All My Courses" aria-label="All My Courses">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="4" height="4" rx="1" />
+            <rect x="10" y="3" width="4" height="4" rx="1" />
+            <rect x="17" y="3" width="4" height="4" rx="1" />
+            <rect x="3" y="10" width="4" height="4" rx="1" />
+            <rect x="10" y="10" width="4" height="4" rx="1" />
+            <rect x="17" y="10" width="4" height="4" rx="1" />
+            <rect x="3" y="17" width="4" height="4" rx="1" />
+            <rect x="10" y="17" width="4" height="4" rx="1" />
+            <rect x="17" y="17" width="4" height="4" rx="1" />
+          </svg>
+        </a>
+
+        <div class="bp-icon-divider"></div>
+
+        <!-- Instructor / Pastoral Support shortcut -->
+        <button type="button" class="bp-icon-btn" id="bpMessagesBtn" title="Contact Course Instructor" aria-label="Contact Course Instructor">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect width="20" height="16" x="2" y="4" rx="2" />
+            <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+          </svg>
+        </button>
+
+        <!-- Cohort Discussions shortcut -->
+        <button type="button" class="bp-icon-btn" id="bpDiscussionsIconBtn" title="Open Cohort Discussions" aria-label="Open Cohort Discussions">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" />
+          </svg>
+        </button>
+
+        <!-- Work To Do / Alerts Bell -->
+        <div class="bp-bell-wrapper">
+          <button type="button" class="bp-icon-btn" id="bpNotificationsBtn" title="View Work To Do &amp; Announcements" aria-label="View Work To Do and Announcements">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+              <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+            </svg>
+            <% if (typeof workToDo !== 'undefined' && workToDo && workToDo.totalCount > 0) { %>
+              <span class="bp-notification-dot"></span>
+            <% } %>
+          </button>
+        </div>
+
+        <!-- User Profile Avatar Pill -->
+        <div class="bp-user-pill" title="Logged in as <%= locals.user ? locals.user.full_name : 'Pastor' %>">
+          <div class="bp-avatar">
+            <%= locals.user ? (locals.user.initials || 'HE') : 'HE' %>
+          </div>
+          <span class="bp-user-name">
+            <%= locals.user ? locals.user.full_name : 'Pastor' %>
+          </span>
+        </div>
+
+        <a href="/" class="bp-home-link" id="btnBpDashboard" title="Exit to Main LMS Portal">
+          Dashboard
+        </a>
+      </div>
     </div>
   </header>
 
   <!-- =========================================================================
-       2. SECONDARY COURSE NAVIGATION BAR (Deep Plum / Aubergine #192F47)
+       2. SECONDARY COURSE NAVIGATION BAR (Deep Navy #192F47)
        ========================================================================= -->
-  <nav class="bp-course-nav">
+  <nav class="bp-course-nav" aria-label="Course sections">
     <div class="bp-nav-container">
-      <button class="bp-nav-tab" id="tabNavHome" data-tab="home">Home</button>
-      <button class="bp-nav-tab active" id="tabNavContent" data-tab="content">Content</button>
-      <button class="bp-nav-tab" id="tabNavDiscussions" data-tab="discussions">Discussions</button>
-      <button class="bp-nav-tab" id="tabNavGrades" data-tab="grades">Grades</button>
+      <button type="button" class="bp-nav-tab active" id="tabNavHome" data-tab="home">Home</button>
+      <button type="button" class="bp-nav-tab" id="tabNavContent" data-tab="content">Content</button>
+      <button type="button" class="bp-nav-tab" id="tabNavDiscussions" data-tab="discussions">Discussions</button>
+      <button type="button" class="bp-nav-tab" id="tabNavGrades" data-tab="grades">Grades</button>
       
-      <!-- Dropdown: Activities -->
-      <div class="bp-nav-dropdown-item">
-        <button class="bp-nav-tab has-dropdown">Activities <span>▾</span></button>
-        <div class="bp-nav-submenu">
-          <a href="javascript:void(0)" onclick="selectTopicByType('assignment')">Assignments</a>
-          <a href="javascript:void(0)" onclick="selectTopicByType('quiz')">Quizzes &amp; Exams</a>
-          <a href="javascript:void(0)" onclick="switchBrightspaceTab('discussions')">Cohort Discussions</a>
+      <!-- Click-Toggleable Dropdown: Activities -->
+      <div class="bp-nav-dropdown-item" id="activitiesDropdownWrap">
+        <button type="button" class="bp-nav-tab has-dropdown" id="btnActivitiesDropdown" aria-expanded="false" aria-controls="activitiesDropdownMenu">
+          Activities <span aria-hidden="true">▾</span>
+        </button>
+        <div class="bp-nav-submenu" id="activitiesDropdownMenu" role="menu">
+          <button type="button" id="btnActivitiesAssignments" role="menuitem" data-activity-action="assignment">Assignments</button>
+          <button type="button" id="btnActivitiesQuizzes" role="menuitem" data-activity-action="quiz">Quizzes &amp; Exams</button>
+          <button type="button" id="btnActivitiesDiscussions" role="menuitem" data-activity-action="discussions">Cohort Discussions</button>
         </div>
       </div>
 
@@ -122,11 +125,19 @@
   <!-- =========================================================================
        3. MAIN VIEW CONTAINER: CONTENT TAB (Split-Screen Unit Tree & Viewer)
        ========================================================================= -->
-  <main class="bp-content-page" id="viewContent">
+  <main class="bp-content-page bp-view-hidden" id="viewContent" hidden>
     <div class="bp-split-layout">
 
       <!-- LEFT SIDEBAR: Unit & Module Tree Navigation -->
       <aside class="bp-sidebar" aria-label="Course Table of Contents">
+        <button type="button" class="bp-mobile-units-toggle" id="btnMobileUnitsToggle" aria-expanded="false" aria-controls="bpSidebarTreeBody">
+          <span id="mobileUnitsToggleLabel">Course Units &amp; Lessons</span>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
+        </button>
+
+        <div class="bp-sidebar-body is-collapsed" id="bpSidebarTreeBody">
         <!-- Live Course Progress Summary -->
         <div class="bp-sidebar-progress-card" id="courseSidebarProgressCard">
           <div class="bp-sidebar-progress-top">
@@ -250,6 +261,7 @@
 
             </div>
           <% }); %>
+        </div>
         </div>
       </aside>
 
@@ -399,34 +411,37 @@
   <!-- =========================================================================
        4. COURSE HOME TAB (Course Overview, Announcement & Tasks Sidebar)
        ========================================================================= -->
-  <main class="main-content" id="viewHome" style="display: none; padding-top: 24px;">
+  <main class="main-content" id="viewHome">
     <!-- Course Hero Summary -->
     <section class="course-hero">
-      <div class="course-hero-banner-img">
-        <img src="<%= course.cover_image %>" alt="<%= course.title %>">
+      <div class="course-hero-banner">
+        <img src="<%= course.cover_image %>" alt="" class="course-hero-banner-bg">
+        <div class="course-hero-banner-scrim"></div>
+        <div class="course-hero-banner-inner">
+          <div class="course-header-meta">
+            <div class="course-badge-group">
+              <span class="course-code-tag"><%= course.code %></span>
+              <span class="course-term-pill">
+                <%= course.term %> &bull; <%= course.status === 'current' ? 'In Progress' : 'Completed' %>
+              </span>
+            </div>
+
+            <div class="course-dates-info">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <rect width="18" height="18" x="3" y="4" rx="2" ry="2" />
+                <line x1="16" y1="2" x2="16" y2="6" />
+                <line x1="8" y1="2" x2="8" y2="6" />
+                <line x1="3" y1="10" x2="21" y2="10" />
+              </svg>
+              <span>Term Schedule: <%= course.start_date %> to <%= course.end_date %></span>
+            </div>
+          </div>
+
+          <h1 class="course-detail-title"><%= course.title %></h1>
+        </div>
       </div>
 
       <div class="course-hero-content">
-        <div class="course-header-meta">
-          <div style="display: flex; align-items: center; gap: 8px;">
-            <span class="course-code-tag"><%= course.code %></span>
-            <span class="badge <%= course.status === 'current' ? 'badge-accent' : 'badge-success' %>">
-              <%= course.term %> &bull; <%= course.status === 'current' ? 'In Progress' : 'Completed' %>
-            </span>
-          </div>
-
-          <div class="course-dates-info">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect width="18" height="18" x="3" y="4" rx="2" ry="2" />
-              <line x1="16" y1="2" x2="16" y2="6" />
-              <line x1="8" y1="2" x2="8" y2="6" />
-              <line x1="3" y1="10" x2="21" y2="10" />
-            </svg>
-            <span>Term Schedule: <%= course.start_date %> to <%= course.end_date %></span>
-          </div>
-        </div>
-
-        <h1 class="course-detail-title"><%= course.title %></h1>
         <p class="course-detail-desc"><%= course.description %></p>
 
         <!-- Metrics Strip -->
@@ -435,18 +450,18 @@
             <div class="val" id="homeCoursePercent"><%= course.percent %>%</div>
             <div class="lbl">Course Completion</div>
           </div>
-          <div style="width: 1px; height: 32px; background: var(--border);"></div>
+          <div class="course-stat-divider" aria-hidden="true"></div>
           <div class="course-stat-item">
             <div class="val" id="homeTopicsVal"><%= course.completedTopics %> / <%= course.totalTopics %></div>
             <div class="lbl">Topics Completed</div>
           </div>
-          <div style="width: 1px; height: 32px; background: var(--border);"></div>
+          <div class="course-stat-divider" aria-hidden="true"></div>
           <div class="course-stat-item">
             <div class="val"><%= course.modules ? course.modules.length : 0 %> Units</div>
             <div class="lbl">Curriculum Units</div>
           </div>
-          <div style="flex: 1; min-width: 200px; margin-left: auto;">
-            <div class="progress-container" style="height: 10px;">
+          <div class="course-hero-progress-wrap">
+            <div class="progress-container progress-container-lg">
               <div class="progress-bar" id="homeOverallBar" data-percent="<%= course.percent %>"></div>
             </div>
           </div>
@@ -454,59 +469,131 @@
       </div>
     </section>
 
-    <!-- Layout: Announcement + Tasks Sidebar -->
+    <!-- UoPeople-style Two-Column Course Home: Announcements & Course Modules (Left) + Time & Work To Do (Right) -->
     <div class="dashboard-layout">
       <div class="course-main-col">
-        <!-- Live Faculty Announcements Posted by Course Lecturer -->
-        <% if (typeof liveAnnouncements !== 'undefined' && liveAnnouncements && liveAnnouncements.length) { %>
-          <% liveAnnouncements.forEach(ann => { %>
-            <div class="announcement-box announcement-box-live">
-              <div class="announcement-header">
-                <span class="announcement-title">📢 <%= ann.title %></span>
-                <span class="announcement-date"><%= ann.author_name %> &middot; <%= new Date(ann.created_at).toLocaleDateString() %></span>
-              </div>
-              <p class="announcement-text"><%= ann.body %></p>
-            </div>
-          <% }) %>
-        <% } %>
-
-        <% if (course.announcement) { %>
-          <div class="announcement-box" style="margin-bottom: 24px;">
-            <div class="announcement-header">
-              <span class="announcement-title">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-                  <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-                </svg>
-                Faculty Announcement: <%= course.announcement.title %>
-              </span>
-              <span class="announcement-date"><%= course.announcement.date %></span>
-            </div>
-            <p class="announcement-text"><%= course.announcement.content %></p>
+        <!-- 1. Announcements Collapsible Widget -->
+        <section class="uop-widget" id="homeAnnouncementsWidget">
+          <button type="button" class="uop-widget-toggle" id="btnToggleAnnouncements" aria-expanded="true" aria-controls="homeAnnouncementsBody">
+            <span>Announcements</span>
+            <svg class="uop-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true">
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </button>
+          <div class="uop-widget-body" id="homeAnnouncementsBody">
+            <%
+              const hasLiveAnn = typeof liveAnnouncements !== 'undefined' && liveAnnouncements && liveAnnouncements.length > 0;
+              const hasBaseAnn = Boolean(course.announcement);
+            %>
+            <% if (!hasLiveAnn && !hasBaseAnn) { %>
+              <div class="uop-empty-box">There are no announcements to display.</div>
+            <% } else { %>
+              <% if (hasLiveAnn) { %>
+                <% liveAnnouncements.forEach(ann => { %>
+                  <article class="announcement-box announcement-box-live">
+                    <div class="announcement-header">
+                      <span class="announcement-title">📢 <%= ann.title %></span>
+                      <span class="announcement-date"><%= ann.author_name %> &middot; <%= new Date(ann.created_at).toLocaleDateString() %></span>
+                    </div>
+                    <p class="announcement-text"><%= ann.body %></p>
+                  </article>
+                <% }) %>
+              <% } %>
+              <% if (hasBaseAnn) { %>
+                <article class="announcement-box">
+                  <div class="announcement-header">
+                    <span class="announcement-title"><%= course.announcement.title %></span>
+                    <span class="announcement-date"><%= course.announcement.date %></span>
+                  </div>
+                  <p class="announcement-text"><%= course.announcement.content %></p>
+                </article>
+              <% } %>
+            <% } %>
           </div>
-        <% } %>
+        </section>
 
-        <div class="home-action-box">
-          <h3>Continue Your Pastoral Studies</h3>
-          <p>You are enrolled in <strong><%= course.title %></strong>. Open <em>Content</em> for readings and assignments, <em>Discussions</em> to study with your cohort, or save this course for offline reading.</p>
-          <div class="home-action-buttons">
-            <button class="btn btn-primary" id="btnGoToContentFromHome">Open Course Content &rarr;</button>
-            <button type="button" class="btn btn-secondary" id="btnSaveCourseOffline" data-course-url="/courses/<%= course.id %>">
-              📥 Save Course for Offline Reading
+        <!-- 2. Course Modules 2-Column Card Grid Widget -->
+        <section class="uop-widget uop-modules-widget" id="homeModulesWidget">
+          <div class="uop-widget-head-row">
+            <button type="button" class="uop-widget-toggle" id="btnToggleCourseModules" aria-expanded="true" aria-controls="homeModulesBody">
+              <span>Course Modules</span>
+              <svg class="uop-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true">
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
             </button>
+            <div class="uop-modules-tools">
+              <button type="button" class="btn btn-secondary btn-sm" id="btnSaveCourseOffline" data-course-url="/courses/<%= course.id %>">
+                📥 Save for Offline
+              </button>
+              <button type="button" class="btn btn-primary btn-sm" id="btnGoToContentFromHome">
+                Open Content &rarr;
+              </button>
+            </div>
           </div>
-          <p class="offline-save-hint" id="offlineSaveStatus">Saves this course's readings to your phone (uses a small amount of mobile data) so you can read without internet.</p>
-        </div>
+          <p class="offline-save-hint uop-offline-inline" id="offlineSaveStatus" hidden></p>
+
+          <div class="uop-widget-body" id="homeModulesBody">
+            <div class="uop-modules-grid">
+              <% (course.modulesWithTopics || course.modules || []).forEach((mod, modIdx) => { %>
+                <%
+                  const topicsArr = Array.isArray(mod.topics) ? mod.topics : [];
+                  const totalT = topicsArr.length || mod.total_topics || 0;
+                  const doneT = topicsArr.filter(t => t.completed).length || mod.completed_topics || 0;
+                  const modPct = totalT > 0 ? Math.round((doneT / totalT) * 100) : 0;
+                %>
+                <article class="uop-module-card <%= mod.isLocked ? 'is-locked' : '' %>"
+                         id="homeModuleCard-<%= mod.id %>"
+                         data-open-module="<%= mod.id %>"
+                         tabindex="0"
+                         role="button"
+                         aria-label="Open <%= mod.title %>">
+                  <div class="uop-module-cover">
+                    <img src="<%= course.cover_image %>" alt="" loading="lazy">
+                    <span class="uop-module-unit-pill">
+                      <%= modIdx === 0 ? 'Overview' : `Unit ${modIdx}` %>
+                    </span>
+                    <% if (mod.isLocked) { %>
+                      <span class="uop-module-lock-pill">🔒 Unlocks <%= mod.unlock_date %></span>
+                    <% } %>
+                  </div>
+                  <div class="uop-module-body">
+                    <h3 class="uop-module-title"><%= mod.title %></h3>
+                    <div class="uop-module-progress-track">
+                      <div class="uop-module-progress-bar" id="homeModBar-<%= mod.id %>" data-percent="<%= modPct %>"></div>
+                    </div>
+                    <div class="uop-module-progress-text" id="homeModCount-<%= mod.id %>">
+                      <%= doneT %>/<%= totalT %> Topics Completed
+                    </div>
+                    <div class="uop-module-footer">
+                      <span class="uop-module-doc-icon" aria-hidden="true">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="14" y2="17"/>
+                        </svg>
+                      </span>
+                      <% if (mod.due_date) { %>
+                        <span class="uop-module-due-chip">Due <%= mod.due_date %></span>
+                      <% } %>
+                    </div>
+                  </div>
+                </article>
+              <% }) %>
+            </div>
+          </div>
+        </section>
       </div>
 
-      <%- include('partials/sidebar', { tasks: courseTasks.length > 0 ? courseTasks : allTasks }) %>
+      <%- include('partials/sidebar', {
+        workToDo: typeof workToDo !== 'undefined' ? workToDo : null,
+        isCoursePage: true,
+        courseInstructor: course.courseInstructor
+      }) %>
     </div>
   </main>
 
   <!-- =========================================================================
        5. COHORT DISCUSSION FORUM & PEER FEEDBACK VIEW
        ========================================================================= -->
-  <main class="main-content bp-extra-tab" id="viewDiscussions" style="display: none;">
+  <main class="main-content bp-extra-tab bp-view-hidden" id="viewDiscussions" hidden>
     <section class="bp-tab-card">
       <div class="bp-tab-head">
         <div>
@@ -553,7 +640,7 @@
   <!-- =========================================================================
        6. STUDENT GRADEBOOK VIEW (Live Scores, Teacher Feedback, GPA)
        ========================================================================= -->
-  <main class="main-content bp-extra-tab" id="viewGrades" style="display: none;">
+  <main class="main-content bp-extra-tab bp-view-hidden" id="viewGrades" hidden>
     <section class="bp-tab-card">
       <div class="bp-tab-head">
         <div>
@@ -622,7 +709,7 @@
 
   <!-- Embed Rich Course Content into Client Script for Instant Fast Switching -->
   <div id="courseDataJson" hidden data-json="<%= JSON.stringify(course) %>"></div>
-  <script src="/js/course-brightspace.js"></script>
+  <script src="/js/course-brightspace.js?v=<%= locals.assetVersion || '3' %>"></script>
 </body>
 
 </html>

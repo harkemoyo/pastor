@@ -21,6 +21,19 @@ const PORT = process.env.PORT || 3000;
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
+// Asset version string to prevent stale CSS/JS from old caches
+const ASSET_VERSION = '20261124e';
+app.use((req, res, next) => {
+  res.locals.assetVersion = ASSET_VERSION;
+  next();
+});
+
+// Always revalidate service worker so browsers immediately receive SW updates
+app.get('/sw.js', (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.sendFile(path.join(__dirname, 'public/sw.js'));
+});
+
 // Static files
 app.use(express.static(path.join(__dirname, 'public')));
 

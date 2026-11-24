@@ -7,10 +7,10 @@
   <title>
     <%= title || 'Pastoral Dashboard | Pastors LMS' %>
   </title>
-  <link rel="stylesheet" href="/css/global.css">
-  <link rel="stylesheet" href="/css/footer.css">
-  <link rel="stylesheet" href="/css/dashboard.css">
-  <link rel="stylesheet" href="/css/course.css">
+  <link rel="stylesheet" href="/css/global.css?v=<%= locals.assetVersion || '3' %>">
+  <link rel="stylesheet" href="/css/footer.css?v=<%= locals.assetVersion || '3' %>">
+  <link rel="stylesheet" href="/css/dashboard.css?v=<%= locals.assetVersion || '3' %>">
+  <link rel="stylesheet" href="/css/course.css?v=<%= locals.assetVersion || '3' %>">
   <link rel="icon" type="image/x-icon" href="/images/favicon.ico">
   <link rel="manifest" href="/manifest.webmanifest">
   <meta name="theme-color" content="#192F47">
@@ -38,8 +38,8 @@
           <span class="hero-verse-ref">— 2 Timothy 2:15</span>
         </p>
         <div class="hero-quick-links">
-          <a href="/courses" class="btn btn-primary" id="btnHeroMyCourses">Continue My Courses</a>
-          <a href="/transcript" class="btn btn-secondary" id="btnHeroMyTranscript">Official Transcript</a>
+          <a href="/courses" class="btn btn-accent" id="btnHeroMyCourses">Continue My Courses</a>
+          <a href="/transcript" class="btn btn-hero-outline" id="btnHeroMyTranscript">Official Transcript</a>
         </div>
       </section>
 
@@ -144,9 +144,8 @@
                       <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
                       <path d="M13.73 21a2 2 0 0 1-3.46 0" />
                     </svg>
-                    <%= annCourse.announcement.title %> — <span style="font-weight: 500;">
-                        <%= annCourse.code %>
-                      </span>
+                    <%= annCourse.announcement.title %>
+                    <span class="announcement-code-label"><%= annCourse.code %></span>
                   </span>
                   <span class="announcement-date">
                     <%= annCourse.announcement.date %>
@@ -162,10 +161,9 @@
                 <div class="section-header-row">
                   <h2 class="section-title">My Pastoral Training Courses</h2>
                   <div class="course-tabs">
-                    <button class="course-tab-btn active" data-filter="all">All (<%= courses.length %>)</button>
-                    <button class="course-tab-btn" data-filter="current">Current Term (<%= stats.currentCount %>
-                        )</button>
-                    <button class="course-tab-btn" data-filter="past">Completed Term (<%= stats.pastCount %>)</button>
+                    <button type="button" class="course-tab-btn active" id="dashTabAll" data-filter="all">All (<%= courses.length %>)</button>
+                    <button type="button" class="course-tab-btn" id="dashTabCurrent" data-filter="current">Current Term (<%= stats.currentCount %>)</button>
+                    <button type="button" class="course-tab-btn" id="dashTabPast" data-filter="past">Completed Term (<%= stats.pastCount %>)</button>
                   </div>
                 </div>
 
@@ -202,7 +200,7 @@
                             </span>
                           </div>
                           <div class="progress-container">
-                            <div class="progress-bar" style="width: <%= course.percent %>%;"></div>
+                            <div class="progress-bar" data-percent="<%= course.percent %>"></div>
                           </div>
 
                           <div class="course-action-row">
@@ -215,7 +213,7 @@
                               </svg>
                               <%= course.modules ? course.modules.length : 0 %> Units
                             </span>
-                            <a href="/courses/<%= course.id %>" class="btn btn-primary btn-open-course">
+                            <a href="/courses/<%= course.id %>" id="dashOpenCourse-<%= course.id %>" class="btn btn-primary btn-open-course">
                               <span>Open Course &amp; Lessons</span>
                               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                 stroke-width="2.5">
@@ -231,8 +229,8 @@
 
         </section>
 
-        <!-- Right Column: Brightspace Work To Do Sidebar -->
-        <%- include('partials/sidebar', { tasks: tasks }) %>
+        <!-- Right Column: UoPeople-style Time & Work To Do Sidebar -->
+        <%- include('partials/sidebar', { workToDo: typeof workToDo !== 'undefined' ? workToDo : null, isCoursePage: false }) %>
       </div>
     </main>
 

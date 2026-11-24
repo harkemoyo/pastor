@@ -1,6 +1,6 @@
 /* Pastors LMS — Service Worker (Offline Lessons & App Shell) */
-const STATIC_CACHE = 'pastors-lms-v1';
-const LESSON_CACHE = 'pastors-lms-lessons-v1';
+const STATIC_CACHE = 'pastors-lms-v3';
+const LESSON_CACHE = 'pastors-lms-lessons-v2';
 
 const APP_SHELL_URLS = [
   '/offline',
@@ -30,9 +30,8 @@ self.addEventListener('activate', (event) => {
           .filter((k) => k !== STATIC_CACHE && k !== LESSON_CACHE)
           .map((k) => caches.delete(k))
       )
-    )
+    ).then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
 // Clear cached authenticated lesson pages when a user logs out (shared phone safety)
@@ -62,7 +61,8 @@ self.addEventListener('fetch', (event) => {
     url.pathname.startsWith('/register') ||
     url.pathname.startsWith('/forgot-password') ||
     url.pathname.startsWith('/admin') ||
-    url.pathname.startsWith('/api/')
+    url.pathname.startsWith('/api/') ||
+    url.pathname === '/sw.js'
   ) {
     return;
   }
@@ -85,12 +85,24 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Static assets: Cache-first
-  if (
-    url.pathname.startsWith('/css/') ||
-    url.pathname.startsWith('/js/') ||
-    url.pathname.startsWith('/images/')
-  ) {
+  // CSS & JS: Network-first so UI updates appear immediately, with offline cache fallback
+  if (url.pathname.startsWith('/css/') || url.pathname.startsWith('/js/')) {
+    event.respondWith(
+      fetch(req)
+        .then((res) => {
+          if (res && res.ok) {
+            const copy = res.clone();
+            caches.open(STATIC_CACHE).then((cache) => cache.put(req, copy));
+          }
+          return res;
+        })
+        .catch(() => caches.match(req, { ignoreSearch: true }))
+    );
+    return;
+  }
+
+  // Images: Cache-first to save mobile data
+  if (url.pathname.startsWith('/images/')) {
     event.respondWith(
       caches.match(req).then((cached) =>
         cached ||

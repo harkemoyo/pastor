@@ -5,11 +5,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title><%= title %></title>
-  <link rel="stylesheet" href="/css/global.css">
-  <link rel="stylesheet" href="/css/footer.css">
-  <link rel="stylesheet" href="/css/dashboard.css">
-  <link rel="stylesheet" href="/css/library.css">
+  <link rel="stylesheet" href="/css/global.css?v=<%= locals.assetVersion || '4' %>">
+  <link rel="stylesheet" href="/css/footer.css?v=<%= locals.assetVersion || '4' %>">
+  <link rel="stylesheet" href="/css/dashboard.css?v=<%= locals.assetVersion || '4' %>">
+  <link rel="stylesheet" href="/css/library.css?v=<%= locals.assetVersion || '4' %>">
   <link rel="icon" type="image/x-icon" href="/images/favicon.ico">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <meta name="theme-color" content="#192F47">
 </head>
 
 <body class="app-container">
@@ -17,58 +19,207 @@
 
   <main class="main-content">
     <section class="library-hero">
-      <h1 class="library-title">Library</h1>
-      <p class="library-subtitle">Videos, study notes and teaching materials shared by your teachers.</p>
-      <% if (canManage) { %>
-        <a href="/teacher/library" id="btnManageLibrary" class="btn btn-accent">Add or remove materials</a>
-      <% } %>
+      <div class="library-hero-copy">
+        <span class="library-hero-eyebrow">Intentional Discipleship Africa &bull; Resource Center</span>
+        <h1 class="library-title">Pastors Theological Library</h1>
+        <p class="library-subtitle">
+          Scripture-centered teaching videos, printable pastoral study guides, audio sermons, and biblical reference tools curated for East African church leaders.
+        </p>
+      </div>
+
+      <div class="library-hero-actions">
+        <div class="library-hero-stats">
+          <div class="library-hero-stat">
+            <strong><%= typeof totalLibraryCount !== 'undefined' ? totalLibraryCount : counts.all %></strong>
+            <span>Resources</span>
+          </div>
+          <div class="library-hero-stat">
+            <strong><%= counts.document || 0 %></strong>
+            <span>Study Guides</span>
+          </div>
+          <div class="library-hero-stat">
+            <strong><%= (counts.video || 0) + (counts.audio || 0) %></strong>
+            <span>Video &amp; Audio</span>
+          </div>
+        </div>
+        <% if (canManage) { %>
+          <a href="/teacher/library" id="btnManageLibrary" class="btn btn-accent">
+            + Add or Manage Materials
+          </a>
+        <% } %>
+      </div>
     </section>
 
     <form method="GET" action="/library" class="library-toolbar" id="libraryFilterForm">
-      <div class="library-tabs">
-        <% [['all', 'All'], ['video', 'Videos'], ['document', 'Documents'], ['audio', 'Audio'], ['link', 'Links']].forEach(tab => { %>
-          <a id="libraryTab-<%= tab[0] %>" class="library-tab <%= filters.type === tab[0] ? 'active' : '' %>"
-            href="/library?type=<%= tab[0] %><%= filters.search ? '&search=' + encodeURIComponent(filters.search) : '' %>">
+      <div class="library-tabs" role="tablist" aria-label="Filter library by media type">
+        <% [
+          ['all', 'All'],
+          ['video', 'Videos'],
+          ['document', 'Study Guides'],
+          ['audio', 'Audio'],
+          ['link', 'Bible & Links']
+        ].forEach(tab => { %>
+          <a id="libraryTab-<%= tab[0] %>"
+             class="library-tab <%= filters.type === tab[0] ? 'active' : '' %>"
+             href="/library?type=<%= tab[0] %><%= filters.course && filters.course !== 'all' ? '&course=' + encodeURIComponent(filters.course) : '' %><%= filters.search ? '&search=' + encodeURIComponent(filters.search) : '' %>">
             <%= tab[1] %> (<%= counts[tab[0]] || 0 %>)
           </a>
         <% }) %>
+
+        <button type="button" id="libraryTabSaved" class="library-tab library-tab-saved" aria-pressed="false">
+          &#9733; Saved (<span id="savedCountBadge">0</span>)
+        </button>
       </div>
-      <div class="library-search">
-        <input type="hidden" name="type" value="<%= filters.type %>">
-        <input type="search" id="librarySearch" name="search" class="form-input" placeholder="Search materials"
-          value="<%= filters.search %>">
-        <button type="submit" id="btnLibrarySearch" class="btn btn-primary">Search</button>
+
+      <div class="library-controls-row">
+        <div class="library-course-filter">
+          <label for="libraryCourseSelect">Course:</label>
+          <select id="libraryCourseSelect" name="course" class="form-input">
+            <option value="all" <%= (!filters.course || filters.course === 'all') ? 'selected' : '' %>>All Courses</option>
+            <% (courses || []).forEach(c => { %>
+              <option value="<%= c.id %>" <%= String(filters.course) === String(c.id) ? 'selected' : '' %>>
+                <%= c.code %> &mdash; <%= c.title %>
+              </option>
+            <% }) %>
+          </select>
+        </div>
+
+        <div class="library-search">
+          <input type="hidden" name="type" value="<%= filters.type %>">
+          <input type="search"
+                 id="librarySearch"
+                 name="search"
+                 class="form-input"
+                 placeholder="Search by topic, Scripture, course, or title..."
+                 aria-label="Search library materials"
+                 value="<%= filters.search %>">
+          <button type="submit" id="btnLibrarySearch" class="btn btn-primary">Search</button>
+          <% if (filters.search || (filters.course && filters.course !== 'all') || filters.type !== 'all') { %>
+            <a href="/library" id="btnLibraryReset" class="btn btn-secondary">Clear</a>
+          <% } %>
+        </div>
       </div>
     </form>
 
     <% if (!items.length) { %>
       <div class="library-empty" id="libraryEmpty">
-        <p>No materials found yet. Please check back soon.</p>
+        <p>No library materials matched your current filter.</p>
+        <a href="/library" class="btn btn-primary" id="btnResetEmptyLibrary">Show All Library Materials</a>
       </div>
     <% } else { %>
-      <div class="library-grid">
+      <div class="library-empty" id="librarySavedEmpty" hidden>
+        <p>You have not saved any resources yet. Tap the star icon (&#9734;) on any resource card to keep it in your personal study list.</p>
+        <button type="button" class="btn btn-primary" id="btnExitSavedFilter">Show All Resources</button>
+      </div>
+
+      <div class="library-grid" id="libraryGrid">
         <% items.forEach(item => { %>
-          <article class="library-card" id="material-<%= item.id %>">
-            <span class="badge badge-purple library-type"><%= item.type %></span>
+          <article class="library-card" id="material-<%= item.id %>" data-material-id="<%= item.id %>">
+            <div class="library-card-top">
+              <div class="library-card-badges">
+                <span class="library-type-pill library-type-<%= item.type %>">
+                  <% if (item.type === 'video') { %>
+                    &#9654; Video
+                  <% } else if (item.type === 'document') { %>
+                    &#128214; Study Guide
+                  <% } else if (item.type === 'audio') { %>
+                    &#127911; Audio
+                  <% } else { %>
+                    &#128279; Reference Link
+                  <% } %>
+                </span>
+                <% if (item.course) { %>
+                  <span class="library-course-pill"><%= item.course.code %></span>
+                <% } %>
+              </div>
+
+              <button type="button"
+                      class="library-bookmark-btn"
+                      id="bookmarkBtn-<%= item.id %>"
+                      data-bookmark-id="<%= item.id %>"
+                      aria-label="Save <%= item.title %> to my study list"
+                      aria-pressed="false"
+                      title="Save to My Study List">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                </svg>
+              </button>
+            </div>
+
             <h2 class="library-card-title"><%= item.title %></h2>
+
             <% if (item.description) { %>
               <p class="library-card-desc"><%= item.description %></p>
             <% } %>
-            <p class="library-card-meta">
-              <% if (item.course) { %><%= item.course.code %> · <% } %>Added by <%= item.added_by_name || 'Teacher' %>
-            </p>
-            <a href="<%= item.url %>" target="_blank" rel="noopener noreferrer" class="btn btn-primary library-open"
-              id="openMaterial-<%= item.id %>">
-              <%= item.type === 'video' ? 'Watch' : item.type === 'audio' ? 'Listen' : 'Open' %>
-            </a>
+
+            <div class="library-card-meta">
+              <span>By <%= item.added_by_name || 'IDA Faculty' %></span>
+              <% if (item.duration) { %>
+                <span><strong><%= item.duration %></strong></span>
+              <% } %>
+            </div>
+
+            <div class="library-card-actions">
+              <% if (item.playbackMode === 'reader') { %>
+                <a href="/library/read/<%= item.id %>"
+                   class="btn btn-primary"
+                   id="openMaterial-<%= item.id %>">
+                  Read Study Guide &rarr;
+                </a>
+              <% } else if (item.playbackMode === 'video-embed' || item.playbackMode === 'audio-player' || item.playbackMode === 'pdf-embed') { %>
+                <button type="button"
+                        class="btn btn-primary btn-preview-material"
+                        id="openMaterial-<%= item.id %>"
+                        data-mode="<%= item.playbackMode %>"
+                        data-title="<%= item.title %>"
+                        data-embed-url="<%= item.embedUrl %>"
+                        data-external-url="<%= item.url %>">
+                  <%= item.playbackMode === 'video-embed' ? 'Watch Video' : item.playbackMode === 'audio-player' ? 'Listen Now' : 'Preview Document' %>
+                </button>
+                <a href="<%= item.url %>"
+                   target="_blank"
+                   rel="noopener noreferrer"
+                   class="btn btn-secondary btn-sm"
+                   id="externalMaterial-<%= item.id %>">
+                  Open External &nearr;
+                </a>
+              <% } else { %>
+                <a href="<%= item.url %>"
+                   target="_blank"
+                   rel="noopener noreferrer"
+                   class="btn btn-primary"
+                   id="openMaterial-<%= item.id %>">
+                  <%= item.type === 'video' ? 'Watch Video' : item.type === 'audio' ? 'Listen Now' : 'Open Resource' %> &nearr;
+                </a>
+              <% } %>
+            </div>
           </article>
         <% }) %>
       </div>
     <% } %>
   </main>
 
+  <!-- In-App Media Player Modal (Videos, Audio & PDFs) -->
+  <div class="library-modal-backdrop" id="libraryPreviewModal" role="dialog" aria-modal="true" aria-labelledby="libraryModalTitle" hidden>
+    <div class="library-modal">
+      <div class="library-modal-header">
+        <h2 class="library-modal-title" id="libraryModalTitle">Media Player</h2>
+        <button type="button" class="library-modal-close" id="btnCloseLibraryModal" aria-label="Close player">&times;</button>
+      </div>
+      <div class="library-modal-body">
+        <div id="libraryModalPlayerContainer"></div>
+        <div class="library-modal-footer">
+          <span class="form-hint">If playback is slow on mobile data, you can open the source directly.</span>
+          <a href="#" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm" id="btnModalOpenExternal">
+            Open in New Tab &nearr;
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <%- include('partials/footer') %>
+  <script src="/js/library.js?v=<%= locals.assetVersion || '4' %>"></script>
 </body>
 
 </html>
-

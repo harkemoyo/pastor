@@ -178,9 +178,11 @@ create index if not exists course_announcements_course_idx on public.course_anno
 create table if not exists public.library_materials (
   id text primary key,
   title text not null,
-  type text not null default 'link' check (type in ('pdf', 'book', 'video', 'audio', 'link')),
+  type text not null default 'link' check (type in ('video', 'document', 'audio', 'link', 'pdf', 'book')),
   url text not null,
   description text,
+  duration text,
+  content_html text,
   course_id bigint,
   added_by text,
   added_by_name text,
@@ -240,7 +242,9 @@ create policy "Admins manage submissions" on public.submissions
   using ((select auth.jwt() ->> 'role') in ('teacher', 'admin', 'super_admin'))
   with check ((select auth.jwt() ->> 'role') in ('teacher', 'admin', 'super_admin'));
 
--- 13. Profile Pictures Storage Bucket (for Vercel cloud uploads)
+-- 13. Profile Pictures & Library Files Storage Buckets (for Vercel cloud uploads)
 insert into storage.buckets (id, name, public)
-values ('profile-pictures', 'profile-pictures', true)
+values
+  ('profile-pictures', 'profile-pictures', true),
+  ('library-files', 'library-files', true)
 on conflict (id) do nothing;

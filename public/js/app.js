@@ -28,6 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initAdminLiveSearch();
   initPasswordToggles();
   initOfflinePwa();
+  initUoPeopleSidebarWidgets();
 });
 
 // Universal Password Show/Hide Toggle (works on Login, Register, Admin forms)
@@ -654,7 +655,20 @@ function initAdminMenu() {
 // PWA Service Worker, Offline Status Banner & Logout Cache Clearing (shared-phone safety)
 function initOfflinePwa() {
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js').catch(() => {});
+    navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).then((reg) => {
+      reg.update().catch(() => {});
+    }).catch(() => {});
+  }
+
+  // Proactively purge legacy v1 caches that served stale CSS/JS before network-first fix
+  if ('caches' in window) {
+    caches.keys().then((keys) => {
+      keys.forEach((k) => {
+        if (k === 'pastors-lms-v1' || k === 'pastors-lms-lessons-v1') {
+          caches.delete(k).catch(() => {});
+        }
+      });
+    }).catch(() => {});
   }
 
   const banner = document.getElementById('offlineNoticeBanner');
@@ -673,9 +687,111 @@ function initOfflinePwa() {
         navigator.serviceWorker.controller.postMessage({ type: 'CLEAR_CACHES' });
       }
       if ('caches' in window) {
-        caches.delete('pastors-lms-lessons-v1').catch(() => {});
+        caches.delete('pastors-lms-lessons-v2').catch(() => {});
       }
     });
   });
+}
+
+// UoPeople-style Collapsible Widgets, Live Time Widget & Overdue Dismiss Handler
+function initUoPeopleSidebarWidgets() {
+  // 1. Collapsible widget toggles (Announcements, Course Modules, Time, Work To Do)
+  document.querySelectorAll('.uop-widget-toggle').forEach(btn => {
+    const targetId = btn.getAttribute('aria-controls');
+    const body = targetId ? document.getElementById(targetId) : null;
+    if (!body) return;
+    btn.addEventListener('click', () => {
+      const expanded = btn.getAttribute('aria-expanded') === 'true';
+      btn.setAttribute('aria-expanded', expanded ? 'false' : 'true');
+      body.hidden = expanded;
+    });
+  });
+
+  // 2. Live ticking "Pastors LMS Time" widget (Sun, Nov 22, 2026 / HH:MM:SS)
+  const dateEl = document.getElementById('uopWidgetDate');
+  const clockEl = document.getElementById('uopWidgetClock');
+  const zoneEl = document.getElementById('uopWidgetZone');
+  if (dateEl && clockEl) {
+    function tickWidgetClock() {
+      const now = new Date();
+      try {
+        dateEl.textContent = now.toLocaleDateString('en-US', {
+          weekday: 'short',
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric'
+        });
+        clockEl.textContent = now.toLocaleTimeString('en-GB', {
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: false
+        });
+        if (zoneEl) {
+          const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Africa/Nairobi';
+          zoneEl.textContent = tz.replace(/_/g, ' ');
+        }
+      } catch {
+        dateEl.textContent = now.toDateString();
+        clockEl.textContent = now.toTimeString().slice(0, 8);
+      }
+    }
+    tickWidgetClock();
+    setInterval(tickWidgetClock, 1000);
+  }
+
+  // 3. Persistent dismiss (×) for Overdue Work To Do reminders
+  const DISMISS_KEY = 'pastors_lms_dismissed_wtd';
+  let dismissed = [];
+  try {
+    dismissed = JSON.parse(localStorage.getItem(DISMISS_KEY) || '[]');
+    if (!Array.isArray(dismissed)) dismissed = [];
+  } catch {
+    dismissed = [];
+  }
+
+  function syncWorkToDoCounts() {
+    const overdueList = document.getElementById('wtdOverdueList');
+    const overdueGroup = document.getElementById('wtdOverdueGroup');
+    const overdueCountEl = document.getElementById('wtdOverdueCount');
+    const upcomingList = document.getElementById('wtdUpcomingList');
+    const upcomingGroup = document.getElementById('wtdUpcomingGroup');
+    const upcomingCountEl = document.getElementById('wtdUpcomingCount');
+    const emptyEl = document.getElementById('wtdEmptyState');
+
+    const visibleOverdue = overdueList ? overdueList.querySelectorAll('.wtd-item:not([hidden])').length : 0;
+    const visibleUpcoming = upcomingList ? upcomingList.querySelectorAll('.wtd-item:not([hidden])').length : 0;
+
+    if (overdueCountEl) overdueCountEl.textContent = String(visibleOverdue);
+    if (overdueGroup) overdueGroup.hidden = visibleOverdue === 0;
+    if (upcomingCountEl) upcomingCountEl.textContent = String(visibleUpcoming);
+    if (upcomingGroup) upcomingGroup.hidden = visibleUpcoming === 0;
+    if (emptyEl) emptyEl.hidden = (visibleOverdue + visibleUpcoming) > 0;
+  }
+
+  // Apply previously dismissed overdue IDs
+  dismissed.forEach(uid => {
+    const li = document.querySelector(`.wtd-item[data-wtd-uid="${CSS.escape(uid)}"]`);
+    if (li) li.hidden = true;
+  });
+  syncWorkToDoCounts();
+
+  document.querySelectorAll('.wtd-dismiss-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const uid = btn.getAttribute('data-dismiss-uid');
+      if (!uid) return;
+      const li = btn.closest('.wtd-item');
+      if (li) li.hidden = true;
+      if (!dismissed.includes(uid)) {
+        dismissed.push(uid);
+        try { localStorage.setItem(DISMISS_KEY, JSON.stringify(dismissed)); } catch {}
+      }
+      syncWorkToDoCounts();
+    });
+  });
+
+  window.syncWorkToDoCounts = syncWorkToDoCounts;
 }
 })();
