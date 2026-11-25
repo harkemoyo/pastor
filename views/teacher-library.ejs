@@ -5,10 +5,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title><%= title %></title>
-  <link rel="stylesheet" href="/css/global.css?v=<%= locals.assetVersion || '4' %>">
-  <link rel="stylesheet" href="/css/footer.css?v=<%= locals.assetVersion || '4' %>">
-  <link rel="stylesheet" href="/css/dashboard.css?v=<%= locals.assetVersion || '4' %>">
-  <link rel="stylesheet" href="/css/library.css?v=<%= locals.assetVersion || '4' %>">
+  <link rel="stylesheet" href="/css/global.css?v=<%= locals.assetVersion || '6' %>">
+  <link rel="stylesheet" href="/css/footer.css?v=<%= locals.assetVersion || '6' %>">
+  <link rel="stylesheet" href="/css/dashboard.css?v=<%= locals.assetVersion || '6' %>">
+  <link rel="stylesheet" href="/css/library.css?v=<%= locals.assetVersion || '6' %>">
   <link rel="icon" type="image/x-icon" href="/images/favicon.ico">
   <link rel="manifest" href="/manifest.webmanifest">
   <meta name="theme-color" content="#192F47">
@@ -17,49 +17,184 @@
 <body class="app-container">
   <%- include('partials/header') %>
 
+  <%
+    const activeMode = (typeof initialMode !== 'undefined' && initialMode) ? initialMode : 'link';
+    const statCounts = (typeof counts !== 'undefined' && counts) ? counts : { all: items.length, video: 0, document: 0, audio: 0, link: 0 };
+    const isAdminUser = locals.user && ['admin', 'super_admin'].includes(locals.user.role);
+  %>
+
   <main class="main-content">
+    <!-- Clean Admin/Faculty Library Hero -->
     <section class="library-hero">
       <div class="library-hero-copy">
-        <span class="library-hero-eyebrow">Faculty &amp; Admin Portal</span>
+        <span class="library-hero-eyebrow">
+          <%= isAdminUser ? 'Admin & Registrar Library Manager' : 'Faculty Library Manager' %>
+        </span>
         <h1 class="library-title">Manage Pastors Library</h1>
         <p class="library-subtitle">
-          Share YouTube teaching videos, upload PDF study guides or audio lectures, or write printable notes directly for your students.
+          Add videos, PDF study guides, audio sermons, or printable notes in 3 simple steps. Everything you add appears immediately for your students.
         </p>
       </div>
+
       <div class="library-hero-actions">
-        <a href="/library" id="btnViewLibrary" class="btn btn-accent">View Library as a Student &rarr;</a>
+        <div class="library-hero-stats">
+          <div class="library-hero-stat">
+            <strong><%= statCounts.all %></strong>
+            <span>Total</span>
+          </div>
+          <div class="library-hero-stat">
+            <strong><%= statCounts.video || 0 %></strong>
+            <span>Videos</span>
+          </div>
+          <div class="library-hero-stat">
+            <strong><%= statCounts.document || 0 %></strong>
+            <span>Study Guides</span>
+          </div>
+          <div class="library-hero-stat">
+            <strong><%= (statCounts.audio || 0) + (statCounts.link || 0) %></strong>
+            <span>Audio &amp; Links</span>
+          </div>
+        </div>
+        <div class="lib-hero-btn-row">
+          <% if (isAdminUser) { %>
+            <a href="/admin/dashboard" id="btnBackAdminDash" class="btn btn-hero-outline btn-sm">&larr; Admin Dashboard</a>
+          <% } %>
+          <a href="/library" id="btnViewLibrary" class="btn btn-accent btn-sm">Preview Student Library &rarr;</a>
+        </div>
       </div>
     </section>
 
     <% if (success) { %>
-      <div class="library-alert library-alert-success" id="libraryAlertSuccess"><%= success %></div>
+      <div class="library-alert library-alert-success" id="libraryAlertSuccess" role="status">&#10003; <%= success %></div>
     <% } %>
     <% if (error) { %>
-      <div class="library-alert library-alert-error" id="libraryAlertError"><%= error %></div>
+      <div class="library-alert library-alert-error" id="libraryAlertError" role="alert">! <%= error %></div>
     <% } %>
 
-    <section class="library-panel">
+    <!-- Step-by-Step Add / Edit Material Card -->
+    <section class="library-panel lib-admin-card" id="libraryComposerPanel">
       <div class="library-panel-head">
-        <h2 class="library-panel-title">
-          <%= editingItem ? 'Edit Library Material' : 'Add a New Library Material' %>
-        </h2>
+        <div>
+          <h2 class="library-panel-title">
+            <%= editingItem ? ('Editing: ' + editingItem.title) : 'Add a New Material to the Library' %>
+          </h2>
+          <p class="lib-panel-sub">
+            <%= editingItem ? 'Update any details below and click Save Changes.' : 'Step 1: Choose how you want to add your resource, then fill in the title and save.' %>
+          </p>
+        </div>
         <% if (editingItem) { %>
           <a href="/teacher/library" class="btn btn-secondary btn-sm" id="btnCancelEditMaterial">Cancel Editing</a>
         <% } %>
+      </div>
+
+      <!-- 3-Way Mode Selector (Decent, Calm, Zero Confusion!) -->
+      <div class="lib-mode-switcher" id="libraryModeTabs" role="tablist" aria-label="Choose how to add a library material">
+        <button type="button"
+                class="lib-mode-btn <%= activeMode === 'link' ? 'active' : '' %>"
+                id="modeTabLink"
+                data-lib-mode="link"
+                role="tab"
+                aria-selected="<%= activeMode === 'link' ? 'true' : 'false' %>">
+          <span class="lib-mode-icon" aria-hidden="true">&#128279;</span>
+          <span>
+            <strong>1. Paste a Link or Video</strong>
+            <small>YouTube, Google Drive, Audio, or Website</small>
+          </span>
+        </button>
+
+        <% if (!editingItem) { %>
+          <button type="button"
+                  class="lib-mode-btn <%= activeMode === 'upload' ? 'active' : '' %>"
+                  id="modeTabUpload"
+                  data-lib-mode="upload"
+                  role="tab"
+                  aria-selected="<%= activeMode === 'upload' ? 'true' : 'false' %>">
+            <span class="lib-mode-icon" aria-hidden="true">&#128196;</span>
+            <span>
+              <strong>2. Upload a File</strong>
+              <small>PDF notes, Word doc, or MP3 sermon (up to 4 MB)</small>
+            </span>
+          </button>
+        <% } %>
+
+        <button type="button"
+                class="lib-mode-btn <%= activeMode === 'notes' ? 'active' : '' %>"
+                id="modeTabNotes"
+                data-lib-mode="notes"
+                role="tab"
+                aria-selected="<%= activeMode === 'notes' ? 'true' : 'false' %>">
+          <span class="lib-mode-icon" aria-hidden="true">&#9997;</span>
+          <span>
+            <strong><%= editingItem ? '2. Edit Study Guide Text' : '3. Write a Study Guide' %></strong>
+            <small>Type notes directly — printable inside Pastors LMS</small>
+          </span>
+        </button>
       </div>
 
       <form method="POST"
             action="<%= editingItem ? ('/teacher/library/' + editingItem.id + '/edit') : '/teacher/library' %>"
             id="addMaterialForm"
             class="library-form">
-        <div class="form-group">
-          <label class="form-label" for="materialTitle">Material Title</label>
+        <input type="hidden" id="libraryInputMode" name="input_mode" value="<%= activeMode %>">
+
+        <!-- Mode Panel A: Paste Link -->
+        <div class="form-group library-form-wide lib-mode-section <%= activeMode === 'link' ? '' : 'lib-mode-hidden' %>"
+             id="modeSectionLink"
+             data-mode-panel="link">
+          <label class="form-label" for="materialUrl">Web Link or YouTube URL</label>
+          <input type="text"
+                 id="materialUrl"
+                 name="url"
+                 class="form-input"
+                 placeholder="Paste link here (e.g., youtube.com/watch?v=... or https://drive.google.com/...)"
+                 value="<%= (formData.url && !String(formData.url).startsWith('/library/read/')) ? formData.url : '' %>">
+          <span class="form-hint" id="urlAutoDetectHint">
+            Tip: You do not need to type https:// — we add it automatically. YouTube &amp; Vimeo links play right inside the LMS!
+          </span>
+        </div>
+
+        <!-- Mode Panel B: Direct File Upload -->
+        <% if (!editingItem) { %>
+          <div class="form-group library-form-wide lib-mode-section <%= activeMode === 'upload' ? '' : 'lib-mode-hidden' %>"
+               id="modeSectionUpload"
+               data-mode-panel="upload">
+            <label class="form-label" for="materialFileUpload">Choose File from Your Computer or Phone</label>
+            <div class="library-file-box">
+              <input type="file"
+                     id="materialFileUpload"
+                     accept=".pdf,.mp3,.m4a,.wav,.ogg,.doc,.docx,.txt"
+                     class="form-input">
+              <input type="hidden" id="uploadedFileName" name="uploaded_file_name" value="">
+              <input type="hidden" id="uploadedFileData" name="uploaded_file_data" value="">
+              <span class="library-file-status" id="materialFileStatus">
+                Supported: PDF, MP3, M4A, WAV, DOC, DOCX, TXT (max 4 MB). Title will auto-fill from your file name.
+              </span>
+            </div>
+          </div>
+        <% } %>
+
+        <!-- Mode Panel C: Write In-App Printable Study Guide -->
+        <div class="form-group library-form-wide lib-mode-section <%= activeMode === 'notes' ? '' : 'lib-mode-hidden' %>"
+             id="modeSectionNotes"
+             data-mode-panel="notes">
+          <label class="form-label" for="materialContentNotes">Printable Study Guide Content</label>
+          <textarea id="materialContentNotes"
+                    name="content_notes"
+                    class="form-input"
+                    rows="7"
+                    placeholder="Write or paste your pastoral study guide here...&#10;&#10;## Main Section Heading&#10;Write your Scripture references and teaching points.&#10;&#10;### Discussion Questions&#10;1. How does this passage apply to our local church?"><%= formData.content_notes || '' %></textarea>
+          <span class="form-hint">Start a line with <code>## </code> for a main heading or <code>### </code> for a subheading. Students can read and print it cleanly.</span>
+        </div>
+
+        <!-- Shared Essential Fields (Simple & Clear) -->
+        <div class="form-group library-form-wide">
+          <label class="form-label" for="materialTitle">Material Title <span class="lib-req">*</span></label>
           <input type="text"
                  id="materialTitle"
                  name="title"
                  class="form-input"
                  required
-                 placeholder="e.g., Exposition of Romans 8 (Video Lecture)"
+                 placeholder="e.g., Exposition of Romans 8 (Sermon Video)"
                  value="<%= formData.title || '' %>">
         </div>
 
@@ -68,16 +203,16 @@
           <select id="materialType" name="type" class="form-input">
             <% types.forEach(t => { %>
               <option value="<%= t %>" <%= formData.type === t ? 'selected' : '' %>>
-                <%= t === 'document' ? 'Study Guide / Document' : t.charAt(0).toUpperCase() + t.slice(1) %>
+                <%= t === 'document' ? 'Study Guide / Document' : t === 'link' ? 'Bible & Reference Link' : (t.charAt(0).toUpperCase() + t.slice(1)) %>
               </option>
             <% }) %>
           </select>
         </div>
 
         <div class="form-group">
-          <label class="form-label" for="materialCourse">Linked Course (Optional)</label>
+          <label class="form-label" for="materialCourse">Which Course? (Optional)</label>
           <select id="materialCourse" name="course_id" class="form-input">
-            <option value="">All Courses (General Ministry)</option>
+            <option value="">All Courses (General Library)</option>
             <% courses.forEach(c => { %>
               <option value="<%= c.id %>" <%= String(formData.course_id || '') === String(c.id) ? 'selected' : '' %>>
                 <%= c.code %> &mdash; <%= c.title %>
@@ -87,62 +222,27 @@
         </div>
 
         <div class="form-group">
-          <label class="form-label" for="materialDuration">Format / Length Label (Optional)</label>
+          <label class="form-label" for="materialDuration">Short Tag / Length (Optional)</label>
           <input type="text"
                  id="materialDuration"
                  name="duration"
                  class="form-input"
-                 placeholder="e.g., 15 min video, PDF Guide, 30 min audio"
+                 placeholder="e.g., 15 min video, PDF Guide"
                  value="<%= formData.duration || '' %>">
         </div>
 
         <div class="form-group library-form-wide">
-          <label class="form-label" for="materialUrl">Web Address (YouTube, Vimeo, Google Drive, PDF, or Audio Link)</label>
-          <input type="text"
-                 id="materialUrl"
-                 name="url"
-                 class="form-input"
-                 placeholder="https://www.youtube.com/watch?v=... (optional if uploading a file or writing notes below)"
-                 value="<%= (formData.url && !String(formData.url).startsWith('/library/read/')) ? formData.url : '' %>">
-          <span class="form-hint">YouTube &amp; Vimeo links automatically play inside the Pastors Library video modal.</span>
-        </div>
-
-        <% if (!editingItem) { %>
-          <div class="form-group library-form-wide">
-            <label class="form-label" for="materialFileUpload">Or Upload a PDF / Audio File (Max 4 MB)</label>
-            <div class="library-file-box">
-              <input type="file"
-                     id="materialFileUpload"
-                     accept=".pdf,.mp3,.m4a,.wav,.ogg,.doc,.docx,.txt"
-                     class="form-input">
-              <input type="hidden" id="uploadedFileName" name="uploaded_file_name" value="">
-              <input type="hidden" id="uploadedFileData" name="uploaded_file_data" value="">
-              <span class="library-file-status" id="materialFileStatus">Accepted: PDF, MP3, M4A, WAV, DOC, DOCX, TXT (up to 4 MB).</span>
-            </div>
-          </div>
-        <% } %>
-
-        <div class="form-group library-form-wide">
-          <label class="form-label" for="materialDescription">Short Summary for Students</label>
+          <label class="form-label" for="materialDescription">Short Description for Students (Optional)</label>
           <textarea id="materialDescription"
                     name="description"
                     class="form-input"
                     rows="2"
-                    placeholder="Briefly explain how this resource helps pastors in their studies and ministry..."><%= formData.description || '' %></textarea>
-        </div>
-
-        <div class="form-group library-form-wide">
-          <label class="form-label" for="materialContentNotes">Or Write a Built-In Printable Study Guide (Optional)</label>
-          <textarea id="materialContentNotes"
-                    name="content_notes"
-                    class="form-input"
-                    rows="5"
-                    placeholder="Paste or type study notes here. Start a line with ## for a main heading or ### for a subheading. Students can read and print it inside Pastors LMS without leaving the app."></textarea>
+                    placeholder="One or two sentences explaining what students will learn from this resource..."><%= formData.description || '' %></textarea>
         </div>
 
         <div class="library-form-actions">
-          <button type="submit" id="btnAddMaterial" class="btn btn-primary">
-            <%= editingItem ? 'Save Changes' : 'Add to Pastors Library' %>
+          <button type="submit" id="btnAddMaterial" class="btn btn-burgundy">
+            <%= editingItem ? 'Save Changes' : '+ Publish to Pastors Library' %>
           </button>
           <% if (editingItem) { %>
             <a href="/teacher/library" class="btn btn-secondary">Cancel</a>
@@ -151,18 +251,39 @@
       </form>
     </section>
 
+    <!-- Published Materials Management Table with Live Search & Category Filter -->
     <section class="library-panel">
       <div class="library-panel-head">
-        <h2 class="library-panel-title">Published Library Materials (<%= items.length %>)</h2>
+        <div>
+          <h2 class="library-panel-title">Published Library Materials (<%= items.length %>)</h2>
+          <p class="lib-panel-sub">Click any title to preview, or use Edit / Remove to manage resources.</p>
+        </div>
+        <div class="lib-admin-filters">
+          <input type="search"
+                 id="adminLibSearch"
+                 class="form-input lib-admin-search-input"
+                 placeholder="Filter materials by title or course..."
+                 aria-label="Filter published materials">
+          <select id="adminLibTypeFilter" class="form-input lib-admin-type-select" aria-label="Filter by category">
+            <option value="all">All Categories</option>
+            <option value="video">Videos</option>
+            <option value="document">Study Guides</option>
+            <option value="audio">Audio</option>
+            <option value="link">Bible &amp; Links</option>
+          </select>
+        </div>
       </div>
+
       <% if (!items.length) { %>
-        <p>No materials in the library yet.</p>
+        <div class="library-empty">
+          <p>No materials in the library yet. Use the form above to publish your first resource.</p>
+        </div>
       <% } else { %>
         <div class="library-table-wrap">
           <table class="library-table" id="materialsTable">
             <thead>
               <tr>
-                <th>Title</th>
+                <th>Resource</th>
                 <th>Category</th>
                 <th>Course</th>
                 <th>Added By</th>
@@ -171,22 +292,38 @@
             </thead>
             <tbody>
               <% items.forEach(item => { %>
-                <tr id="row-<%= item.id %>">
+                <tr id="row-<%= item.id %>" class="lib-admin-row" data-type="<%= item.type %>">
                   <td>
                     <a href="<%= item.playbackMode === 'reader' ? ('/library/read/' + item.id) : item.url %>"
+                       class="lib-table-title-link"
                        <%= item.playbackMode === 'reader' ? '' : 'target="_blank" rel="noopener noreferrer"' %>>
                       <strong><%= item.title %></strong>
                     </a>
+                    <% if (item.description) { %>
+                      <div class="lib-table-desc"><%= item.description.slice(0, 95) %><%= item.description.length > 95 ? '...' : '' %></div>
+                    <% } %>
                   </td>
                   <td>
                     <span class="library-type-pill library-type-<%= item.type %>">
                       <%= item.type === 'document' ? 'Study Guide' : item.type %>
                     </span>
                   </td>
-                  <td><%= item.course ? item.course.code : 'All Courses' %></td>
+                  <td>
+                    <% if (item.course) { %>
+                      <span class="library-course-pill"><%= item.course.code %></span>
+                    <% } else { %>
+                      <span class="form-hint">All Courses</span>
+                    <% } %>
+                  </td>
                   <td><%= item.added_by_name || item.added_by %></td>
                   <td>
                     <div class="library-table-actions">
+                      <a href="<%= item.playbackMode === 'reader' ? ('/library/read/' + item.id) : item.url %>"
+                         <%= item.playbackMode === 'reader' ? '' : 'target="_blank" rel="noopener noreferrer"' %>
+                         id="btnPreview-<%= item.id %>"
+                         class="btn btn-outline btn-sm">
+                        Open
+                      </a>
                       <a href="/teacher/library?edit=<%= encodeURIComponent(item.id) %>"
                          id="btnEdit-<%= item.id %>"
                          class="btn btn-secondary btn-sm">
@@ -211,7 +348,7 @@
   </main>
 
   <%- include('partials/footer') %>
-  <script src="/js/library.js?v=<%= locals.assetVersion || '4' %>"></script>
+  <script src="/js/library.js?v=<%= locals.assetVersion || '6' %>"></script>
 </body>
 
 </html>

@@ -357,7 +357,8 @@
           <button type="button" id="btnToolAnnouncements" role="menuitem" data-tool-action="announcements">Announcements</button>
           <button type="button" id="btnToolWorkToDo" role="menuitem" data-tool-action="worktodo">Work To Do &amp; Deadlines</button>
           <button type="button" id="btnToolOfflineSave" role="menuitem" data-tool-action="offline">Save Course for Offline</button>
-          <a href="/transcript" id="btnToolTranscript" role="menuitem">Academic Progress (Transcript)</a>
+          <a href="/transcript?courseId=<%= course.id %>" id="btnToolTranscript" role="menuitem">Course Transcript (<%= course.code %>)</a>
+          <a href="/transcript" id="btnToolCumulativeTranscript" role="menuitem">Cumulative Transcript (All Courses)</a>
           <a href="/courses/<%= course.id %>/certificate" id="btnToolCertificate" role="menuitem">Course Certificate</a>
         </div>
       </div>

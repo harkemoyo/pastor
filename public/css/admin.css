@@ -509,7 +509,8 @@
   font-weight: 600;
 }
 
-.contact-btn-group {
+.contact-btn-group,
+.action-row-inline {
   display: flex;
   align-items: center;
   gap: 0.5rem;

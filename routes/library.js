@@ -33,30 +33,44 @@ function readJson(filePath, fallback) {
   }
 }
 
+// Always prefer whichever local file (data/library.json or /tmp fallback on read-only Vercel) is newest!
 function getLocalMaterials() {
-  for (const p of [LIBRARY_FILE, LIBRARY_TMP_FILE]) {
-    if (fs.existsSync(p)) {
-      const parsed = readJson(p, null);
-      if (Array.isArray(parsed)) return parsed;
-    }
+  const candidates = [LIBRARY_FILE, LIBRARY_TMP_FILE]
+    .filter(p => fs.existsSync(p))
+    .map(p => {
+      try {
+        return { p, mtime: fs.statSync(p).mtimeMs };
+      } catch {
+        return { p, mtime: 0 };
+      }
+    })
+    .sort((a, b) => b.mtime - a.mtime);
+
+  for (const c of candidates) {
+    const parsed = readJson(c.p, null);
+    if (Array.isArray(parsed)) return parsed;
   }
   return [];
 }
 
 function saveLocalMaterials(items) {
   const payload = JSON.stringify(items, null, 2);
+  let wrotePrimary = false;
   try {
     fs.writeFileSync(LIBRARY_FILE, payload, 'utf8');
-    return true;
+    wrotePrimary = true;
   } catch {
-    try {
-      fs.writeFileSync(LIBRARY_TMP_FILE, payload, 'utf8');
-      return true;
-    } catch (err) {
-      console.error('Error saving library.json:', err.message);
-      return false;
-    }
+    // Expected on read-only serverless deployments (e.g. Vercel)
   }
+
+  let wroteTmp = false;
+  try {
+    fs.writeFileSync(LIBRARY_TMP_FILE, payload, 'utf8');
+    wroteTmp = true;
+  } catch (err) {
+    if (!wrotePrimary) console.error('Error saving library fallback:', err.message);
+  }
+  return wrotePrimary || wroteTmp;
 }
 
 function normalizeMaterialType(type) {
@@ -74,10 +88,18 @@ async function getMaterials() {
       .select('*')
       .order('created_at', { ascending: false });
     if (!error && Array.isArray(data) && data.length > 0) {
-      // Merge local seeded items with cloud items (cloud takes precedence by id)
       const byId = new Map();
       localItems.forEach(item => byId.set(item.id, item));
-      data.forEach(item => byId.set(item.id, { ...byId.get(item.id), ...item, type: normalizeMaterialType(item.type) }));
+      data.forEach(item => {
+        const prev = byId.get(item.id) || {};
+        byId.set(item.id, {
+          ...prev,
+          ...item,
+          content_html: item.content_html || prev.content_html,
+          duration: item.duration || prev.duration || '',
+          type: normalizeMaterialType(item.type)
+        });
+      });
       return Array.from(byId.values());
     }
   } catch {
@@ -93,39 +115,62 @@ async function persistMaterialUpsert(material) {
   else items.unshift(material);
   const localOk = saveLocalMaterials(items);
 
+  let cloudOk = false;
   if (supabaseAdmin) {
+    const baseRow = {
+      id: material.id,
+      title: material.title,
+      type: material.type,
+      url: material.url,
+      description: material.description || null,
+      course_id: material.course_id || null,
+      added_by: material.added_by || null,
+      added_by_name: material.added_by_name || null,
+      created_at: material.created_at || new Date().toISOString()
+    };
+    const fullRow = {
+      ...baseRow,
+      duration: material.duration || null,
+      content_html: material.content_html || null
+    };
+
     try {
-      const dbRow = {
-        id: material.id,
-        title: material.title,
-        type: material.type,
-        url: material.url,
-        description: material.description || null,
-        course_id: material.course_id || null,
-        added_by: material.added_by || null,
-        added_by_name: material.added_by_name || null,
-        created_at: material.created_at || new Date().toISOString()
-      };
-      await supabaseAdmin.from('library_materials').upsert(dbRow, { onConflict: 'id' });
-    } catch {
-      // Local JSON already persisted
+      const { error } = await supabaseAdmin.from('library_materials').upsert(fullRow, { onConflict: 'id' });
+      if (!error) {
+        cloudOk = true;
+      } else {
+        // Fallback if table exists without newer duration/content_html columns or older 'document' check constraint
+        const fallbackType = /check constraint/i.test(error.message || '') && baseRow.type === 'document'
+          ? 'pdf'
+          : baseRow.type;
+        const { error: retryErr } = await supabaseAdmin
+          .from('library_materials')
+          .upsert({ ...baseRow, type: fallbackType }, { onConflict: 'id' });
+        if (!retryErr) cloudOk = true;
+        else console.warn('Supabase library upsert note:', retryErr.message);
+      }
+    } catch (err) {
+      console.warn('Supabase library upsert skipped:', err.message);
     }
   }
-  return localOk;
+
+  return cloudOk || localOk;
 }
 
 async function persistMaterialDelete(id) {
   const items = getLocalMaterials();
   const localOk = saveLocalMaterials(items.filter(i => i.id !== id));
 
+  let cloudOk = false;
   if (supabaseAdmin) {
     try {
-      await supabaseAdmin.from('library_materials').delete().eq('id', id);
+      const { error } = await supabaseAdmin.from('library_materials').delete().eq('id', id);
+      if (!error) cloudOk = true;
     } catch {
       // Ignore if table absent
     }
   }
-  return localOk;
+  return cloudOk || localOk;
 }
 
 function getCourses() {
@@ -136,12 +181,18 @@ function getCourses() {
   }));
 }
 
-// Allow http(s) links or safe internal /library/read/... or /uploads/library/... paths
+// Allow http(s) links (auto-prepending https:// if user omits protocol), or safe internal paths
 function cleanUrl(value) {
-  const trimmed = String(value || '').trim();
+  let trimmed = String(value || '').trim();
   if (!trimmed) return null;
   if (trimmed.startsWith('/library/read/') || trimmed.startsWith('/uploads/library/')) {
     return trimmed;
+  }
+  // Reject dangerous protocols explicitly
+  if (/^(javascript|data|vbscript|file):/i.test(trimmed)) return null;
+  // Auto-prepend https:// if admin pasted "youtube.com/..." or "www.esv.org" without protocol
+  if (!/^https?:\/\//i.test(trimmed) && /^[a-z0-9.-]+\.[a-z]{2,}(\/|$)/i.test(trimmed)) {
+    trimmed = `https://${trimmed}`;
   }
   try {
     const url = new URL(trimmed);
@@ -160,24 +211,69 @@ function escapeHtml(text) {
 }
 
 function plainNotesToHtml(notes) {
-  const trimmed = String(notes || '').trim();
+  const trimmed = String(notes || '').replace(/\r\n/g, '\n').trim();
   if (!trimmed) return '';
-  return trimmed
-    .split(/\n{2,}/)
-    .map(block => {
-      const clean = block.trim();
-      if (clean.startsWith('## ')) {
-        return `<h2>${escapeHtml(clean.slice(3))}</h2>`;
-      }
-      if (clean.startsWith('### ')) {
-        return `<h3>${escapeHtml(clean.slice(4))}</h3>`;
-      }
-      return `<p>${escapeHtml(clean).replace(/\n/g, '<br>')}</p>`;
-    })
-    .join('\n');
+  const lines = trimmed.split('\n');
+  const out = [];
+  let paraBuf = [];
+  let listBuf = [];
+
+  const flushPara = () => {
+    if (paraBuf.length) {
+      out.push(`<p>${paraBuf.map(escapeHtml).join('<br>')}</p>`);
+      paraBuf = [];
+    }
+  };
+  const flushList = () => {
+    if (listBuf.length) {
+      out.push(`<ul>${listBuf.map(li => `<li>${escapeHtml(li)}</li>`).join('')}</ul>`);
+      listBuf = [];
+    }
+  };
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line) {
+      flushPara();
+      flushList();
+    } else if (line.startsWith('### ')) {
+      flushPara();
+      flushList();
+      out.push(`<h3>${escapeHtml(line.slice(4))}</h3>`);
+    } else if (line.startsWith('## ')) {
+      flushPara();
+      flushList();
+      out.push(`<h2>${escapeHtml(line.slice(3))}</h2>`);
+    } else if (line.startsWith('- ') || line.startsWith('* ')) {
+      flushPara();
+      listBuf.push(line.slice(2));
+    } else {
+      flushList();
+      paraBuf.push(line);
+    }
+  }
+  flushPara();
+  flushList();
+  return out.join('\n');
 }
 
-// Detect embeddable YouTube / Vimeo / direct audio for instant in-app player
+function htmlToEditableNotes(html) {
+  if (!html) return '';
+  return String(html)
+    .replace(/<h2[^>]*>(.*?)<\/h2>/gi, '## $1\n\n')
+    .replace(/<h3[^>]*>(.*?)<\/h3>/gi, '### $1\n\n')
+    .replace(/<li[^>]*>(.*?)<\/li>/gi, '- $1\n')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
 function enrichMaterialPlayback(item, courses) {
   const normalizedType = normalizeMaterialType(item.type);
   const url = String(item.url || '');
@@ -187,7 +283,7 @@ function enrichMaterialPlayback(item, courses) {
   if (item.content_html || url.startsWith('/library/read/')) {
     playbackMode = 'reader';
   } else {
-    const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([A-Za-z0-9_-]{11})/);
+    const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/shorts\/)([A-Za-z0-9_-]{11})/);
     const vimeoMatch = url.match(/vimeo\.com\/(\d+)/);
     if (ytMatch) {
       embedUrl = `https://www.youtube-nocookie.com/embed/${ytMatch[1]}?rel=0`;
@@ -229,12 +325,21 @@ async function saveUploadedLibraryFile(fileName, dataUrl) {
 
   const safeSlug = `${Date.now()}-${crypto.randomBytes(4).toString('hex')}${ext}`;
 
-  // Try Supabase Storage first if configured
+  // Try Supabase Storage first (auto-create bucket if missing!)
   if (supabaseAdmin) {
     try {
-      const { error } = await supabaseAdmin.storage
+      let { error } = await supabaseAdmin.storage
         .from('library-files')
         .upload(safeSlug, buffer, { contentType: mime, upsert: true });
+
+      if (error && /not found|bucket/i.test(error.message || '')) {
+        await supabaseAdmin.storage.createBucket('library-files', { public: true }).catch(() => {});
+        const retry = await supabaseAdmin.storage
+          .from('library-files')
+          .upload(safeSlug, buffer, { contentType: mime, upsert: true });
+        error = retry.error;
+      }
+
       if (!error) {
         const { data: pub } = supabaseAdmin.storage.from('library-files').getPublicUrl(safeSlug);
         if (pub && pub.publicUrl) {
@@ -251,9 +356,14 @@ async function saveUploadedLibraryFile(fileName, dataUrl) {
     fs.writeFileSync(path.join(UPLOADS_DIR, safeSlug), buffer);
     return { url: `/uploads/library/${safeSlug}`, ext };
   } catch {
-    return { error: 'Could not store the file on this server. Please paste a Google Drive, YouTube, or PDF web link instead.' };
+    return { error: 'Direct file upload requires Supabase Storage on cloud hosting. Please paste a Google Drive, Dropbox, or YouTube link instead.' };
   }
 }
+
+// Friendly alias: /admin/library -> /teacher/library
+router.get('/admin/library', requireTeacher, (req, res) => {
+  res.redirect('/teacher/library');
+});
 
 // GET /library - everyone signed in can browse materials
 router.get('/library', requireAuth, async (req, res) => {
@@ -318,16 +428,34 @@ router.get('/teacher/library', requireTeacher, async (req, res) => {
     .map(item => enrichMaterialPlayback(item, courses))
     .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
 
+  const counts = MATERIAL_TYPES.reduce(
+    (acc, t) => ({ ...acc, [t]: all.filter(i => i.type === t).length }),
+    { all: all.length }
+  );
+
   const editId = req.query.edit ? String(req.query.edit) : null;
   const editingItem = editId ? all.find(i => i.id === editId) : null;
+  const formData = editingItem
+    ? {
+      ...editingItem,
+      content_notes: editingItem.content_html ? htmlToEditableNotes(editingItem.content_html) : ''
+    }
+    : {};
+
+  const initialMode = editingItem
+    ? (editingItem.playbackMode === 'reader' ? 'notes' : 'link')
+    : 'link';
 
   res.render('teacher-library', {
     title: 'Manage Library | Pastors LMS',
     items: all,
+    counts,
     courses,
     types: MATERIAL_TYPES,
     editingItem: editingItem || null,
-    formData: editingItem || {},
+    formData,
+    initialMode,
+    cloudConnected: Boolean(supabaseAdmin),
     success: req.query.success || null,
     error: req.query.error || null
   });
@@ -337,6 +465,7 @@ router.get('/teacher/library', requireTeacher, async (req, res) => {
 router.post('/teacher/library', requireTeacher, async (req, res) => {
   const title = (req.body.title || '').trim();
   let type = normalizeMaterialType(req.body.type);
+  const mode = String(req.body.input_mode || 'link');
   const rawUrl = (req.body.url || '').trim();
   const description = (req.body.description || '').trim();
   const duration = (req.body.duration || '').trim();
@@ -348,13 +477,20 @@ router.post('/teacher/library', requireTeacher, async (req, res) => {
   const fail = async (message) => {
     const courses = getCourses();
     const all = (await getMaterials()).map(i => enrichMaterialPlayback(i, courses));
+    const counts = MATERIAL_TYPES.reduce(
+      (acc, t) => ({ ...acc, [t]: all.filter(i => i.type === t).length }),
+      { all: all.length }
+    );
     return res.status(400).render('teacher-library', {
       title: 'Manage Library | Pastors LMS',
       items: all,
+      counts,
       courses,
       types: MATERIAL_TYPES,
       editingItem: null,
       formData: req.body,
+      initialMode: mode,
+      cloudConnected: Boolean(supabaseAdmin),
       success: null,
       error: message
     });
@@ -366,7 +502,7 @@ router.post('/teacher/library', requireTeacher, async (req, res) => {
   let finalUrl = null;
   let contentHtml = null;
 
-  if (uploadedData && uploadedName) {
+  if ((mode === 'upload' || (uploadedData && uploadedName)) && uploadedData && uploadedName) {
     const uploaded = await saveUploadedLibraryFile(uploadedName, uploadedData);
     if (uploaded && uploaded.error) return fail(uploaded.error);
     if (uploaded && uploaded.url) {
@@ -374,17 +510,25 @@ router.post('/teacher/library', requireTeacher, async (req, res) => {
       if (['.mp3', '.m4a', '.wav', '.ogg'].includes(uploaded.ext)) type = 'audio';
       else type = 'document';
     }
-  } else if (contentNotes && !rawUrl) {
+  } else if (mode === 'notes' || (contentNotes && !rawUrl)) {
+    if (!contentNotes) {
+      return fail('Please type or paste your study guide notes in the text box.');
+    }
     contentHtml = plainNotesToHtml(contentNotes);
     finalUrl = `/library/read/${newId}`;
     type = 'document';
   } else {
     finalUrl = cleanUrl(rawUrl);
+    if (finalUrl) {
+      if (/(?:youtube\.com|youtu\.be|vimeo\.com)/i.test(finalUrl) && type === 'link') type = 'video';
+      else if (/\.(mp3|m4a|wav|ogg)(\?.*)?$/i.test(finalUrl)) type = 'audio';
+      else if (/\.pdf(\?.*)?$/i.test(finalUrl) && type === 'link') type = 'document';
+    }
     if (contentNotes) contentHtml = plainNotesToHtml(contentNotes);
   }
 
   if (!finalUrl) {
-    return fail('Please paste a valid web link (https://...), upload a file, or write study notes below.');
+    return fail('Please paste a valid web link (for example: youtube.com/... or https://...), upload a file, or write study notes.');
   }
 
   const material = {
@@ -405,7 +549,7 @@ router.post('/teacher/library', requireTeacher, async (req, res) => {
   if (!saved) {
     return fail('Could not save the material. Please try again.');
   }
-  res.redirect('/teacher/library?success=' + encodeURIComponent(`"${title}" was added to the Pastors Library.`));
+  res.redirect('/teacher/library?success=' + encodeURIComponent(`"${title}" is now live in the Pastors Library.`));
 });
 
 // POST /teacher/library/:id/edit - update an existing material
@@ -438,7 +582,7 @@ router.post('/teacher/library/:id/edit', requireTeacher, async (req, res) => {
   if (rawUrl) {
     const cleaned = cleanUrl(rawUrl);
     if (!cleaned) {
-      return res.redirect(`/teacher/library?edit=${encodeURIComponent(existing.id)}&error=${encodeURIComponent('Please enter a valid http:// or https:// web address.')}`);
+      return res.redirect(`/teacher/library?edit=${encodeURIComponent(existing.id)}&error=${encodeURIComponent('Please enter a valid web address (e.g., https://...).')}`);
     }
     finalUrl = cleaned;
   }
@@ -459,7 +603,7 @@ router.post('/teacher/library/:id/edit', requireTeacher, async (req, res) => {
   };
 
   await persistMaterialUpsert(updated);
-  res.redirect('/teacher/library?success=' + encodeURIComponent(`Updated "${title}".`));
+  res.redirect('/teacher/library?success=' + encodeURIComponent(`Updated "${title}" successfully.`));
 });
 
 // POST /teacher/library/:id/delete - remove a material
@@ -471,7 +615,6 @@ router.post('/teacher/library/:id/delete', requireTeacher, async (req, res) => {
     return res.redirect('/teacher/library?error=' + encodeURIComponent('Material not found.'));
   }
 
-  // Teachers can only remove their own materials; admins can remove any
   const isAdmin = ['admin', 'super_admin'].includes(req.session.user.role);
   if (!isAdmin && item.added_by !== req.session.user.username) {
     return res.redirect('/teacher/library?error=' + encodeURIComponent('You can only remove materials you added.'));

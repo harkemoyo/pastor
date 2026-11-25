@@ -191,6 +191,44 @@ create table if not exists public.library_materials (
 
 create index if not exists library_materials_course_idx on public.library_materials (course_id);
 
+-- 11b. Official Transcripts, Token Payments & Public QR Verification Registry
+create table if not exists public.transcript_records (
+  id text primary key,
+  verification_code text unique not null,
+  integrity_sig text not null,
+  student_username text not null,
+  student_id text,
+  student_name text,
+  student_cohort text,
+  course_scope text not null default 'all',
+  course_label text,
+  course_overrides jsonb not null default '{}'::jsonb,
+  registrar_notes text,
+  fee_amount text not null default 'KES 500',
+  payment_status text not null default 'unpaid' check (payment_status in ('unpaid', 'pending', 'paid')),
+  payment_method text,
+  payment_reference text,
+  payment_submitted_at timestamptz,
+  payment_verified_at timestamptz,
+  payment_verified_by text,
+  transcript_status text not null default 'draft' check (transcript_status in ('draft', 'issued', 'revoked')),
+  summary_snapshot jsonb,
+  issued_at timestamptz,
+  issued_by text,
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists transcript_records_student_idx on public.transcript_records (student_username);
+create index if not exists transcript_records_code_idx on public.transcript_records (verification_code);
+
+alter table public.transcript_records enable row level security;
+
+drop policy if exists "Admins manage transcript records" on public.transcript_records;
+create policy "Admins manage transcript records" on public.transcript_records
+  for all to authenticated
+  using ((select auth.jwt() ->> 'role') in ('admin', 'super_admin'))
+  with check ((select auth.jwt() ->> 'role') in ('admin', 'super_admin'));
+
 -- 12. Enable Row Level Security (RLS) on all tables
 alter table public.courses enable row level security;
 alter table public.course_modules enable row level security;

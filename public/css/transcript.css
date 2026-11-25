@@ -8,6 +8,507 @@
   margin-bottom: 1.5rem;
 }
 
+.doc-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+/* Per-Course Scope Selector */
+.tx-scope-bar {
+  background: #FFFFFF;
+  border: 1px solid #DFD5C3;
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 1.25rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.tx-scope-label {
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: #192F47;
+  margin-bottom: 10px;
+}
+
+.tx-scope-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tx-scope-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1.5px solid #DFD5C3;
+  background: #FAF8F3;
+  color: #0B192C;
+  font-size: 0.86rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition: var(--transition);
+}
+
+.tx-scope-pill:hover {
+  border-color: #192F47;
+  background: #EEF2F7;
+  color: #192F47;
+}
+
+.tx-scope-pill.active {
+  background: #192F47;
+  border-color: #192F47;
+  color: #FFFFFF;
+}
+
+/* Admin Registrar Editor Panel & Student Token Payment Card */
+.tx-admin-panel,
+.tx-token-card {
+  background: #FFFFFF;
+  border: 1.5px solid #192F47;
+  border-top: 5px solid #670C21;
+  border-radius: 14px;
+  padding: 22px 24px;
+  margin-bottom: 1.75rem;
+  box-shadow: var(--shadow-md);
+}
+
+.tx-admin-head,
+.tx-token-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.tx-admin-head h2,
+.tx-token-head h2 {
+  font-size: 1.3rem;
+  color: #0B192C;
+  margin: 0 0 4px;
+}
+
+.tx-admin-head p,
+.tx-token-head p {
+  font-size: 0.92rem;
+  color: var(--text-muted);
+  margin: 0;
+  max-width: 720px;
+}
+
+.tx-status-chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.tx-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+}
+
+.tx-chip-pay-paid,
+.tx-chip-doc-issued {
+  background: #E8F7EE;
+  color: #14532D;
+  border: 1px solid #86EFAC;
+}
+
+.tx-chip-pay-pending {
+  background: #FEF3C7;
+  color: #78350F;
+  border: 1px solid #FCD34D;
+}
+
+.tx-chip-pay-unpaid,
+.tx-chip-doc-draft {
+  background: #F4F0E7;
+  color: #30383A;
+  border: 1px solid #D9C7AA;
+}
+
+.tx-chip-doc-revoked {
+  background: #FDE8EB;
+  color: #7F1D1D;
+  border: 1px solid #FCA5A5;
+}
+
+.tx-editor-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  margin-bottom: 18px;
+  border: 1px solid #EFEAE0;
+  border-radius: 10px;
+}
+
+.tx-editor-table {
+  width: 100%;
+  min-width: 680px;
+  border-collapse: collapse;
+}
+
+.tx-editor-table th,
+.tx-editor-table td {
+  padding: 10px 10px;
+  text-align: left;
+  border-bottom: 1px solid #EFEAE0;
+  vertical-align: middle;
+}
+
+.tx-editor-table th {
+  background: #FAF8F3;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  color: #5B656B;
+}
+
+.tx-editor-sub {
+  font-size: 0.8rem;
+  color: #5B656B;
+}
+
+.tx-editor-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.tx-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.tx-field-wide {
+  grid-column: 1 / -1;
+}
+
+.tx-field-grow {
+  flex: 1;
+  min-width: 220px;
+}
+
+.tx-field label {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: #0B192C;
+}
+
+.tx-input {
+  width: 100%;
+  min-height: 42px;
+  padding: 8px 12px;
+  border: 1.5px solid #C9D2DC;
+  border-radius: 8px;
+  font-family: var(--font-body);
+  font-size: 0.92rem;
+  color: #0B192C;
+  background: #FFFFFF;
+}
+
+.tx-input:focus {
+  outline: none;
+  border-color: #192F47;
+  box-shadow: 0 0 0 3px rgba(25, 47, 71, 0.14);
+}
+
+.tx-input-sm {
+  min-width: 118px;
+}
+
+.tx-input-xs {
+  min-width: 78px;
+}
+
+.tx-editor-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.tx-token-form {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.doc-badge-official {
+  background: #192F47;
+}
+
+.doc-badge-unofficial {
+  background: #5B656B;
+}
+
+.doc-scope-sub {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: #670C21;
+  margin: 6px 0 0;
+}
+
+.transcript-remarks {
+  background: #FAF8F3;
+  border-left: 4px solid #192F47;
+  padding: 12px 16px;
+  border-radius: 0 8px 8px 0;
+  margin-bottom: 1.5rem;
+  font-size: 0.94rem;
+}
+
+/* Official QR Verification Seal & Signatures Footer */
+.transcript-official-footer {
+  display: grid;
+  grid-template-columns: 1.15fr 1fr;
+  gap: 2rem;
+  align-items: center;
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 2px solid #E3DACA;
+}
+
+.transcript-qr-box {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: #FAF8F3;
+  border: 1.5px solid #192F47;
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+
+.transcript-qr-svg {
+  flex-shrink: 0;
+  background: #FFFFFF;
+  padding: 4px;
+  border: 1px solid #DFD5C3;
+  border-radius: 6px;
+  line-height: 0;
+}
+
+.transcript-qr-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.qr-seal-title {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  color: #670C21;
+}
+
+.qr-seal-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.95rem;
+  color: #0B192C;
+}
+
+.qr-seal-hint {
+  font-size: 0.78rem;
+  color: #5B656B;
+  line-height: 1.4;
+  margin: 2px 0 0;
+}
+
+.qr-draft-note {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: #670C21;
+  margin-top: 4px;
+}
+
+/* ==========================================================================
+   PUBLIC QR VERIFICATION PORTAL (/verify/:code)
+   ========================================================================== */
+.verify-page-body {
+  min-height: 100vh;
+  background: #F4F0E7;
+  padding: 28px 16px 48px;
+}
+
+.verify-shell {
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.verify-brand-head {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.verify-logo {
+  height: 70px;
+  width: auto;
+  object-fit: contain;
+}
+
+.verify-brand-head h1 {
+  font-size: 1.45rem;
+  color: #0B192C;
+  margin: 0;
+}
+
+.verify-brand-head p {
+  font-size: 0.9rem;
+  color: #5B656B;
+  margin: 3px 0 0;
+}
+
+.verify-card {
+  background: #FFFFFF;
+  border-radius: 16px;
+  border: 1.5px solid #DFD5C3;
+  overflow: hidden;
+  box-shadow: var(--shadow-md);
+}
+
+.verify-status-banner {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 22px 24px;
+  color: #FFFFFF;
+}
+
+.verify-status-ok {
+  background: linear-gradient(135deg, #14532D 0%, #1B7A4B 100%);
+}
+
+.verify-status-bad {
+  background: linear-gradient(135deg, #670C21 0%, #BD2738 100%);
+}
+
+.verify-status-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  font-size: 1.6rem;
+  font-weight: 900;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.verify-status-banner h2 {
+  color: #FFFFFF;
+  font-size: 1.3rem;
+  margin: 0 0 4px;
+}
+
+.verify-status-banner p {
+  margin: 0;
+  font-size: 0.94rem;
+  color: rgba(255, 255, 255, 0.94);
+}
+
+.verify-details-grid {
+  padding: 22px 24px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px 20px;
+  margin: 0;
+}
+
+.verify-detail-row dt {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 700;
+  color: #5B656B;
+  margin-bottom: 3px;
+}
+
+.verify-detail-row dd {
+  margin: 0;
+  font-size: 0.98rem;
+  color: #0B192C;
+}
+
+.verify-pill-ok {
+  display: inline-block;
+  background: #E8F7EE;
+  color: #14532D;
+  border: 1px solid #86EFAC;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.84rem;
+  font-weight: 800;
+}
+
+.verify-courses-list {
+  padding: 0 24px 20px;
+}
+
+.verify-courses-list h3 {
+  font-size: 1rem;
+  color: #192F47;
+  margin: 0 0 10px;
+}
+
+.verify-courses-list ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  border: 1px solid #EFEAE0;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.verify-courses-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 11px 14px;
+  border-bottom: 1px solid #EFEAE0;
+  font-size: 0.92rem;
+}
+
+.verify-courses-list li:last-child {
+  border-bottom: none;
+}
+
+.verify-course-grade {
+  color: #670C21;
+  font-weight: 600;
+}
+
+.verify-privacy-note {
+  background: #FAF8F3;
+  border-top: 1px solid #EFEAE0;
+  padding: 14px 24px;
+  font-size: 0.84rem;
+  color: #5B656B;
+  margin: 0;
+}
+
+.verify-footer {
+  margin-top: 18px;
+  text-align: center;
+}
+
 .transcript-sheet {
   background: #FFFFFF;
   border: 2px solid #192F47;
@@ -353,6 +854,37 @@
     gap: 1.5rem;
   }
 
+  .transcript-official-footer {
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+  }
+
+  .transcript-qr-box {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .tx-admin-panel,
+  .tx-token-card {
+    padding: 16px 14px;
+  }
+
+  .tx-token-form .btn,
+  .tx-editor-actions .btn {
+    width: 100%;
+  }
+
+  .verify-details-grid {
+    grid-template-columns: 1fr;
+    padding: 18px 16px;
+  }
+
+  .verify-status-banner {
+    flex-direction: column;
+    text-align: center;
+    padding: 18px 16px;
+  }
+
   .cert-frame {
     padding: 2rem 1.25rem;
     border-width: 6px;
@@ -378,7 +910,7 @@
 }
 
 @media print {
-  .top-navbar, .site-footer, .whatsapp-float-btn, .doc-toolbar {
+  .top-navbar, .site-footer, .whatsapp-float-btn, .doc-toolbar, .doc-no-print {
     display: none !important;
   }
   body, .main-content {

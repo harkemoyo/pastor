@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/css/global.css?v=<%= locals.assetVersion || '5' %>">
+  <link rel="stylesheet" href="/css/transcript.css?v=<%= locals.assetVersion || '5' %>">
+  <link rel="icon" type="image/x-icon" href="/images/favicon.ico">
+</head>
+<body class="verify-page-body">
+  <main class="verify-shell">
+    <header class="verify-brand-head">
+      <img src="/images/IDA-Logo-Complete.webp" alt="Intentional Discipleship Africa" class="verify-logo" width="96" height="74">
+      <div>
+        <h1>Intentional Discipleship Africa</h1>
+        <p>Official School Registry &amp; Transcript Verification Portal</p>
+      </div>
+    </header>
+
+    <% if (verification && verification.valid) { %>
+      <section class="verify-card verify-card-valid" id="verifyValidCard">
+        <div class="verify-status-banner verify-status-ok">
+          <span class="verify-status-icon" aria-hidden="true">&#10003;</span>
+          <div>
+            <h2>VERIFIED SCHOOL RECORD</h2>
+            <p>This person is confirmed as a registered student of Intentional Discipleship Africa, and this official transcript is authentic.</p>
+          </div>
+        </div>
+
+        <dl class="verify-details-grid">
+          <div class="verify-detail-row">
+            <dt>Student Full Name</dt>
+            <dd><strong><%= verification.student_name %></strong></dd>
+          </div>
+          <div class="verify-detail-row">
+            <dt>Registration / Student ID</dt>
+            <dd><strong><%= verification.student_id %></strong></dd>
+          </div>
+          <div class="verify-detail-row">
+            <dt>School Registry Status</dt>
+            <dd><span class="verify-pill-ok">Active &bull; Exists in School Registry (<%= verification.student_standing %>)</span></dd>
+          </div>
+          <div class="verify-detail-row">
+            <dt>Training Cohort</dt>
+            <dd><%= verification.cohort %></dd>
+          </div>
+          <div class="verify-detail-row">
+            <dt>Transcript Scope</dt>
+            <dd><strong><%= verification.course_label %></strong></dd>
+          </div>
+          <% if (verification.summary) { %>
+            <div class="verify-detail-row">
+              <dt>Academic Standing</dt>
+              <dd>
+                Credits: <strong><%= verification.summary.totalCredits %></strong> &middot;
+                GPA: <strong><%= verification.summary.cumulativeGpa %> / 4.00</strong>
+              </dd>
+            </div>
+          <% } %>
+          <div class="verify-detail-row">
+            <dt>Verification Reference</dt>
+            <dd><code><%= verification.verification_code %></code></dd>
+          </div>
+          <div class="verify-detail-row">
+            <dt>Date Issued</dt>
+            <dd>
+              <%= verification.issued_at
+                ? new Date(verification.issued_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+                : 'Verified' %>
+            </dd>
+          </div>
+        </dl>
+
+        <% if (verification.summary && Array.isArray(verification.summary.courses) && verification.summary.courses.length) { %>
+          <div class="verify-courses-list">
+            <h3>Verified Courses on This Transcript</h3>
+            <ul>
+              <% verification.summary.courses.forEach(c => { %>
+                <li>
+                  <span><strong><%= c.code %></strong> &mdash; <%= c.title %> (<%= c.term %>)</span>
+                  <span class="verify-course-grade">Grade: <strong><%= c.letterGrade %></strong> &middot; <%= c.status %></span>
+                </li>
+              <% }) %>
+            </ul>
+          </div>
+        <% } %>
+
+        <p class="verify-privacy-note">
+          Privacy Notice: For student protection, this public verification page displays only official enrollment confirmation and transcript standing. Personal contact details are never exposed.
+        </p>
+      </section>
+    <% } else { %>
+      <section class="verify-card verify-card-invalid" id="verifyInvalidCard">
+        <div class="verify-status-banner verify-status-bad">
+          <span class="verify-status-icon" aria-hidden="true">!</span>
+          <div>
+            <h2><%= (verification && verification.revoked) ? 'TRANSCRIPT REVOKED' : 'RECORD NOT VERIFIED' %></h2>
+            <p>
+              <% if (verification && verification.revoked) { %>
+                This transcript reference (<code><%= queriedCode %></code>) has been revoked by the Academic Registrar and is no longer valid.
+              <% } else { %>
+                We could not confirm an active, officially issued student transcript matching code <code><%= queriedCode %></code> in the Intentional Discipleship Africa registry.
+              <% } %>
+            </p>
+          </div>
+        </div>
+        <p class="verify-privacy-note">
+          If you believe this document should be valid, please contact the Office of the Academic Registrar at <strong>info@ida-africa.org</strong> with the reference number printed on the transcript.
+        </p>
+      </section>
+    <% } %>
+
+    <footer class="verify-footer">
+      <a href="/login" class="btn btn-secondary btn-sm" id="btnVerifyGoPortal">Pastors LMS Portal</a>
+    </footer>
+  </main>
+</body>
+</html>

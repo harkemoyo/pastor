@@ -4,29 +4,256 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title><%= title %></title>
-  <link rel="stylesheet" href="/css/global.css?v=<%= locals.assetVersion || '4' %>">
-  <link rel="stylesheet" href="/css/dashboard.css?v=<%= locals.assetVersion || '4' %>">
-  <link rel="stylesheet" href="/css/transcript.css?v=<%= locals.assetVersion || '4' %>">
-  <link rel="stylesheet" href="/css/footer.css?v=<%= locals.assetVersion || '4' %>">
+  <link rel="stylesheet" href="/css/global.css?v=<%= locals.assetVersion || '5' %>">
+  <link rel="stylesheet" href="/css/dashboard.css?v=<%= locals.assetVersion || '5' %>">
+  <link rel="stylesheet" href="/css/transcript.css?v=<%= locals.assetVersion || '5' %>">
+  <link rel="stylesheet" href="/css/footer.css?v=<%= locals.assetVersion || '5' %>">
   <link rel="icon" type="image/x-icon" href="/images/favicon.ico">
 </head>
 <body class="app-container">
   <%- include('partials/header') %>
 
+  <%
+    const rec = transcriptRecord || {};
+    const studentSlug = student.student_id || student.username;
+    const baseTxUrl = isAdminView ? (`/admin/students/${encodeURIComponent(studentSlug)}/transcript`) : '/transcript';
+    const isOfficialDoc = Boolean(isOfficiallyIssued);
+  %>
+
   <main class="main-content">
+    <!-- Top Action Toolbar (Hidden on Print) -->
     <div class="doc-toolbar">
       <div>
         <% if (isAdminView) { %>
-          <a href="/admin/students/<%= student.student_id || student.username %>" class="btn btn-secondary" id="btnTranscriptBackAdmin">&larr; Back to Student Record</a>
+          <a href="/admin/students/<%= encodeURIComponent(studentSlug) %>" class="btn btn-secondary" id="btnTranscriptBackAdmin">&larr; Back to Student Record</a>
         <% } else { %>
           <a href="/" class="btn btn-secondary" id="btnTranscriptBackDash">&larr; Back to Dashboard</a>
         <% } %>
       </div>
-      <button type="button" class="btn btn-primary" id="btnPrintTranscript" onclick="window.print()">
-        🖨️ <%= isAdminView ? 'Print / Save Official PDF' : 'Print / Save Student Copy' %>
-      </button>
+      <div class="doc-toolbar-right">
+        <% if (verifyUrl && isOfficialDoc) { %>
+          <a href="<%= verifyUrl %>" target="_blank" rel="noopener noreferrer" class="btn btn-secondary" id="btnTestQrVerifyLink">
+            Verify QR Link &nearr;
+          </a>
+        <% } %>
+        <button type="button" class="btn btn-primary" id="btnPrintTranscript" onclick="window.print()">
+          Print / Save <%= isOfficialDoc ? 'Official PDF' : 'Student Copy' %>
+        </button>
+      </div>
     </div>
 
+    <% if (success) { %>
+      <div class="alert alert-success doc-no-print" id="transcriptAlertSuccess"><%= success %></div>
+    <% } %>
+    <% if (error) { %>
+      <div class="alert alert-danger doc-no-print" id="transcriptAlertError"><%= error %></div>
+    <% } %>
+
+    <!-- Per-Course Transcript Scope Switcher (Cumulative OR After Every Course) -->
+    <section class="tx-scope-bar doc-no-print" aria-label="Choose transcript scope">
+      <div class="tx-scope-label">Select Transcript Scope (After Every Course or Cumulative):</div>
+      <div class="tx-scope-pills">
+        <a href="<%= baseTxUrl %>?courseId=all"
+           id="txScopeAll"
+           class="tx-scope-pill <%= selectedCourseId === 'all' ? 'active' : '' %>">
+          Cumulative (All Courses)
+        </a>
+        <% (enrolledCourses || []).forEach(c => { %>
+          <a href="<%= baseTxUrl %>?courseId=<%= c.id %>"
+             id="txScopeCourse-<%= c.id %>"
+             class="tx-scope-pill <%= String(selectedCourseId) === String(c.id) ? 'active' : '' %>">
+            <%= c.code %> &mdash; <%= c.title %>
+          </a>
+        <% }) %>
+      </div>
+    </section>
+
+    <!-- =======================================================================
+         ADMIN REGISTRAR TRANSCRIPT EDITOR & TOKEN PAYMENT VERIFICATION
+         (Visible ONLY to Admins, hidden when printing!)
+         ======================================================================= -->
+    <% if (isAdminView) { %>
+      <section class="tx-admin-panel doc-no-print" id="adminTranscriptEditorPanel">
+        <div class="tx-admin-head">
+          <div>
+            <h2>Registrar Transcript Editor &amp; Token Verification</h2>
+            <p>Edit grades, credits, or remarks for <strong><%= courseLabel %></strong>, confirm the student's transcript token payment, and issue a QR-verified Official Transcript.</p>
+          </div>
+          <div class="tx-status-chips">
+            <span class="tx-chip tx-chip-pay-<%= rec.payment_status || 'unpaid' %>">
+              Token: <%= (rec.payment_status || 'unpaid').toUpperCase() %>
+            </span>
+            <span class="tx-chip tx-chip-doc-<%= rec.transcript_status || 'draft' %>">
+              Transcript: <%= (rec.transcript_status || 'draft').toUpperCase() %>
+            </span>
+          </div>
+        </div>
+
+        <form method="POST" action="/admin/students/<%= encodeURIComponent(studentSlug) %>/transcript/save" id="adminTranscriptEditForm">
+          <input type="hidden" name="course_id" value="<%= selectedCourseId %>">
+
+          <!-- 1. Editable Per-Course Grade Table -->
+          <div class="tx-editor-table-wrap">
+            <table class="tx-editor-table">
+              <thead>
+                <tr>
+                  <th>Course</th>
+                  <th>Term</th>
+                  <th>Credits</th>
+                  <th>Completion %</th>
+                  <th>Score %</th>
+                  <th>Grade</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% courseRecords.forEach(row => { %>
+                  <tr>
+                    <td>
+                      <input type="hidden" name="override_course_id" value="<%= row.id %>">
+                      <strong><%= row.code %></strong>
+                      <div class="tx-editor-sub"><%= row.title %></div>
+                    </td>
+                    <td>
+                      <input type="text" name="override_term" class="tx-input tx-input-sm" value="<%= row.term %>" aria-label="Term for <%= row.code %>">
+                    </td>
+                    <td>
+                      <input type="number" step="0.5" min="0.5" max="12" name="override_credits" class="tx-input tx-input-xs" value="<%= row.credits.toFixed(1) %>" aria-label="Credits for <%= row.code %>">
+                    </td>
+                    <td>
+                      <input type="number" min="0" max="100" name="override_completion" class="tx-input tx-input-xs" value="<%= row.completionPct %>" aria-label="Completion percent for <%= row.code %>">
+                    </td>
+                    <td>
+                      <input type="number" min="0" max="100" name="override_score" class="tx-input tx-input-xs" value="<%= row.averagePercent !== null ? row.averagePercent : '' %>" placeholder="—" aria-label="Score percent for <%= row.code %>">
+                    </td>
+                    <td>
+                      <select name="override_grade" class="tx-input tx-input-xs" aria-label="Letter grade for <%= row.code %>">
+                        <% ['A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D', 'F', 'P', 'IP'].forEach(g => { %>
+                          <option value="<%= g %>" <%= row.letterGrade === g ? 'selected' : '' %>><%= g %></option>
+                        <% }) %>
+                      </select>
+                    </td>
+                    <td>
+                      <select name="override_status" class="tx-input tx-input-sm" aria-label="Status for <%= row.code %>">
+                        <% ['Completed', 'In Progress', 'Enrolled'].forEach(st => { %>
+                          <option value="<%= st %>" <%= row.status === st ? 'selected' : '' %>><%= st %></option>
+                        <% }) %>
+                      </select>
+                    </td>
+                  </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- 2. Token Payment, Remarks & Issuance Controls -->
+          <div class="tx-editor-grid">
+            <div class="tx-field">
+              <label for="txFeeAmount">Transcript Token Fee</label>
+              <input type="text" id="txFeeAmount" name="fee_amount" class="tx-input" value="<%= rec.fee_amount || 'KES 500' %>" placeholder="e.g. KES 500">
+            </div>
+
+            <div class="tx-field">
+              <label for="txPaymentStatus">Token Payment Status</label>
+              <select id="txPaymentStatus" name="payment_status" class="tx-input">
+                <option value="unpaid" <%= (rec.payment_status || 'unpaid') === 'unpaid' ? 'selected' : '' %>>Unpaid</option>
+                <option value="pending" <%= rec.payment_status === 'pending' ? 'selected' : '' %>>Pending Verification (Student Submitted)</option>
+                <option value="paid" <%= rec.payment_status === 'paid' ? 'selected' : '' %>>Paid &amp; Verified</option>
+              </select>
+            </div>
+
+            <div class="tx-field">
+              <label for="txPaymentMethod">Payment Method</label>
+              <select id="txPaymentMethod" name="payment_method" class="tx-input">
+                <option value="M-Pesa" <%= (!rec.payment_method || rec.payment_method === 'M-Pesa') ? 'selected' : '' %>>M-Pesa</option>
+                <option value="Bank Transfer" <%= rec.payment_method === 'Bank Transfer' ? 'selected' : '' %>>Bank Transfer</option>
+                <option value="Cash" <%= rec.payment_method === 'Cash' ? 'selected' : '' %>>Cash (Office)</option>
+                <option value="Waived (Scholarship)" <%= rec.payment_method === 'Waived (Scholarship)' ? 'selected' : '' %>>Waived (Scholarship)</option>
+              </select>
+            </div>
+
+            <div class="tx-field">
+              <label for="txPaymentRef">M-Pesa / Receipt Reference</label>
+              <input type="text" id="txPaymentRef" name="payment_reference" class="tx-input" value="<%= rec.payment_reference || '' %>" placeholder="e.g. SLK8492ABC">
+            </div>
+
+            <div class="tx-field tx-field-wide">
+              <label for="txRegistrarNotes">Registrar Remarks / Academic Honors (Shown on Transcript)</label>
+              <input type="text" id="txRegistrarNotes" name="registrar_notes" class="tx-input" value="<%= rec.registrar_notes || '' %>" placeholder="e.g., Completed with Distinction — Good Standing in Pastoral Ministry">
+            </div>
+          </div>
+
+          <div class="tx-editor-actions">
+            <button type="submit" name="action_mode" value="issue" class="btn btn-burgundy" id="btnIssueOfficialTranscript">
+              Confirm Token Paid &amp; Issue Official QR Transcript
+            </button>
+            <button type="submit" name="action_mode" value="save" class="btn btn-primary" id="btnSaveTranscriptDraft">
+              Save Edits
+            </button>
+            <% if (rec.verification_code) { %>
+              <button type="submit" name="action_mode" value="regenerate_qr" class="btn btn-secondary btn-sm" id="btnRegenerateQr">
+                Regenerate QR Code
+              </button>
+              <button type="submit" name="action_mode" value="revoke" class="btn btn-danger btn-sm" id="btnRevokeTranscript">
+                Revoke Transcript
+              </button>
+            <% } %>
+          </div>
+        </form>
+      </section>
+    <% } else if (!isOfficialDoc) { %>
+      <!-- =====================================================================
+           STUDENT TOKEN PAYMENT SUBMISSION CARD (Hidden when Paid & Issued)
+           ===================================================================== -->
+      <section class="tx-token-card doc-no-print" id="studentTokenPaymentCard">
+        <div class="tx-token-head">
+          <div>
+            <h2>Request Your Official QR-Verified Transcript</h2>
+            <p>
+              To receive an <strong>Official Academic Transcript</strong> with a scannable school verification QR code for <strong><%= courseLabel %></strong>, pay the small administrative token fee of <strong><%= rec.fee_amount || 'KES 500' %></strong> and submit your payment confirmation code below.
+            </p>
+          </div>
+          <span class="tx-chip tx-chip-pay-<%= rec.payment_status || 'unpaid' %>">
+            Status: <%= rec.payment_status === 'pending' ? 'Awaiting Registrar Verification' : 'Token Required (' + (rec.fee_amount || 'KES 500') + ')' %>
+          </span>
+        </div>
+
+        <% if (rec.payment_status === 'pending' && rec.payment_reference) { %>
+          <div class="alert alert-info">
+            <strong>Payment Reference Submitted:</strong> <code><%= rec.payment_reference %></code> (<%= rec.payment_method || 'M-Pesa' %>). Our Academic Registrar will confirm your token and activate your Official QR Transcript shortly.
+          </div>
+        <% } %>
+
+        <form method="POST" action="/transcript/submit-payment" class="tx-token-form" id="studentTokenPaymentForm">
+          <input type="hidden" name="course_id" value="<%= selectedCourseId %>">
+          <div class="tx-field">
+            <label for="stuPayMethod">Payment Method</label>
+            <select id="stuPayMethod" name="payment_method" class="tx-input">
+              <option value="M-Pesa" <%= rec.payment_method === 'M-Pesa' ? 'selected' : '' %>>M-Pesa</option>
+              <option value="Bank Transfer" <%= rec.payment_method === 'Bank Transfer' ? 'selected' : '' %>>Bank Transfer</option>
+              <option value="Cash" <%= rec.payment_method === 'Cash' ? 'selected' : '' %>>Office Cash Receipt</option>
+            </select>
+          </div>
+          <div class="tx-field tx-field-grow">
+            <label for="stuPayRef">M-Pesa Confirmation / Receipt Code</label>
+            <input type="text"
+                   id="stuPayRef"
+                   name="payment_reference"
+                   class="tx-input"
+                   required
+                   placeholder="Enter M-Pesa code (e.g. SLK8492ABC)"
+                   value="<%= rec.payment_reference || '' %>">
+          </div>
+          <button type="submit" class="btn btn-burgundy" id="btnSubmitTokenPayment">
+            Submit Token Confirmation
+          </button>
+        </form>
+      </section>
+    <% } %>
+
+    <!-- =======================================================================
+         PRINTABLE ACADEMIC TRANSCRIPT SHEET
+         ======================================================================= -->
     <article class="transcript-sheet" id="officialTranscriptSheet">
       <!-- Official Letterhead with Monochrome Print Logo -->
       <header class="transcript-header">
@@ -39,10 +266,11 @@
           </div>
         </div>
         <div class="transcript-doc-label">
-          <span class="doc-badge">
-            <%= isAdminView ? 'OFFICIAL ACADEMIC TRANSCRIPT' : 'UNOFFICIAL TRANSCRIPT — STUDENT COPY' %>
+          <span class="doc-badge <%= isOfficialDoc ? 'doc-badge-official' : 'doc-badge-unofficial' %>">
+            <%= isOfficialDoc ? 'OFFICIAL ACADEMIC TRANSCRIPT' : 'UNOFFICIAL TRANSCRIPT — DRAFT / STUDENT COPY' %>
           </span>
-          <p class="doc-date">Generated: <%= issuedDate %></p>
+          <p class="doc-scope-sub"><%= courseLabel %></p>
+          <p class="doc-date"><%= isOfficialDoc ? 'Issued:' : 'Generated:' %> <%= issuedDate %></p>
         </div>
       </header>
 
@@ -64,7 +292,7 @@
           <div><span class="meta-k">Cohort</span><strong class="meta-v"><%= student.cohort || 'East Africa Pastoral Cohort' %></strong></div>
           <div><span class="meta-k">Church / Ministry</span><strong class="meta-v"><%= student.church_name || 'Local Church Ministry' %></strong></div>
           <div><span class="meta-k">Ministry Role</span><strong class="meta-v"><%= student.ministry_role || 'Pastor' %></strong></div>
-          <div><span class="meta-k">Email / Phone</span><strong class="meta-v"><%= student.email || '' %><%= student.phone ? ' • ' + student.phone : '' %></strong></div>
+          <div><span class="meta-k">Transcript Scope</span><strong class="meta-v"><%= selectedCourseObj ? selectedCourseObj.code : 'All Enrolled Courses' %></strong></div>
         </div>
       </section>
 
@@ -72,34 +300,34 @@
       <section class="transcript-records">
         <h2>Academic Course Record</h2>
         <div class="transcript-table-wrap">
-        <table class="transcript-table">
-          <thead>
-            <tr>
-              <th>Code</th>
-              <th>Course Title</th>
-              <th>Term</th>
-              <th>Credits</th>
-              <th>Completion</th>
-              <th>Score</th>
-              <th>Grade</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            <% courseRecords.forEach(row => { %>
+          <table class="transcript-table">
+            <thead>
               <tr>
-                <td><strong><%= row.code %></strong></td>
-                <td><%= row.title %></td>
-                <td><%= row.term %></td>
-                <td><%= row.credits.toFixed(1) %></td>
-                <td><%= row.completionPct %>%</td>
-                <td><%= row.averagePercent !== null ? row.averagePercent + '%' : '—' %></td>
-                <td><strong><%= row.letterGrade %></strong></td>
-                <td><%= row.status %></td>
+                <th>Code</th>
+                <th>Course Title</th>
+                <th>Term</th>
+                <th>Credits</th>
+                <th>Completion</th>
+                <th>Score</th>
+                <th>Grade</th>
+                <th>Status</th>
               </tr>
-            <% }) %>
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              <% courseRecords.forEach(row => { %>
+                <tr>
+                  <td><strong><%= row.code %></strong></td>
+                  <td><%= row.title %></td>
+                  <td><%= row.term %></td>
+                  <td><%= row.credits.toFixed(1) %></td>
+                  <td><%= row.completionPct %>%</td>
+                  <td><%= row.averagePercent !== null ? row.averagePercent + '%' : '—' %></td>
+                  <td><strong><%= row.letterGrade %></strong></td>
+                  <td><%= row.status %></td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
         </div>
       </section>
 
@@ -114,28 +342,50 @@
           <strong><%= gradedCredits %></strong>
         </div>
         <div class="summary-stat summary-stat-gpa">
-          <span>Cumulative GPA (4.0 Scale)</span>
+          <span><%= selectedCourseObj ? 'Course GPA (4.0 Scale)' : 'Cumulative GPA (4.0 Scale)' %></span>
           <strong><%= cumulativeGpa %></strong>
         </div>
       </section>
 
-      <!-- Verification & Signature Lines (Official Admin Registrar Copy Only) -->
-      <% if (isAdminView) { %>
-        <footer class="transcript-signatures">
-          <div class="sig-block">
-            <div class="sig-line"></div>
-            <strong>Academic Registrar</strong>
-            <span>Intentional Discipleship Africa</span>
+      <% if (rec.registrar_notes) { %>
+        <div class="transcript-remarks">
+          <strong>Registrar Remarks:</strong> <%= rec.registrar_notes %>
+        </div>
+      <% } %>
+
+      <!-- Official Verification QR Seal & Signature Lines -->
+      <% if (isOfficialDoc || (isAdminView && qrSvg)) { %>
+        <footer class="transcript-official-footer">
+          <div class="transcript-qr-box" id="transcriptQrSeal">
+            <div class="transcript-qr-svg"><%- qrSvg %></div>
+            <div class="transcript-qr-meta">
+              <span class="qr-seal-title">OFFICIAL VERIFICATION QR</span>
+              <strong class="qr-seal-code"><%= rec.verification_code %></strong>
+              <p class="qr-seal-hint">
+                Scan this QR code with any smartphone camera to verify that this student is registered at Intentional Discipleship Africa.
+              </p>
+              <% if (!isOfficialDoc && isAdminView) { %>
+                <span class="qr-draft-note">Preview Only — click "Confirm Token Paid &amp; Issue" above to activate public verification.</span>
+              <% } %>
+            </div>
           </div>
-          <div class="sig-block">
-            <div class="sig-line"></div>
-            <strong>Dean of Pastoral Training</strong>
-            <span>Pastors LMS &middot; East Africa</span>
+
+          <div class="transcript-signatures">
+            <div class="sig-block">
+              <div class="sig-line"></div>
+              <strong>Academic Registrar</strong>
+              <span>Intentional Discipleship Africa</span>
+            </div>
+            <div class="sig-block">
+              <div class="sig-line"></div>
+              <strong>Dean of Pastoral Training</strong>
+              <span>Pastors LMS &middot; East Africa</span>
+            </div>
           </div>
         </footer>
       <% } else { %>
         <div class="alert alert-info">
-          <strong>Student Progress Copy:</strong> This unofficial transcript is for your personal study tracking. For a signed and stamped Official Academic Transcript, please contact the Academic Registrar at <strong>info@ida-africa.org</strong>.
+          <strong>Unofficial Student Progress Copy:</strong> Official QR verification and Registrar signatures are added once the administrative token (<%= rec.fee_amount || 'KES 500' %>) is confirmed by the Academic Registrar.
         </div>
       <% } %>
 

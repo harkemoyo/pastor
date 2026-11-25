@@ -590,7 +590,120 @@ textarea.form-input {
   margin-top: 0;
 }
 
-/* Teacher Library Management Panels */
+/* Teacher & Admin Library Manager Panels */
+.lib-hero-btn-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.lib-admin-card {
+  border-top: 5px solid #670C21;
+}
+
+.lib-panel-sub {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  margin: 4px 0 0;
+}
+
+.lib-req {
+  color: #670C21;
+}
+
+/* 3-Step Visual Mode Selector Tabs */
+.lib-mode-switcher {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin-bottom: 22px;
+}
+
+.lib-mode-btn {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  text-align: left;
+  padding: 14px 16px;
+  min-height: 68px;
+  border-radius: 12px;
+  border: 2px solid #DFD5C3;
+  background: #FAF8F3;
+  color: #0B192C;
+  font-family: var(--font-body);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.lib-mode-btn:hover {
+  border-color: #192F47;
+  background: #EEF2F7;
+}
+
+.lib-mode-btn.active {
+  border-color: #192F47;
+  background: #192F47;
+  color: #FFFFFF;
+  box-shadow: 0 6px 18px rgba(25, 47, 71, 0.2);
+}
+
+.lib-mode-icon {
+  font-size: 1.35rem;
+  line-height: 1;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.lib-mode-btn strong {
+  display: block;
+  font-size: 0.96rem;
+  line-height: 1.25;
+}
+
+.lib-mode-btn small {
+  display: block;
+  font-size: 0.8rem;
+  opacity: 0.82;
+  margin-top: 3px;
+  line-height: 1.35;
+}
+
+.lib-mode-hidden {
+  display: none !important;
+}
+
+.lib-admin-filters {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.lib-admin-search-input {
+  width: 260px;
+}
+
+.lib-admin-type-select {
+  width: 185px;
+}
+
+.lib-table-title-link {
+  color: #192F47;
+  text-decoration: none;
+}
+
+.lib-table-title-link:hover {
+  color: #670C21;
+  text-decoration: underline;
+}
+
+.lib-table-desc {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-top: 3px;
+  line-height: 1.4;
+}
+
 .library-panel {
   background: #FFFFFF;
   border: 1px solid #DFD5C3;
@@ -767,6 +880,16 @@ textarea.form-input {
   }
 
   .reader-topbar-actions {
+    width: 100%;
+  }
+
+  .lib-mode-switcher {
+    grid-template-columns: 1fr;
+  }
+
+  .lib-admin-filters,
+  .lib-admin-search-input,
+  .lib-admin-type-select {
     width: 100%;
   }
 }

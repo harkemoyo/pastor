@@ -22,7 +22,7 @@ app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
 // Asset version string to prevent stale CSS/JS from old caches
-const ASSET_VERSION = '20261124h';
+const ASSET_VERSION = '20261125b';
 app.use((req, res, next) => {
   res.locals.assetVersion = ASSET_VERSION;
   next();

@@ -90,9 +90,16 @@
                       <td><%= item.course_name %></td>
                       <td><span class="badge course-badge"><%= item.course_code %></span></td>
                       <td>
-                        <form method="POST" action="/admin/students/<%= student.student_id %>/courses/<%= item.course_id %>/remove">
-                          <button type="submit" class="btn btn-danger btn-sm">Remove</button>
-                        </form>
+                        <div class="action-row-inline">
+                          <a href="/admin/students/<%= encodeURIComponent(student.student_id || student.username) %>/transcript?courseId=<%= item.course_id %>"
+                             class="btn btn-secondary btn-sm"
+                             id="btnCourseTx-<%= item.course_id %>">
+                            Course Transcript
+                          </a>
+                          <form method="POST" action="/admin/students/<%= student.student_id %>/courses/<%= item.course_id %>/remove">
+                            <button type="submit" class="btn btn-danger btn-sm">Remove</button>
+                          </form>
+                        </div>
                       </td>
                     </tr>
                   <% }) %>

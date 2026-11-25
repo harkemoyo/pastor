@@ -11,6 +11,7 @@
     initLibraryBookmarks();
     initLibraryPreviewModal();
     initStudyGuideReaderTools();
+    initTeacherLibraryManager();
     initTeacherLibraryFileUpload();
   });
 
@@ -218,13 +219,81 @@
     }
   }
 
-  // 5. Teacher Library Direct File Upload (reads file to base64 safely up to 4 MB)
+  // 5. Admin / Teacher Library 3-Mode Switcher, Smart URL Auto-Detect & Live Table Filter
+  function initTeacherLibraryManager() {
+    const modeTabs = document.querySelectorAll('.lib-mode-btn[data-lib-mode]');
+    const modeInput = document.getElementById('libraryInputMode');
+    const panels = document.querySelectorAll('.lib-mode-section[data-mode-panel]');
+    const typeSelect = document.getElementById('materialType');
+    const urlInput = document.getElementById('materialUrl');
+    const urlHint = document.getElementById('urlAutoDetectHint');
+
+    if (modeTabs.length && modeInput) {
+      function setMode(nextMode) {
+        modeInput.value = nextMode;
+        modeTabs.forEach(btn => {
+          const active = btn.getAttribute('data-lib-mode') === nextMode;
+          btn.classList.toggle('active', active);
+          btn.setAttribute('aria-selected', active ? 'true' : 'false');
+        });
+        panels.forEach(panel => {
+          const show = panel.getAttribute('data-mode-panel') === nextMode;
+          panel.classList.toggle('lib-mode-hidden', !show);
+        });
+        if (nextMode === 'notes' && typeSelect) {
+          typeSelect.value = 'document';
+        }
+      }
+
+      modeTabs.forEach(btn => {
+        btn.addEventListener('click', () => setMode(btn.getAttribute('data-lib-mode')));
+      });
+    }
+
+    // Smart auto-detection when pasting a YouTube/Vimeo/PDF/MP3 link
+    if (urlInput && typeSelect) {
+      urlInput.addEventListener('input', () => {
+        const val = urlInput.value.trim();
+        if (/(youtube\.com|youtu\.be|vimeo\.com)/i.test(val)) {
+          typeSelect.value = 'video';
+          if (urlHint) urlHint.textContent = 'Detected Video Link — will play directly inside the Pastors Library video player!';
+        } else if (/\.(mp3|m4a|wav|ogg)(\?.*)?$/i.test(val)) {
+          typeSelect.value = 'audio';
+          if (urlHint) urlHint.textContent = 'Detected Audio File — will play directly inside the audio player!';
+        } else if (/(\.pdf(\?.*)?$|drive\.google\.com|docs\.google\.com)/i.test(val)) {
+          typeSelect.value = 'document';
+          if (urlHint) urlHint.textContent = 'Detected Document / Study Guide link.';
+        }
+      });
+    }
+
+    // Live search + category filter on the Published Materials table
+    const searchInput = document.getElementById('adminLibSearch');
+    const typeFilter = document.getElementById('adminLibTypeFilter');
+    const rows = document.querySelectorAll('#materialsTable tbody tr.lib-admin-row');
+    if (rows.length && (searchInput || typeFilter)) {
+      function filterRows() {
+        const q = searchInput ? searchInput.value.trim().toLowerCase() : '';
+        const t = typeFilter ? typeFilter.value : 'all';
+        rows.forEach(row => {
+          const matchesType = t === 'all' || row.getAttribute('data-type') === t;
+          const matchesText = !q || row.textContent.toLowerCase().includes(q);
+          row.hidden = !(matchesType && matchesText);
+        });
+      }
+      if (searchInput) searchInput.addEventListener('input', filterRows);
+      if (typeFilter) typeFilter.addEventListener('change', filterRows);
+    }
+  }
+
+  // 6. Teacher Library Direct File Upload (reads file to base64 safely up to 4 MB)
   function initTeacherLibraryFileUpload() {
     const fileInput = document.getElementById('materialFileUpload');
     const nameInput = document.getElementById('uploadedFileName');
     const dataInput = document.getElementById('uploadedFileData');
     const statusEl = document.getElementById('materialFileStatus');
     const typeSelect = document.getElementById('materialType');
+    const titleInput = document.getElementById('materialTitle');
 
     if (!fileInput || !nameInput || !dataInput) return;
 
@@ -237,7 +306,7 @@
       }
 
       if (file.size > 4 * 1024 * 1024) {
-        if (statusEl) statusEl.textContent = 'File is larger than 4 MB. Please use a Google Drive or YouTube link instead.';
+        if (statusEl) statusEl.textContent = 'File is larger than 4 MB. Please switch to "1. Paste a Link or Video" and paste a Google Drive or YouTube link.';
         fileInput.value = '';
         nameInput.value = '';
         dataInput.value = '';
@@ -250,7 +319,10 @@
         dataInput.value = String(reader.result || '');
         if (statusEl) {
           const kb = Math.max(1, Math.round(file.size / 1024));
-          statusEl.textContent = `Ready to upload: ${file.name} (${kb} KB)`;
+          statusEl.textContent = `Ready to publish: ${file.name} (${kb} KB)`;
+        }
+        if (titleInput && !titleInput.value.trim()) {
+          titleInput.value = file.name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ').trim();
         }
         if (typeSelect) {
           if (/\.(mp3|m4a|wav|ogg)$/i.test(file.name)) typeSelect.value = 'audio';

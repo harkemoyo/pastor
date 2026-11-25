@@ -22,6 +22,14 @@ const {
   addAnnouncement,
   getEnrolledCoursesForUser
 } = require('../utils/lms-store');
+const {
+  DEFAULT_TOKEN_FEE,
+  normalizeScope,
+  getTranscriptRecord,
+  saveTranscriptRecord,
+  verifyTranscriptByCode
+} = require('../utils/transcript-store');
+const { generateQrSvg } = require('../utils/qr-svg');
 
 const COURSES_FILE = path.join(__dirname, '../data/courses.json');
 const USERS_FILE = path.join(__dirname, '../data/users.json');
@@ -399,80 +407,345 @@ router.post('/teacher/courses/:id/announcements', requireTeacher, async (req, re
 });
 
 // ==========================================================================
-// 4. OFFICIAL ACADEMIC TRANSCRIPT & COURSE COMPLETION CERTIFICATE
+// 4. OFFICIAL ACADEMIC TRANSCRIPT (PER-COURSE + CUMULATIVE), ADMIN EDITOR,
+//    TOKEN FEE VERIFICATION, QR CODE & ZERO-BREACH PUBLIC VERIFICATION
 // ==========================================================================
 
-async function renderTranscriptForUser(targetUser, res, isAdminView = false) {
+function getBaseUrl(req) {
+  const proto = (req.headers['x-forwarded-proto'] || req.protocol || 'http').split(',')[0].trim();
+  const host = req.get('host') || 'localhost:3000';
+  return `${proto}://${host}`;
+}
+
+async function computeTranscriptData(targetUser, selectedCourseId = 'all', savedRecord = null) {
   const allCourses = getCourses();
-  const { courses } = getEnrolledCoursesForUser(allCourses, targetUser);
+  const { courses: enrolledCourses } = getEnrolledCoursesForUser(allCourses, targetUser);
   const username = targetUser.username || targetUser.email;
+  const scope = normalizeScope(selectedCourseId);
+  const targetCourseNum = scope.startsWith('course:') ? parseInt(scope.split(':')[1], 10) : null;
+
+  const filteredCourses = targetCourseNum
+    ? enrolledCourses.filter(c => Number(c.id) === targetCourseNum)
+    : enrolledCourses;
+  const activeCourses = filteredCourses.length > 0 ? filteredCourses : enrolledCourses;
+
+  const overrides = (savedRecord && savedRecord.course_overrides && typeof savedRecord.course_overrides === 'object')
+    ? savedRecord.course_overrides
+    : {};
 
   const courseRecords = [];
   let totalCredits = 0;
   let totalQualityPoints = 0;
   let gradedCredits = 0;
 
-  for (const course of courses) {
+  for (const course of activeCourses) {
     const subs = await getSubmissions({ course_id: course.id, student_username: username });
     const disc = (await getDiscussions(course.id)).filter(
       d => String(d.author_username || '').toLowerCase() === String(username).toLowerCase()
     );
     const gradeSummary = computeCourseGradeSummary(subs, disc);
-    const completionPct = getUserCompletionPercent(username, course);
-    const credits = Number(course.credits) || 3.0;
-    totalCredits += credits;
+    const baseCompletion = getUserCompletionPercent(username, course);
+    const ov = overrides[String(course.id)] || {};
 
-    if (gradeSummary.gradePoints !== null) {
+    const credits = Number.isFinite(Number(ov.credits)) && Number(ov.credits) > 0
+      ? Number(ov.credits)
+      : (Number(course.credits) || 3.0);
+
+    const completionPct = (ov.completionPct !== undefined && ov.completionPct !== '' && Number.isFinite(Number(ov.completionPct)))
+      ? Math.min(100, Math.max(0, Math.round(Number(ov.completionPct))))
+      : baseCompletion;
+
+    const averagePercent = (ov.averagePercent !== undefined && ov.averagePercent !== '' && Number.isFinite(Number(ov.averagePercent)))
+      ? Math.min(100, Math.max(0, Math.round(Number(ov.averagePercent))))
+      : gradeSummary.averagePercent;
+
+    let letterGrade = (ov.letterGrade && String(ov.letterGrade).trim())
+      ? String(ov.letterGrade).trim().toUpperCase()
+      : (averagePercent !== null ? computeLetterGrade(averagePercent) : gradeSummary.letterGrade);
+
+    let gradePoints = letterToGradePoints(letterGrade);
+    if (gradePoints === null && averagePercent !== null) {
+      gradePoints = letterToGradePoints(computeLetterGrade(averagePercent));
+    }
+
+    const status = (ov.status && String(ov.status).trim())
+      ? String(ov.status).trim()
+      : (completionPct >= 100 ? 'Completed' : (completionPct > 0 || gradeSummary.gradedCount > 0 ? 'In Progress' : 'Enrolled'));
+
+    const term = (ov.term && String(ov.term).trim()) ? String(ov.term).trim() : (course.term || 'AY2027-T1');
+
+    totalCredits += credits;
+    if (gradePoints !== null) {
       gradedCredits += credits;
-      totalQualityPoints += gradeSummary.gradePoints * credits;
+      totalQualityPoints += gradePoints * credits;
     }
 
     courseRecords.push({
       id: course.id,
       code: course.code,
       title: course.title,
-      term: course.term || 'AY2027-T1',
+      term,
       credits,
       completionPct,
-      averagePercent: gradeSummary.averagePercent,
-      letterGrade: gradeSummary.letterGrade,
-      gradePoints: gradeSummary.gradePoints,
-      status: completionPct >= 100 ? 'Completed' : (completionPct > 0 || gradeSummary.gradedCount > 0 ? 'In Progress' : 'Enrolled')
+      averagePercent,
+      letterGrade,
+      gradePoints,
+      status
     });
   }
 
   const cumulativeGpa = gradedCredits > 0 ? (totalQualityPoints / gradedCredits).toFixed(2) : '—';
-  const issuedDate = new Date().toLocaleDateString('en-GB', {
+  const selectedCourseObj = targetCourseNum
+    ? enrolledCourses.find(c => Number(c.id) === targetCourseNum) || null
+    : null;
+  const courseLabel = selectedCourseObj
+    ? `${selectedCourseObj.code} — ${selectedCourseObj.title}`
+    : 'Cumulative Academic Record (All Courses)';
+
+  return {
+    scope,
+    selectedCourseId: targetCourseNum ? String(targetCourseNum) : 'all',
+    selectedCourseObj,
+    courseLabel,
+    enrolledCourses,
+    courseRecords,
+    totalCredits: totalCredits.toFixed(1),
+    gradedCredits: gradedCredits.toFixed(1),
+    cumulativeGpa
+  };
+}
+
+async function renderTranscriptForUser(targetUser, req, res, isAdminView = false) {
+  const username = targetUser.username || targetUser.email;
+  const requestedCourseId = req.query.courseId || 'all';
+  const scope = normalizeScope(requestedCourseId);
+  const savedRecord = await getTranscriptRecord(username, scope);
+
+  const computed = await computeTranscriptData(targetUser, requestedCourseId, savedRecord);
+
+  const paymentStatus = (savedRecord && savedRecord.payment_status) || 'unpaid';
+  const transcriptStatus = (savedRecord && savedRecord.transcript_status) || 'draft';
+  const isOfficiallyIssued = transcriptStatus === 'issued' && paymentStatus === 'paid';
+  const feeAmount = (savedRecord && savedRecord.fee_amount) || DEFAULT_TOKEN_FEE;
+
+  let verifyUrl = null;
+  let qrSvg = null;
+  if (savedRecord && savedRecord.verification_code && (isOfficiallyIssued || isAdminView)) {
+    verifyUrl = `${getBaseUrl(req)}/verify/${encodeURIComponent(savedRecord.verification_code)}`;
+    qrSvg = generateQrSvg(verifyUrl, { sizePx: 148 });
+  }
+
+  const issuedDateSource = (savedRecord && savedRecord.issued_at) ? new Date(savedRecord.issued_at) : new Date();
+  const issuedDate = issuedDateSource.toLocaleDateString('en-GB', {
     day: 'numeric',
     month: 'long',
     year: 'numeric'
   });
 
   res.render('transcript', {
-    title: `Official Academic Transcript – ${targetUser.full_name || username} | Pastors LMS`,
+    title: `${isOfficiallyIssued || isAdminView ? 'Official' : 'Unofficial'} Academic Transcript – ${targetUser.full_name || username} | Pastors LMS`,
     student: targetUser,
-    courseRecords,
-    totalCredits: totalCredits.toFixed(1),
-    gradedCredits: gradedCredits.toFixed(1),
-    cumulativeGpa,
+    enrolledCourses: computed.enrolledCourses,
+    selectedCourseId: computed.selectedCourseId,
+    selectedCourseObj: computed.selectedCourseObj,
+    courseLabel: computed.courseLabel,
+    courseRecords: computed.courseRecords,
+    totalCredits: computed.totalCredits,
+    gradedCredits: computed.gradedCredits,
+    cumulativeGpa: computed.cumulativeGpa,
     issuedDate,
-    isAdminView
+    isAdminView,
+    transcriptRecord: savedRecord || {
+      course_scope: scope,
+      fee_amount: feeAmount,
+      payment_status: paymentStatus,
+      payment_method: '',
+      payment_reference: '',
+      registrar_notes: '',
+      transcript_status: transcriptStatus,
+      verification_code: ''
+    },
+    isOfficiallyIssued,
+    verifyUrl,
+    qrSvg,
+    success: req.query.success || null,
+    error: req.query.error || null
   });
 }
 
-// GET /transcript - Logged-in student's official transcript
+// GET /transcript - Logged-in student's transcript (supports ?courseId=1 for after-course transcript)
 router.get('/transcript', requireAuth, async (req, res) => {
   const record = (await resolveStudentRecord(req.session.user.username || req.session.user.email)) || req.session.user;
-  await renderTranscriptForUser(record, res, false);
+  await renderTranscriptForUser(record, req, res, false);
 });
 
-// GET /admin/students/:studentId/transcript - Admin printable transcript for any student
+// POST /transcript/submit-payment - Student submits M-Pesa / token payment reference for Registrar verification
+router.post('/transcript/submit-payment', requireAuth, async (req, res) => {
+  const student = (await resolveStudentRecord(req.session.user.username || req.session.user.email)) || req.session.user;
+  const username = student.username || student.email;
+  const selectedCourseId = req.body.course_id || 'all';
+  const scope = normalizeScope(selectedCourseId);
+  const paymentMethod = String(req.body.payment_method || 'M-Pesa').trim().slice(0, 60);
+  const paymentRef = String(req.body.payment_reference || '').trim().toUpperCase().slice(0, 80);
+
+  const querySuffix = selectedCourseId !== 'all' ? `&courseId=${encodeURIComponent(selectedCourseId)}` : '';
+  if (paymentRef.length < 4) {
+    return res.redirect('/transcript?error=' + encodeURIComponent('Please enter your M-Pesa or payment receipt reference code (at least 4 characters).') + querySuffix);
+  }
+
+  const existing = await getTranscriptRecord(username, scope);
+  const computed = await computeTranscriptData(student, selectedCourseId, existing);
+
+  await saveTranscriptRecord({
+    student_username: username,
+    student_id: student.student_id || username,
+    student_name: student.full_name || [student.first_name, student.last_name].filter(Boolean).join(' ') || username,
+    student_cohort: student.cohort || 'East Africa Pastoral Cohort',
+    course_scope: scope,
+    course_label: computed.courseLabel,
+    payment_status: existing && existing.payment_status === 'paid' ? 'paid' : 'pending',
+    payment_method: paymentMethod,
+    payment_reference: paymentRef,
+    payment_submitted_at: new Date().toISOString()
+  });
+
+  res.redirect('/transcript?success=' + encodeURIComponent(`Token payment reference (${paymentRef}) submitted! The Academic Registrar will verify and issue your QR-sealed Official Transcript shortly.`) + querySuffix);
+});
+
+// GET /admin/students/:studentId/transcript - Admin editable official transcript (cumulative or per-course)
 router.get('/admin/students/:studentId/transcript', requireAdmin, async (req, res) => {
   const student = await resolveStudentRecord(req.params.studentId);
   if (!student) {
     return res.redirect('/admin/students?error=' + encodeURIComponent('Student record not found for transcript.'));
   }
-  await renderTranscriptForUser(student, res, true);
+  await renderTranscriptForUser(student, req, res, true);
+});
+
+// POST /admin/students/:studentId/transcript/save - Admin edits grades/credits/remarks, confirms token fee, and issues QR transcript
+router.post('/admin/students/:studentId/transcript/save', requireAdmin, async (req, res) => {
+  const student = await resolveStudentRecord(req.params.studentId);
+  if (!student) {
+    return res.redirect('/admin/students?error=' + encodeURIComponent('Student record not found.'));
+  }
+
+  const username = student.username || student.email;
+  const selectedCourseId = req.body.course_id || 'all';
+  const scope = normalizeScope(selectedCourseId);
+  const actionMode = String(req.body.action_mode || 'save');
+  const existing = await getTranscriptRecord(username, scope);
+
+  // Collect per-course editable overrides submitted by Admin
+  const courseOverrides = { ...(existing && existing.course_overrides ? existing.course_overrides : {}) };
+  const courseIdsRaw = req.body.override_course_id;
+  const courseIds = Array.isArray(courseIdsRaw) ? courseIdsRaw : (courseIdsRaw ? [courseIdsRaw] : []);
+  const asArr = (val) => (Array.isArray(val) ? val : (val !== undefined ? [val] : []));
+
+  const terms = asArr(req.body.override_term);
+  const creditsArr = asArr(req.body.override_credits);
+  const completions = asArr(req.body.override_completion);
+  const scores = asArr(req.body.override_score);
+  const grades = asArr(req.body.override_grade);
+  const statuses = asArr(req.body.override_status);
+
+  courseIds.forEach((cid, i) => {
+    if (!cid) return;
+    courseOverrides[String(cid)] = {
+      term: String(terms[i] || '').trim(),
+      credits: creditsArr[i] !== '' && Number.isFinite(Number(creditsArr[i])) ? Number(creditsArr[i]) : undefined,
+      completionPct: completions[i] !== '' && Number.isFinite(Number(completions[i])) ? Number(completions[i]) : undefined,
+      averagePercent: scores[i] !== '' && Number.isFinite(Number(scores[i])) ? Number(scores[i]) : undefined,
+      letterGrade: String(grades[i] || '').trim().toUpperCase(),
+      status: String(statuses[i] || '').trim()
+    };
+  });
+
+  let paymentStatus = ['unpaid', 'pending', 'paid'].includes(req.body.payment_status)
+    ? req.body.payment_status
+    : ((existing && existing.payment_status) || 'unpaid');
+  let transcriptStatus = ['draft', 'issued', 'revoked'].includes(req.body.transcript_status)
+    ? req.body.transcript_status
+    : ((existing && existing.transcript_status) || 'draft');
+
+  if (actionMode === 'issue') {
+    paymentStatus = 'paid';
+    transcriptStatus = 'issued';
+  } else if (actionMode === 'revoke') {
+    transcriptStatus = 'revoked';
+  }
+
+  const feeAmount = String(req.body.fee_amount || (existing && existing.fee_amount) || DEFAULT_TOKEN_FEE).trim().slice(0, 40);
+  const paymentMethod = String(req.body.payment_method || '').trim().slice(0, 60);
+  const paymentReference = String(req.body.payment_reference || '').trim().toUpperCase().slice(0, 80);
+  const registrarNotes = String(req.body.registrar_notes || '').trim().slice(0, 600);
+
+  // Recompute summary snapshot with the new overrides so QR verification reflects exact updated grades/GPA
+  const previewRecord = { ...(existing || {}), course_overrides: courseOverrides };
+  const computed = await computeTranscriptData(student, selectedCourseId, previewRecord);
+
+  const adminName = req.session.user.full_name || req.session.user.username || 'Registrar';
+  const nowIso = new Date().toISOString();
+
+  const saved = await saveTranscriptRecord({
+    student_username: username,
+    student_id: student.student_id || username,
+    student_name: student.full_name || [student.first_name, student.last_name].filter(Boolean).join(' ') || username,
+    student_cohort: student.cohort || 'East Africa Pastoral Cohort',
+    course_scope: scope,
+    course_label: computed.courseLabel,
+    course_overrides: courseOverrides,
+    registrar_notes: registrarNotes,
+    fee_amount: feeAmount,
+    payment_status: paymentStatus,
+    payment_method: paymentMethod,
+    payment_reference: paymentReference,
+    payment_verified_at: paymentStatus === 'paid' ? ((existing && existing.payment_verified_at) || nowIso) : null,
+    payment_verified_by: paymentStatus === 'paid' ? adminName : null,
+    transcript_status: transcriptStatus,
+    regenerate_code: actionMode === 'regenerate_qr',
+    issued_at: transcriptStatus === 'issued' ? ((existing && existing.issued_at) || nowIso) : (existing && existing.issued_at) || null,
+    issued_by: transcriptStatus === 'issued' ? adminName : (existing && existing.issued_by) || null,
+    summary_snapshot: {
+      totalCredits: computed.totalCredits,
+      gradedCredits: computed.gradedCredits,
+      cumulativeGpa: computed.cumulativeGpa,
+      courses: computed.courseRecords.map(r => ({
+        code: r.code,
+        title: r.title,
+        term: r.term,
+        letterGrade: r.letterGrade,
+        status: r.status
+      }))
+    }
+  });
+
+  const targetSlug = encodeURIComponent(req.params.studentId);
+  const courseParam = selectedCourseId !== 'all' ? `&courseId=${encodeURIComponent(selectedCourseId)}` : '';
+  const msg = actionMode === 'issue'
+    ? `Official Transcript issued & QR code activated (${saved.verification_code}).`
+    : actionMode === 'revoke'
+      ? 'Transcript verification QR code has been revoked.'
+      : actionMode === 'regenerate_qr'
+        ? `New QR verification code generated (${saved.verification_code}).`
+        : 'Transcript changes saved.';
+
+  res.redirect(`/admin/students/${targetSlug}/transcript?success=${encodeURIComponent(msg)}${courseParam}`);
+});
+
+// GET /verify/:code - PUBLIC Zero-Breach Transcript QR Verification Endpoint
+router.get('/verify/:code', async (req, res) => {
+  res.setHeader('X-Robots-Tag', 'noindex, nofollow');
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+
+  const result = await verifyTranscriptByCode(req.params.code);
+  const statusCode = result.valid ? 200 : 404;
+
+  res.status(statusCode).render('verify-transcript', {
+    title: result.valid
+      ? 'Verified Academic Record | Intentional Discipleship Africa'
+      : 'Transcript Verification Notice | Intentional Discipleship Africa',
+    verification: result,
+    queriedCode: String(req.params.code || '').slice(0, 32)
+  });
 });
 
 // GET /courses/:id/certificate - Official Course Completion Certificate
