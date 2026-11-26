@@ -36,6 +36,9 @@
         <div class="bp-top-divider"></div>
         <div class="bp-course-identity">
           <span class="bp-course-code"><%= course.code %>-01 &mdash; <%= course.term || 'AY2027-T1' %></span>
+          <% if (course.end_date) { %>
+            <span class="bp-course-ends">Ends <%= course.end_date %> at 11:59 PM</span>
+          <% } %>
         </div>
       </div>
 

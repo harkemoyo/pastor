@@ -1846,4 +1846,8 @@ router.get('/users', requireAdmin, (req, res) => {
   res.redirect('/admin/students');
 });
 
+router.get('/users/new', requireAdmin, (req, res) => {
+  res.redirect('/admin/students/new');
+});
+
 module.exports = router;

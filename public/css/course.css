@@ -74,15 +74,25 @@
 
 .bp-course-identity {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
 }
 
 .bp-course-code {
   font-family: var(--font-heading);
-  font-size: 1.15rem;
+  font-size: 1.12rem;
   font-weight: 700;
   color: #1F2429;
   letter-spacing: -0.2px;
+  line-height: 1.2;
+}
+
+.bp-course-ends {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #5B656B;
+  line-height: 1.2;
 }
 
 .bp-top-right {
