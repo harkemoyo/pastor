@@ -2620,3 +2620,111 @@
   font-weight: 700;
   color: #670C21;
 }
+
+/* Academic Integrity Pledge, Deadline Locks & Weighted Gradebook */
+.integrity-pledge-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: #F4F0E7;
+  border: 1.5px solid #D9C7AA;
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin: 12px 0 16px;
+  cursor: pointer;
+  font-size: 0.94rem;
+  line-height: 1.5;
+  color: #0B192C;
+}
+
+.integrity-pledge-input {
+  width: 22px;
+  height: 22px;
+  margin-top: 2px;
+  accent-color: #670C21;
+  flex-shrink: 0;
+}
+
+.deadline-locked-banner {
+  background: #FEE2E2;
+  border: 1.5px solid #FCA5A5;
+  border-left: 5px solid #670C21;
+  color: #7F1D1D;
+  padding: 14px 18px;
+  border-radius: 8px;
+  margin-bottom: 18px;
+  font-size: 0.96rem;
+  line-height: 1.5;
+}
+
+.deadline-extension-banner {
+  background: #DCFCE7;
+  border: 1.5px solid #86EFAC;
+  border-left: 5px solid #166534;
+  color: #14532D;
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 18px;
+  font-size: 0.94rem;
+}
+
+.bp-topic-toast {
+  padding: 13px 16px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.bp-topic-toast-error {
+  background: #FEE2E2;
+  border: 1.5px solid #FCA5A5;
+  color: #7F1D1D;
+}
+
+.bp-topic-toast-ok {
+  background: #DCFCE7;
+  border: 1.5px solid #86EFAC;
+  color: #14532D;
+}
+
+.gradebook-weights-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin: 16px 0 10px;
+}
+
+.gb-weight-card {
+  background: #F4F0E7;
+  border: 1px solid #DFD5C3;
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.gb-weight-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #30383A;
+}
+
+.gb-weight-val {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #192F47;
+}
+
+.gradebook-policy-note {
+  font-size: 0.9rem;
+  color: #5B656B;
+  margin: 6px 0 18px;
+}
+
+@media (max-width: 760px) {
+  .gradebook-weights-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

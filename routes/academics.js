@@ -6,6 +6,10 @@ const { requireAuth, requireTeacher, requireAdmin } = require('../middleware/aut
 const { supabaseAdmin } = require('../config/supabase');
 const { getTeacherAssignments } = require('../utils/instructors');
 const {
+  getCourseModulesWithTopics,
+  getQuizDefinition
+} = require('../data/course-content');
+const {
   readLocalJson,
   computeLetterGrade,
   letterToGradePoints,
@@ -20,7 +24,13 @@ const {
   addPeerReview,
   getAnnouncements,
   addAnnouncement,
-  getEnrolledCoursesForUser
+  getEnrolledCoursesForUser,
+  isCourseEnrolled,
+  getEastAfricaNow,
+  getDeadlineExtensions,
+  saveDeadlineExtension,
+  deleteDeadlineExtension,
+  checkDeadlineLock
 } = require('../utils/lms-store');
 const {
   DEFAULT_TOKEN_FEE,
@@ -70,14 +80,49 @@ async function resolveStudentRecord(identifier) {
   ) || null;
 }
 
-function getUserCompletionPercent(username, course) {
+function getUserCourseCompletion(username, course) {
   const allProg = readLocalJson('student-progress.json', {});
   const userKey = String(username || '').toLowerCase();
-  const userProg = allProg[userKey] || {};
-  const completed = Array.isArray(userProg[String(course.id)]) ? userProg[String(course.id)] : [];
-  const totalTopics = (course.modules || []).reduce((sum, m) => sum + (Number(m.total_topics) || 0), 0);
-  if (totalTopics <= 0) return 0;
-  return Math.min(100, Math.round((completed.length / totalTopics) * 100));
+  const userProg = (allProg[userKey] && typeof allProg[userKey] === 'object') ? allProg[userKey] : {};
+  const modulesWithTopics = getCourseModulesWithTopics(course, { includeAnswerKeys: false });
+
+  let totalTopics = 0;
+  let completedTopics = 0;
+
+  modulesWithTopics.forEach(mod => {
+    const modTopics = Array.isArray(mod.topics) ? mod.topics : [];
+    const modTotal = modTopics.length || Number(mod.total_topics) || 0;
+    const savedList = Array.isArray(userProg[String(mod.id)]) ? userProg[String(mod.id)].map(String) : [];
+    const validCompleted = modTopics.filter(t => savedList.includes(String(t.id)));
+    totalTopics += modTotal;
+    completedTopics += Math.min(modTotal, validCompleted.length);
+  });
+
+  const percent = totalTopics > 0 ? Math.min(100, Math.round((completedTopics / totalTopics) * 100)) : 0;
+  return { completedTopics, totalTopics, percent };
+}
+
+function getUserCompletionPercent(username, course) {
+  return getUserCourseCompletion(username, course).percent;
+}
+
+function isStaffUser(user) {
+  return Boolean(user && ['admin', 'super_admin', 'teacher'].includes(user.role));
+}
+
+function checkModuleUnlockGuard(course, moduleId, user) {
+  const mods = getCourseModulesWithTopics(course, { includeAnswerKeys: false });
+  const mod = mods.find(m => Number(m.id) === Number(moduleId));
+  if (!mod) return { ok: false, status: 404, error: 'Module not found.' };
+  const todayIso = getEastAfricaNow().isoDate;
+  if (!isStaffUser(user) && mod.unlock_date && mod.unlock_date > todayIso) {
+    return {
+      ok: false,
+      status: 403,
+      error: `This unit is locked until ${mod.unlock_date}. Complete your current unit first.`
+    };
+  }
+  return { ok: true, mod };
 }
 
 // ==========================================================================
@@ -87,6 +132,10 @@ function getUserCompletionPercent(username, course) {
 // GET /api/courses/:id/submissions - Current user's submissions & grades for a course
 router.get('/api/courses/:id/submissions', requireAuth, async (req, res) => {
   const courseId = parseInt(req.params.id, 10);
+  const allCourses = getCourses();
+  if (!isCourseEnrolled(allCourses, courseId, req.session.user)) {
+    return res.status(403).json({ success: false, error: 'You are not enrolled in this course.' });
+  }
   const username = req.session.user.username || req.session.user.email;
   const subs = await getSubmissions({ course_id: courseId, student_username: username });
   const discussions = (await getDiscussions(courseId)).filter(
@@ -106,6 +155,15 @@ router.get('/api/courses/:id/submissions', requireAuth, async (req, res) => {
 // POST /api/courses/:id/submissions - Submit written assignment, journal, graded quiz, or exam
 router.post('/api/courses/:id/submissions', requireAuth, async (req, res) => {
   const courseId = parseInt(req.params.id, 10);
+  const allCourses = getCourses();
+  const course = allCourses.find(c => Number(c.id) === courseId);
+  if (!course) {
+    return res.status(404).json({ success: false, error: 'Course not found.' });
+  }
+  if (!isCourseEnrolled(allCourses, courseId, req.session.user)) {
+    return res.status(403).json({ success: false, error: 'You are not enrolled in this course.' });
+  }
+
   const {
     module_id,
     topic_id,
@@ -113,19 +171,40 @@ router.post('/api/courses/:id/submissions', requireAuth, async (req, res) => {
     submission_type,
     content_text,
     quiz_answers,
-    score,
-    max_score,
-    max_attempts
+    integrity_pledge
   } = req.body;
 
   const username = req.session.user.username || req.session.user.email;
   const studentName = req.session.user.full_name || username;
+  const userRole = req.session.user.role || 'student';
   const type = ['assignment', 'journal', 'quiz', 'exam'].includes(submission_type)
     ? submission_type
     : 'assignment';
 
   if (!topic_id) {
     return res.status(400).json({ success: false, error: 'Missing topic identifier.' });
+  }
+
+  const modNum = Number(module_id) || (course.modules && course.modules[0] && course.modules[0].id) || 1;
+  const lockCheck = checkModuleUnlockGuard(course, modNum, req.session.user);
+  if (!lockCheck.ok) {
+    return res.status(lockCheck.status).json({ success: false, error: lockCheck.error });
+  }
+
+  const topicDef = (lockCheck.mod.topics || []).find(t => String(t.id) === String(topic_id));
+  const deadlineInfo = checkDeadlineLock({
+    courseId,
+    moduleId: modNum,
+    topicId: String(topic_id),
+    dueDateIso: topicDef ? topicDef.dueDateIso : null,
+    username,
+    userRole
+  });
+  if (deadlineInfo.locked) {
+    return res.status(403).json({
+      success: false,
+      error: `Submission deadline (${deadlineInfo.effectiveDueDate} 11:59 PM EAT) has passed. Contact your instructor to request a deadline extension.`
+    });
   }
 
   const existing = await getSubmissions({
@@ -139,25 +218,43 @@ router.post('/api/courses/:id/submissions', requireAuth, async (req, res) => {
     if (cleanText.length < 10) {
       return res.status(400).json({ success: false, error: 'Please write at least 10 characters before submitting.' });
     }
+    const pledgeAccepted = integrity_pledge === true || integrity_pledge === 'true' || integrity_pledge === 'on';
+    if (!pledgeAccepted) {
+      return res.status(400).json({
+        success: false,
+        error: 'Please confirm the Academic Honesty Pledge before submitting your work.'
+      });
+    }
+
     const prev = existing[0] || null;
+    const serverMaxScore = (topicDef && Number(topicDef.maxScore) > 0) ? Number(topicDef.maxScore) : 100;
     const saved = await saveSubmission({
       id: prev ? prev.id : undefined,
       student_username: username,
       student_name: studentName,
       course_id: courseId,
-      module_id: Number(module_id) || 1,
+      module_id: modNum,
       topic_id: String(topic_id),
-      topic_title: topic_title || 'Written Assignment',
+      topic_title: (topicDef && topicDef.title) || topic_title || 'Written Assignment',
       submission_type: type,
       content_text: cleanText,
-      max_score: Number(max_score) || 100,
+      max_score: serverMaxScore,
+      integrity_pledged: true,
       attempt_number: prev ? (Number(prev.attempt_number) || 1) + 1 : 1
     });
     return res.json({ success: true, submission: saved });
   }
 
-  // Quiz or Graded Exam
-  const attemptLimit = Number(max_attempts) > 0 ? Number(max_attempts) : 5;
+  // Quiz or Graded Exam: strictly graded on the server using authoritative answer keys
+  const quizDef = getQuizDefinition(course, modNum, String(topic_id));
+  if (!quizDef || !Array.isArray(quizDef.questions) || quizDef.questions.length === 0) {
+    return res.status(400).json({
+      success: false,
+      error: 'This quiz does not have interactive questions configured yet.'
+    });
+  }
+
+  const attemptLimit = quizDef.maxAttempts;
   if (existing.length >= attemptLimit) {
     return res.status(400).json({
       success: false,
@@ -165,31 +262,63 @@ router.post('/api/courses/:id/submissions', requireAuth, async (req, res) => {
     });
   }
 
-  const numericScore = Number(score);
-  const numericMax = Number(max_score) > 0 ? Number(max_score) : 100;
+  const submittedAnswers = (quiz_answers && typeof quiz_answers === 'object') ? quiz_answers : {};
+  let correctCount = 0;
+  const totalQuestions = quizDef.questions.length;
+  const results = {};
+  const attemptsUsed = existing.length + 1;
+  const attemptsRemaining = Math.max(0, attemptLimit - attemptsUsed);
+
+  quizDef.questions.forEach(q => {
+    const qKey = `q${q.qNum}`;
+    const rawSelected = submittedAnswers[qKey] !== undefined ? submittedAnswers[qKey] : submittedAnswers[String(q.qNum)];
+    const selected = rawSelected ? String(rawSelected).trim().toLowerCase() : null;
+    const isCorrect = Boolean(selected && selected === q.correct);
+    if (isCorrect) correctCount += 1;
+
+    results[qKey] = {
+      correct: isCorrect,
+      selected,
+      correctOption: (!quizDef.isExam || attemptsRemaining === 0) ? q.correct : undefined
+    };
+  });
+
+  const percent = Math.round((correctCount / totalQuestions) * 100);
+  const numericMax = quizDef.maxScore;
+  const numericScore = Math.round((percent / 100) * numericMax);
+  const passed = percent >= quizDef.passScore;
+
   const saved = await saveSubmission({
     student_username: username,
     student_name: studentName,
     course_id: courseId,
-    module_id: Number(module_id) || 1,
+    module_id: modNum,
     topic_id: String(topic_id),
-    topic_title: topic_title || (type === 'exam' ? 'Graded Exam' : 'Unit Quiz'),
-    submission_type: type,
-    quiz_answers: quiz_answers || {},
-    score: Number.isFinite(numericScore) ? numericScore : 0,
+    topic_title: quizDef.topic.title || topic_title || (quizDef.isExam ? 'Graded Exam' : 'Unit Quiz'),
+    submission_type: quizDef.isExam ? 'exam' : 'quiz',
+    quiz_answers: submittedAnswers,
+    score: numericScore,
     max_score: numericMax,
-    graded_by: 'Auto-Graded',
-    feedback: Number.isFinite(numericScore) && (numericScore / numericMax) >= 0.6
+    graded_by: 'Auto-Graded (Server)',
+    feedback: passed
       ? 'Passed! Well done on your biblical study.'
       : 'Keep studying the unit readings and try again if attempts remain.',
-    attempt_number: existing.length + 1
+    attempt_number: attemptsUsed
   });
 
   res.json({
     success: true,
     submission: saved,
-    attemptsUsed: existing.length + 1,
-    attemptsRemaining: Math.max(0, attemptLimit - (existing.length + 1))
+    score: numericScore,
+    maxScore: numericMax,
+    correctCount,
+    totalQuestions,
+    percent,
+    passed,
+    passScore: quizDef.passScore,
+    results,
+    attemptsUsed,
+    attemptsRemaining
   });
 });
 
@@ -201,6 +330,10 @@ router.post('/api/courses/:id/submissions', requireAuth, async (req, res) => {
 router.get('/api/courses/:id/modules/:moduleId/discussions', requireAuth, async (req, res) => {
   const courseId = parseInt(req.params.id, 10);
   const moduleId = parseInt(req.params.moduleId, 10);
+  const allCourses = getCourses();
+  if (!isCourseEnrolled(allCourses, courseId, req.session.user)) {
+    return res.status(403).json({ success: false, error: 'You are not enrolled in this course.' });
+  }
   const posts = await getDiscussions(courseId, moduleId);
 
   // Also include fellow pastors' written assignments in this module for optional peer feedback
@@ -232,6 +365,19 @@ router.get('/api/courses/:id/modules/:moduleId/discussions', requireAuth, async 
 router.post('/api/courses/:id/modules/:moduleId/discussions', requireAuth, async (req, res) => {
   const courseId = parseInt(req.params.id, 10);
   const moduleId = parseInt(req.params.moduleId, 10);
+  const allCourses = getCourses();
+  const course = allCourses.find(c => Number(c.id) === courseId);
+  if (!course) {
+    return res.status(404).json({ success: false, error: 'Course not found.' });
+  }
+  if (!isCourseEnrolled(allCourses, courseId, req.session.user)) {
+    return res.status(403).json({ success: false, error: 'You are not enrolled in this course.' });
+  }
+  const lockCheck = checkModuleUnlockGuard(course, moduleId, req.session.user);
+  if (!lockCheck.ok) {
+    return res.status(lockCheck.status).json({ success: false, error: lockCheck.error });
+  }
+
   const body = (req.body.body || '').trim();
   const parentId = req.body.parent_id || null;
 
@@ -255,6 +401,10 @@ router.post('/api/courses/:id/modules/:moduleId/discussions', requireAuth, async
 // POST /api/courses/:id/submissions/:subId/peer-review
 router.post('/api/courses/:id/submissions/:subId/peer-review', requireAuth, async (req, res) => {
   const courseId = parseInt(req.params.id, 10);
+  const allCourses = getCourses();
+  if (!isCourseEnrolled(allCourses, courseId, req.session.user)) {
+    return res.status(403).json({ success: false, error: 'You are not enrolled in this course.' });
+  }
   const subId = req.params.subId;
   const feedback = (req.body.feedback || '').trim();
   const rating = parseInt(req.body.rating, 10) || 5;
@@ -346,6 +496,22 @@ router.get('/teacher/grading', requireTeacher, async (req, res) => {
     ? scopedSubs.filter(s => s.status !== 'graded')
     : (filterStatus === 'graded' ? scopedSubs.filter(s => s.status === 'graded') : scopedSubs);
 
+  const allowedCoursesList = allCourses.filter(c => allowedCourseIds.has(Number(c.id)));
+  const studentsList = readLocalJson('users.json', [])
+    .filter(u => u && u.role === 'student' && u.status !== 'rejected' && u.status !== 'disabled')
+    .sort((a, b) => String(a.full_name || a.username).localeCompare(String(b.full_name || b.username)));
+  const extensionsList = getDeadlineExtensions()
+    .filter(ext => allowedCourseIds.has(Number(ext.course_id)))
+    .map(ext => {
+      const c = allCourses.find(item => Number(item.id) === Number(ext.course_id));
+      const m = c && (c.modules || []).find(item => Number(item.id) === Number(ext.module_id));
+      return {
+        ...ext,
+        course_code: c ? c.code : `Course #${ext.course_id}`,
+        module_title: m ? m.title : `Module ${ext.module_id}`
+      };
+    });
+
   res.render('teacher-grading', {
     title: 'Grading Queue | Pastors LMS',
     user,
@@ -354,10 +520,67 @@ router.get('/teacher/grading', requireTeacher, async (req, res) => {
     pendingCount: scopedSubs.filter(s => s.status !== 'graded').length,
     gradedCount: scopedSubs.filter(s => s.status === 'graded').length,
     discussions: discussionItems,
+    allowedCourses: allowedCoursesList,
+    students: studentsList,
+    extensions: extensionsList,
     filterStatus,
     success: req.query.success || null,
     error: req.query.error || null
   });
+});
+
+// POST /teacher/extensions - Grant per-student module/topic deadline extension
+router.post('/teacher/extensions', requireTeacher, (req, res) => {
+  const user = req.session.user;
+  const allCourses = getCourses();
+  const isStaffAdmin = ['admin', 'super_admin'].includes(user.role);
+  const courseId = parseInt(req.body.course_id, 10);
+  const moduleId = parseInt(req.body.module_id, 10);
+  const studentUsername = String(req.body.student_username || '').trim().toLowerCase();
+  const extendedUntil = String(req.body.extended_until || '').trim();
+  const reason = String(req.body.reason || '').trim();
+  const topicId = String(req.body.topic_id || '*').trim() || '*';
+
+  if (!courseId || !moduleId || !studentUsername || !/^\d{4}-\d{2}-\d{2}$/.test(extendedUntil)) {
+    return res.redirect('/teacher/grading?error=' + encodeURIComponent('Select a student, course, unit, and valid extension date.'));
+  }
+
+  if (!isStaffAdmin) {
+    const assignments = getTeacherAssignments(allCourses, user.username);
+    const hasModAccess = assignments.some(a =>
+      Number(a.course.id) === courseId && a.assignedModules.some(m => Number(m.id) === moduleId)
+    );
+    if (!hasModAccess) {
+      return res.redirect('/teacher/grading?error=' + encodeURIComponent('You may only grant extensions for your assigned units.'));
+    }
+  }
+
+  const users = readLocalJson('users.json', []);
+  const targetUser = users.find(u => String(u.username || '').toLowerCase() === studentUsername);
+  const saved = saveDeadlineExtension({
+    student_username: studentUsername,
+    student_name: (targetUser && (targetUser.full_name || targetUser.username)) || studentUsername,
+    course_id: courseId,
+    module_id: moduleId,
+    topic_id: topicId,
+    extended_until: extendedUntil,
+    reason,
+    granted_by: user.full_name || user.username
+  });
+
+  if (!saved) {
+    return res.redirect('/teacher/grading?error=' + encodeURIComponent('Could not save deadline extension.'));
+  }
+  res.redirect('/teacher/grading?success=' + encodeURIComponent(`Extension granted to ${saved.student_name} until ${saved.extended_until}.`));
+});
+
+// POST /teacher/extensions/:id/delete - Revoke a deadline extension
+router.post('/teacher/extensions/:id/delete', requireTeacher, (req, res) => {
+  const deleted = deleteDeadlineExtension(req.params.id);
+  if (!deleted) {
+    return res.redirect('/teacher/grading?error=' + encodeURIComponent('Deadline extension not found.'));
+  }
+  res.redirect('/teacher/grading?success=' + encodeURIComponent('Deadline extension removed.'));
 });
 
 // POST /teacher/submissions/:subId/grade
@@ -751,8 +974,12 @@ router.get('/verify/:code', async (req, res) => {
 // GET /courses/:id/certificate - Official Course Completion Certificate
 router.get('/courses/:id/certificate', requireAuth, async (req, res) => {
   const courseId = parseInt(req.params.id, 10);
-  const course = getCourses().find(c => Number(c.id) === courseId);
+  const allCourses = getCourses();
+  const course = allCourses.find(c => Number(c.id) === courseId);
   if (!course) {
+    return res.redirect('/courses');
+  }
+  if (!isCourseEnrolled(allCourses, courseId, req.session.user)) {
     return res.redirect('/courses');
   }
 
@@ -764,8 +991,17 @@ router.get('/courses/:id/certificate', requireAuth, async (req, res) => {
     d => String(d.author_username || '').toLowerCase() === String(username).toLowerCase()
   );
   const gradeSummary = computeCourseGradeSummary(subs, disc);
-  const isStaff = ['admin', 'super_admin', 'teacher'].includes(req.session.user.role);
-  const isUnlocked = completionPct >= 100 || isStaff;
+
+  const courseMods = getCourseModulesWithTopics(course, { includeAnswerKeys: false });
+  const hasGradedActivities = courseMods.some(mod =>
+    (mod.topics || []).some(t => ['assignment', 'journal', 'quiz', 'exam'].includes(t.type))
+  );
+  const passingThreshold = 60;
+  const hasCompletedLessons = completionPct >= 100;
+  const hasPassingGrade = !hasGradedActivities || (gradeSummary.averagePercent !== null && gradeSummary.averagePercent >= passingThreshold);
+
+  const isStaff = isStaffUser(req.session.user);
+  const isUnlocked = isStaff || (hasCompletedLessons && hasPassingGrade);
 
   const certSerial = `IDA-CERT-${course.code.replace(/\s+/g, '')}-${String(student.student_id || username).toUpperCase()}`;
   const issuedDate = new Date().toLocaleDateString('en-GB', {
@@ -780,6 +1016,10 @@ router.get('/courses/:id/certificate', requireAuth, async (req, res) => {
     student,
     completionPct,
     gradeSummary,
+    hasCompletedLessons,
+    hasPassingGrade,
+    hasGradedActivities,
+    passingThreshold,
     isUnlocked,
     isStaff,
     certSerial,

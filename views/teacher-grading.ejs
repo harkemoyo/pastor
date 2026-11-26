@@ -139,7 +139,115 @@
         <% }) %>
       <% } %>
     </section>
+
+    <!-- Student Deadline Extensions -->
+    <section class="admin-surface admin-section-spaced" id="deadlineExtensionsSection">
+      <h2>Grant Deadline Extension (EAT)</h2>
+      <p class="admin-subtitle">Approve extra time for a pastor facing ministry emergencies, bereavement, or rural connectivity outages. Deadlines lock automatically at 11:59 PM EAT unless extended.</p>
+
+      <form action="/teacher/extensions" method="POST" class="extension-form-grid" id="extensionForm">
+        <div>
+          <label class="form-label" for="extStudentSelect">Pastor / Student</label>
+          <select id="extStudentSelect" name="student_username" class="form-input" required>
+            <option value="">Choose a student...</option>
+            <% (students || []).forEach(st => { %>
+              <option value="<%= st.username %>"><%= st.full_name || st.username %> (@<%= st.username %>)</option>
+            <% }) %>
+          </select>
+        </div>
+
+        <div>
+          <label class="form-label" for="extCourseSelect">Course</label>
+          <select id="extCourseSelect" name="course_id" class="form-input" required>
+            <% (allowedCourses || []).forEach(c => { %>
+              <option value="<%= c.id %>"><%= c.code %> — <%= c.title %></option>
+            <% }) %>
+          </select>
+        </div>
+
+        <div>
+          <label class="form-label" for="extModuleSelect">Unit / Module</label>
+          <select id="extModuleSelect" name="module_id" class="form-input" required>
+            <% (allowedCourses || []).forEach(c => { %>
+              <% (c.modules || []).forEach(m => { %>
+                <option value="<%= m.id %>" data-course-id="<%= c.id %>"><%= c.code %>: <%= m.title %></option>
+              <% }) %>
+            <% }) %>
+          </select>
+        </div>
+
+        <div>
+          <label class="form-label" for="extDateInput">Extended Until (11:59 PM EAT)</label>
+          <input type="date" id="extDateInput" name="extended_until" class="form-input" required>
+        </div>
+
+        <div class="extension-reason-field">
+          <label class="form-label" for="extReasonInput">Reason (Optional)</label>
+          <input type="text" id="extReasonInput" name="reason" class="form-input" placeholder="e.g. Church funeral / rural connectivity">
+        </div>
+
+        <div class="extension-submit-wrap">
+          <button type="submit" class="btn btn-primary" id="btnGrantExtension">Grant Extension</button>
+        </div>
+      </form>
+
+      <% if (extensions && extensions.length > 0) { %>
+        <div class="admin-table-wrap">
+          <table class="admin-table" id="extensionsTable">
+            <thead>
+              <tr>
+                <th>Pastor</th>
+                <th>Course &amp; Unit</th>
+                <th>Extended Until</th>
+                <th>Reason</th>
+                <th>Granted By</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% extensions.forEach(ext => { %>
+                <tr>
+                  <td><strong><%= ext.student_name %></strong> (@<%= ext.student_username %>)</td>
+                  <td><%= ext.course_code %> &mdash; <%= ext.module_title %></td>
+                  <td><strong><%= ext.extended_until %></strong></td>
+                  <td><%= ext.reason || '—' %></td>
+                  <td><%= ext.granted_by %></td>
+                  <td>
+                    <form action="/teacher/extensions/<%= ext.id %>/delete" method="POST">
+                      <button type="submit" class="btn btn-outline btn-sm" id="btnDeleteExt-<%= ext.id %>">Revoke</button>
+                    </form>
+                  </td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      <% } %>
+    </section>
   </main>
+
+  <script>
+    (function () {
+      var courseSel = document.getElementById('extCourseSelect');
+      var modSel = document.getElementById('extModuleSelect');
+      if (!courseSel || !modSel) return;
+      function syncModules() {
+        var cid = courseSel.value;
+        var firstVisible = null;
+        Array.prototype.forEach.call(modSel.options, function (opt) {
+          var match = !cid || opt.getAttribute('data-course-id') === cid;
+          opt.hidden = !match;
+          opt.disabled = !match;
+          if (match && !firstVisible) firstVisible = opt;
+        });
+        if (modSel.selectedOptions[0] && modSel.selectedOptions[0].hidden && firstVisible) {
+          firstVisible.selected = true;
+        }
+      }
+      courseSel.addEventListener('change', syncModules);
+      syncModules();
+    })();
+  </script>
 
   <%- include('partials/footer') %>
 </body>

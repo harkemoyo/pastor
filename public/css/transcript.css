@@ -820,6 +820,52 @@
   text-align: center;
 }
 
+.cert-requirements-list {
+  list-style: none;
+  padding: 0;
+  margin: 1.25rem 0 1.5rem;
+  text-align: left;
+  display: grid;
+  gap: 10px;
+}
+
+.cert-req-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1.5px solid #DFD5C3;
+  background: #FAF8F3;
+  font-size: 0.95rem;
+}
+
+.cert-req-met {
+  background: #DCFCE7;
+  border-color: #86EFAC;
+  color: #14532D;
+}
+
+.cert-req-pending {
+  background: #F4E6E9;
+  border-color: #D8B4BE;
+  color: #670C21;
+}
+
+.cert-req-status {
+  font-weight: 800;
+  font-size: 0.84rem;
+}
+
+.cert-locked-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 @media (max-width: 768px) {
   .transcript-sheet {
     padding: 1.5rem 1.25rem;

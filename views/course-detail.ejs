@@ -968,10 +968,24 @@
           <strong id="gbAveragePct"><%= (gradeSummary && gradeSummary.averagePercent !== null) ? gradeSummary.averagePercent + '%' : '—' %></strong>
         </div>
         <div class="gradebook-stat gradebook-stat-highlight">
-          <span>Current Letter Grade</span>
+          <span>Weighted Letter Grade</span>
           <strong id="gbLetterGrade"><%= gradeSummary ? gradeSummary.letterGrade : 'IP' %></strong>
         </div>
       </div>
+
+      <% if (gradeSummary && Array.isArray(gradeSummary.categoryBreakdown)) { %>
+        <div class="gradebook-weights-grid" id="gradebookWeightsGrid">
+          <% gradeSummary.categoryBreakdown.forEach(cat => { %>
+            <div class="gb-weight-card">
+              <span class="gb-weight-label"><%= cat.label %> (<%= cat.weight %>%)</span>
+              <strong class="gb-weight-val"><%= cat.averagePercent !== null ? cat.averagePercent + '%' : '—' %></strong>
+            </div>
+          <% }) %>
+        </div>
+      <% } %>
+      <p class="gradebook-policy-note" id="gradebookPolicyNote">
+        Grades are weighted automatically across submitted categories (Assignments 35%, Quizzes 20%, Discussions 20%, Exams 25%). A minimum weighted average of <strong>60%</strong> and 100% lesson completion are required to unlock your Course Certificate.
+      </p>
 
       <div class="admin-table-wrap">
         <table class="admin-table" id="gradebookTable">

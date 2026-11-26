@@ -77,15 +77,30 @@ function letterToGradePoints(letter) {
   return Object.prototype.hasOwnProperty.call(map, letter) ? map[letter] : null;
 }
 
+const CATEGORY_WEIGHTS = {
+  assignment: 35,
+  quiz: 20,
+  discussion: 20,
+  exam: 25
+};
+
+const CATEGORY_LABELS = {
+  assignment: 'Written Assignments & Journals',
+  quiz: 'Unit Quizzes',
+  discussion: 'Cohort Discussions',
+  exam: 'Graded / Final Exams'
+};
+
 function computeCourseGradeSummary(submissions = [], discussions = []) {
-  const gradedItems = [];
+  const rawGradedSubs = [];
 
   submissions.forEach(s => {
     if (s.score !== null && s.score !== undefined && Number.isFinite(Number(s.score))) {
       const max = Number(s.max_score) > 0 ? Number(s.max_score) : 100;
       const pct = Math.min(100, Math.max(0, (Number(s.score) / max) * 100));
-      gradedItems.push({
+      rawGradedSubs.push({
         id: s.id,
+        topic_id: String(s.topic_id || s.id),
         title: s.topic_title || s.topic_id || 'Assignment',
         type: s.submission_type || 'assignment',
         score: Number(s.score),
@@ -99,11 +114,23 @@ function computeCourseGradeSummary(submissions = [], discussions = []) {
     }
   });
 
+  // For multiple quiz/exam attempts on the same topic, keep the highest score per topic_id
+  const bestByTopic = new Map();
+  rawGradedSubs.forEach(item => {
+    const key = `${item.type}:${item.topic_id}`;
+    const existing = bestByTopic.get(key);
+    if (!existing || item.percent > existing.percent) {
+      bestByTopic.set(key, item);
+    }
+  });
+  const gradedItems = Array.from(bestByTopic.values());
+
   discussions.forEach(d => {
     if (d.grade_score !== null && d.grade_score !== undefined && Number.isFinite(Number(d.grade_score))) {
       const pct = Math.min(100, Math.max(0, Number(d.grade_score)));
       gradedItems.push({
         id: d.id,
+        topic_id: `disc-${d.module_id}`,
         title: `Unit ${d.module_id} Discussion Forum`,
         type: 'discussion',
         score: pct,
@@ -123,17 +150,71 @@ function computeCourseGradeSummary(submissions = [], discussions = []) {
       averagePercent: null,
       letterGrade: 'IP',
       gradePoints: null,
+      gradingModel: 'weighted',
+      passingThreshold: 60,
+      categoryBreakdown: Object.keys(CATEGORY_WEIGHTS).map(k => ({
+        key: k,
+        label: CATEGORY_LABELS[k],
+        weight: CATEGORY_WEIGHTS[k],
+        itemCount: 0,
+        averagePercent: null
+      })),
       items: gradedItems
     };
   }
 
-  const avg = Math.round(gradedItems.reduce((sum, i) => sum + i.percent, 0) / gradedItems.length);
+  const buckets = {
+    assignment: [],
+    quiz: [],
+    discussion: [],
+    exam: []
+  };
+
+  gradedItems.forEach(item => {
+    const bucketKey = item.type === 'journal'
+      ? 'assignment'
+      : (Object.prototype.hasOwnProperty.call(buckets, item.type) ? item.type : 'assignment');
+    buckets[bucketKey].push(item.percent);
+  });
+
+  let activeWeightSum = 0;
+  let weightedTotal = 0;
+  const categoryBreakdown = Object.keys(CATEGORY_WEIGHTS).map(key => {
+    const vals = buckets[key];
+    const weight = CATEGORY_WEIGHTS[key];
+    if (vals.length === 0) {
+      return {
+        key,
+        label: CATEGORY_LABELS[key],
+        weight,
+        itemCount: 0,
+        averagePercent: null
+      };
+    }
+    const catAvg = vals.reduce((sum, v) => sum + v, 0) / vals.length;
+    activeWeightSum += weight;
+    weightedTotal += catAvg * weight;
+    return {
+      key,
+      label: CATEGORY_LABELS[key],
+      weight,
+      itemCount: vals.length,
+      averagePercent: Math.round(catAvg)
+    };
+  });
+
+  const avg = activeWeightSum > 0
+    ? Math.round(weightedTotal / activeWeightSum)
+    : Math.round(gradedItems.reduce((sum, i) => sum + i.percent, 0) / gradedItems.length);
   const letter = computeLetterGrade(avg);
   return {
     gradedCount: gradedItems.length,
     averagePercent: avg,
     letterGrade: letter,
     gradePoints: letterToGradePoints(letter),
+    gradingModel: 'weighted',
+    passingThreshold: 60,
+    categoryBreakdown,
     items: gradedItems
   };
 }
@@ -197,6 +278,7 @@ async function saveSubmission(payload) {
     graded_by: payload.graded_by || null,
     graded_at: scoreVal !== null ? now : null,
     attempt_number: Number(payload.attempt_number) || 1,
+    integrity_pledged: Boolean(payload.integrity_pledged),
     status: scoreVal !== null ? 'graded' : 'submitted',
     created_at: payload.created_at || now,
     updated_at: now
@@ -573,6 +655,151 @@ function getEnrolledCoursesForUser(allCourses, user) {
 }
 
 // ==========================================================================
+// East Africa Time, Access Guards & Per-Student Deadline Extensions
+// ==========================================================================
+function getEastAfricaNow() {
+  let isoDate;
+  try {
+    isoDate = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Africa/Nairobi',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).format(new Date());
+  } catch {
+    isoDate = new Date(Date.now() + 3 * 3600 * 1000).toISOString().slice(0, 10);
+  }
+  return {
+    isoDate,
+    timestampMs: Date.now()
+  };
+}
+
+function isCourseEnrolled(allCourses, courseId, user) {
+  if (!user) return false;
+  if (['admin', 'super_admin', 'teacher'].includes(user.role)) return true;
+  const targetCourse = (allCourses || []).find(c => Number(c.id) === Number(courseId));
+  if (!targetCourse) return false;
+  const { courses, isFilteredByEnrolment } = getEnrolledCoursesForUser(allCourses || [], user);
+  if (!isFilteredByEnrolment) return targetCourse.status !== 'archived' && !targetCourse.archived;
+  return courses.some(c => Number(c.id) === Number(courseId));
+}
+
+function getDeadlineExtensions(filter = {}) {
+  let rows = readLocalJson('extensions.json', []);
+  if (!Array.isArray(rows)) rows = [];
+  if (filter.student_username) {
+    const target = String(filter.student_username).toLowerCase();
+    rows = rows.filter(r => String(r.student_username || '').toLowerCase() === target);
+  }
+  if (filter.course_id) {
+    rows = rows.filter(r => Number(r.course_id) === Number(filter.course_id));
+  }
+  if (filter.module_id) {
+    rows = rows.filter(r => Number(r.module_id) === Number(filter.module_id));
+  }
+  return rows.sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')));
+}
+
+function saveDeadlineExtension(payload) {
+  const studentUsername = String(payload.student_username || '').trim().toLowerCase();
+  const courseId = Number(payload.course_id);
+  const moduleId = Number(payload.module_id);
+  const topicId = String(payload.topic_id || '*').trim() || '*';
+  const extendedUntil = String(payload.extended_until || '').trim();
+  if (!studentUsername || !courseId || !moduleId || !/^\d{4}-\d{2}-\d{2}$/.test(extendedUntil)) {
+    return null;
+  }
+
+  const all = getDeadlineExtensions();
+  const idx = all.findIndex(r =>
+    String(r.student_username || '').toLowerCase() === studentUsername &&
+    Number(r.course_id) === courseId &&
+    Number(r.module_id) === moduleId &&
+    String(r.topic_id || '*') === topicId
+  );
+
+  const record = {
+    id: (idx >= 0 && all[idx].id) ? all[idx].id : `ext-${crypto.randomUUID()}`,
+    student_username: studentUsername,
+    student_name: String(payload.student_name || studentUsername).trim(),
+    course_id: courseId,
+    module_id: moduleId,
+    topic_id: topicId,
+    extended_until: extendedUntil,
+    reason: String(payload.reason || '').trim().slice(0, 240),
+    granted_by: String(payload.granted_by || 'Instructor').trim(),
+    created_at: new Date().toISOString()
+  };
+
+  if (idx >= 0) all[idx] = record;
+  else all.unshift(record);
+  writeLocalJson('extensions.json', all);
+  return record;
+}
+
+function deleteDeadlineExtension(extId) {
+  const all = getDeadlineExtensions();
+  const filtered = all.filter(r => r.id !== extId);
+  if (filtered.length === all.length) return false;
+  writeLocalJson('extensions.json', filtered);
+  return true;
+}
+
+function checkDeadlineLock({ courseId, moduleId, topicId, dueDateIso, username, userRole }) {
+  if (['admin', 'super_admin', 'teacher'].includes(userRole)) {
+    return {
+      locked: false,
+      effectiveDueDate: dueDateIso || null,
+      originalDueDate: dueDateIso || null,
+      hasExtension: false,
+      extensionReason: ''
+    };
+  }
+  if (!dueDateIso || !/^\d{4}-\d{2}-\d{2}$/.test(String(dueDateIso).trim())) {
+    return {
+      locked: false,
+      effectiveDueDate: null,
+      originalDueDate: null,
+      hasExtension: false,
+      extensionReason: ''
+    };
+  }
+
+  const baseDue = String(dueDateIso).trim();
+  let effectiveDue = baseDue;
+  let hasExtension = false;
+  let extensionReason = '';
+
+  if (username) {
+    const matching = getDeadlineExtensions({
+      student_username: username,
+      course_id: courseId,
+      module_id: moduleId
+    }).filter(ext => ext.topic_id === '*' || ext.topic_id === String(topicId));
+
+    matching.forEach(ext => {
+      if (/^\d{4}-\d{2}-\d{2}$/.test(ext.extended_until) && ext.extended_until > effectiveDue) {
+        effectiveDue = ext.extended_until;
+        hasExtension = true;
+        extensionReason = ext.reason || '';
+      }
+    });
+  }
+
+  const deadlineMs = new Date(`${effectiveDue}T23:59:59+03:00`).getTime();
+  const locked = Number.isFinite(deadlineMs) ? Date.now() > deadlineMs : false;
+
+  return {
+    locked,
+    effectiveDueDate: effectiveDue,
+    originalDueDate: baseDue,
+    hasExtension,
+    extensionReason
+  };
+}
+
+// ==========================================================================
 // Supabase Storage Upload for Profile Pictures (Vercel Cloud Support)
 // ==========================================================================
 async function uploadProfilePictureToStorage(buffer, username, contentType = 'image/webp') {
@@ -594,6 +821,7 @@ async function uploadProfilePictureToStorage(buffer, username, contentType = 'im
 module.exports = {
   readLocalJson,
   writeLocalJson,
+  CATEGORY_WEIGHTS,
   computeLetterGrade,
   letterToGradePoints,
   computeCourseGradeSummary,
@@ -611,5 +839,11 @@ module.exports = {
   saveCustomLesson,
   deleteCustomLesson,
   getEnrolledCoursesForUser,
+  getEastAfricaNow,
+  isCourseEnrolled,
+  getDeadlineExtensions,
+  saveDeadlineExtension,
+  deleteDeadlineExtension,
+  checkDeadlineLock,
   uploadProfilePictureToStorage
 };

@@ -24,11 +24,27 @@
     </div>
 
     <% if (!isUnlocked) { %>
-      <section class="cert-locked-box">
+      <section class="cert-locked-box" id="certLockedBox">
         <h1>Certificate Not Yet Unlocked</h1>
-        <p>You have completed <strong><%= completionPct %>%</strong> of <strong><%= course.code %> &mdash; <%= course.title %></strong>.</p>
-        <p>Complete all units and lessons (100%) to unlock your official Intentional Discipleship Africa Course Completion Certificate.</p>
-        <a href="/courses/<%= course.id %>" class="btn btn-primary" id="btnContinueToUnlock">Continue Course Lessons &rarr;</a>
+        <p>To protect the academic integrity of <strong><%= course.code %> &mdash; <%= course.title %></strong>, your certificate unlocks once both requirements below are satisfied:</p>
+
+        <ul class="cert-requirements-list" id="certRequirementsList">
+          <li class="cert-req-item <%= hasCompletedLessons ? 'cert-req-met' : 'cert-req-pending' %>">
+            <span><%= hasCompletedLessons ? '✓' : '○' %> <strong>Course Lessons Completed:</strong> <%= completionPct %>% / 100%</span>
+            <span class="cert-req-status"><%= hasCompletedLessons ? 'Completed' : 'In Progress' %></span>
+          </li>
+          <% if (hasGradedActivities) { %>
+            <li class="cert-req-item <%= hasPassingGrade ? 'cert-req-met' : 'cert-req-pending' %>">
+              <span><%= hasPassingGrade ? '✓' : '○' %> <strong>Passing Weighted Grade:</strong> <%= (gradeSummary && gradeSummary.averagePercent !== null) ? gradeSummary.averagePercent + '%' : 'No graded items yet' %> (<%= passingThreshold %>% minimum required)</span>
+              <span class="cert-req-status"><%= hasPassingGrade ? 'Passing' : 'Pending' %></span>
+            </li>
+          <% } %>
+        </ul>
+
+        <div class="cert-locked-actions">
+          <a href="/courses/<%= course.id %>" class="btn btn-primary" id="btnContinueToUnlock">Continue Course Lessons &rarr;</a>
+          <a href="/courses/<%= course.id %>?tab=grades" class="btn btn-secondary" id="btnViewGradesToUnlock">Check My Grades</a>
+        </div>
       </section>
     <% } else { %>
       <article class="cert-frame" id="officialCertificate">

@@ -8,6 +8,9 @@ const { getCourseModulesWithTopics } = require('../data/course-content');
 const { findTeacherByUsername, resolveModuleInstructor } = require('../utils/instructors');
 const {
   getEnrolledCoursesForUser,
+  isCourseEnrolled,
+  getEastAfricaNow,
+  checkDeadlineLock,
   getAnnouncements,
   getSubmissions,
   getDiscussions,
@@ -519,13 +522,27 @@ router.get('/courses/:id', requireAuth, async (req, res) => {
   const course = enrichCourseStats(rawCourse, userProg);
   course.courseInstructor = findTeacherByUsername(rawCourse.instructor_username);
   const isStaff = ['admin', 'super_admin', 'teacher'].includes(req.session.user.role);
+  const username = req.session.user.username || req.session.user.email;
+  const userRole = req.session.user.role || 'student';
+
   if (Array.isArray(course.modulesWithTopics)) {
     course.modulesWithTopics = course.modulesWithTopics.map(mod => {
       const rawMod = (rawCourse.modules || []).find(m => Number(m.id) === Number(mod.id)) || mod;
       return {
         ...mod,
         isLocked: isStaff ? false : Boolean(mod.isLocked),
-        instructor: resolveModuleInstructor(rawCourse, rawMod)
+        instructor: resolveModuleInstructor(rawCourse, rawMod),
+        topics: (mod.topics || []).map(t => ({
+          ...t,
+          deadlineInfo: checkDeadlineLock({
+            courseId,
+            moduleId: mod.id,
+            topicId: t.id,
+            dueDateIso: t.dueDateIso,
+            username,
+            userRole
+          })
+        }))
       };
     });
   }
@@ -533,7 +550,6 @@ router.get('/courses/:id', requireAuth, async (req, res) => {
   course.studentUsername = req.session?.user?.username || '';
   course.userRole = req.session?.user?.role || 'student';
 
-  const username = req.session.user.username || req.session.user.email;
   const [liveAnnouncements, mySubs, courseDiscussions, allUserSubs] = await Promise.all([
     getAnnouncements(courseId),
     getSubmissions({ course_id: courseId, student_username: username }),
@@ -660,6 +676,10 @@ router.get('/courses/:id', requireAuth, async (req, res) => {
 // POST /courses/:id/messages - Send an Instant Message inside the course Messages popover
 router.post('/courses/:id/messages', requireAuth, (req, res) => {
   const courseId = parseInt(req.params.id, 10);
+  const allCourses = getLMSData().courses || [];
+  if (!isCourseEnrolled(allCourses, courseId, req.session.user)) {
+    return res.status(403).json({ success: false, error: 'You are not enrolled in this course.' });
+  }
   const body = String((req.body && req.body.body) || '').trim();
   if (body.length < 2) {
     return res.status(400).json({ success: false, error: 'Please enter a message before sending.' });
@@ -686,31 +706,95 @@ router.post('/courses/:id/messages', requireAuth, (req, res) => {
   });
 });
 
+// Helper: verify whether a student satisfies completion requirements for a topic
+function isAssessmentRequirementMet(topic, userSubs = []) {
+  if (!topic) return { ok: true };
+  const tType = topic.type;
+  const matching = userSubs.filter(s => String(s.topic_id) === String(topic.id));
+
+  if (tType === 'assignment' || tType === 'journal') {
+    if (matching.length === 0) {
+      return {
+        ok: false,
+        error: 'Please submit your written assignment (with the Academic Honesty Pledge) before marking this lesson complete.'
+      };
+    }
+    return { ok: true };
+  }
+
+  if (tType === 'quiz' || tType === 'exam') {
+    // Allow legacy text-only placeholder quizzes (0 interactive questions) to complete cleanly
+    if (Number(topic.questionCount) === 0) {
+      return { ok: true };
+    }
+    const passPct = Number(topic.passScore) > 0 ? Number(topic.passScore) : 60;
+    const hasPassed = matching.some(s => {
+      if (s.score === null || s.score === undefined) return false;
+      const max = Number(s.max_score) > 0 ? Number(s.max_score) : 100;
+      return ((Number(s.score) / max) * 100) >= passPct;
+    });
+    if (!hasPassed) {
+      return {
+        ok: false,
+        error: `Please pass this ${tType} (${passPct}% minimum) before marking it complete.`
+      };
+    }
+    return { ok: true };
+  }
+
+  return { ok: true };
+}
+
 // POST /courses/:id/modules/:moduleId/toggle - Per-student topic & module completion
-router.post('/courses/:id/modules/:moduleId/toggle', requireAuth, (req, res) => {
+router.post('/courses/:id/modules/:moduleId/toggle', requireAuth, async (req, res) => {
   const courseId = parseInt(req.params.id, 10);
   const moduleId = parseInt(req.params.moduleId, 10);
   const { direction, topicId, action } = req.body;
 
   const data = getLMSData();
-  const rawCourse = data.courses.find(c => c.id === courseId);
+  const allCourses = data.courses || [];
+  const rawCourse = allCourses.find(c => c.id === courseId);
   if (!rawCourse) {
     return res.status(404).json({ success: false, error: 'Course not found' });
   }
+  if (!isCourseEnrolled(allCourses, courseId, req.session.user)) {
+    return res.status(403).json({ success: false, error: 'You are not enrolled in this course.' });
+  }
 
-  const modulesWithTopics = getCourseModulesWithTopics(rawCourse);
+  const isStaff = ['admin', 'super_admin', 'teacher'].includes(req.session.user.role);
+  const modulesWithTopics = getCourseModulesWithTopics(rawCourse, { includeAnswerKeys: false });
   const targetMod = modulesWithTopics.find(m => m.id === moduleId);
   if (!targetMod) {
     return res.status(404).json({ success: false, error: 'Module not found' });
   }
 
-  const allTopicIds = (targetMod.topics || []).map(t => String(t.id));
+  const todayIso = getEastAfricaNow().isoDate;
+  if (!isStaff && targetMod.unlock_date && targetMod.unlock_date > todayIso) {
+    return res.status(403).json({
+      success: false,
+      error: `This unit is locked until ${targetMod.unlock_date}.`
+    });
+  }
+
+  const topicsList = Array.isArray(targetMod.topics) ? targetMod.topics : [];
+  const allTopicIds = topicsList.map(t => String(t.id));
   const userProg = getStudentProgress(req);
   const modKey = String(moduleId);
   let completedSet = new Set(Array.isArray(userProg[modKey]) ? userProg[modKey].map(String) : []);
 
+  const username = req.session.user.username || req.session.user.email;
+  const userSubs = isStaff ? [] : await getSubmissions({ course_id: courseId, student_username: username });
+
   if (action === 'complete_module') {
-    completedSet = new Set(allTopicIds);
+    if (isStaff) {
+      completedSet = new Set(allTopicIds);
+    } else {
+      topicsList.forEach(t => {
+        if (isAssessmentRequirementMet(t, userSubs).ok) {
+          completedSet.add(String(t.id));
+        }
+      });
+    }
   } else if (action === 'reset_module') {
     completedSet.clear();
   } else if (topicId) {
@@ -718,6 +802,13 @@ router.post('/courses/:id/modules/:moduleId/toggle', requireAuth, (req, res) => 
     if (direction === 'dec') {
       completedSet.delete(tid);
     } else if (allTopicIds.includes(tid)) {
+      const targetTopic = topicsList.find(t => String(t.id) === tid);
+      if (!isStaff) {
+        const reqCheck = isAssessmentRequirementMet(targetTopic, userSubs);
+        if (!reqCheck.ok) {
+          return res.status(400).json({ success: false, error: reqCheck.error });
+        }
+      }
       completedSet.add(tid);
     }
   } else if (direction === 'dec') {
@@ -726,9 +817,9 @@ router.post('/courses/:id/modules/:moduleId/toggle', requireAuth, (req, res) => 
       completedSet.delete(currentArr[currentArr.length - 1]);
     }
   } else {
-    const nextTopic = allTopicIds.find(id => !completedSet.has(id));
-    if (nextTopic) {
-      completedSet.add(nextTopic);
+    const nextTopicObj = topicsList.find(t => !completedSet.has(String(t.id)) && (isStaff || isAssessmentRequirementMet(t, userSubs).ok));
+    if (nextTopicObj) {
+      completedSet.add(String(nextTopicObj.id));
     }
   }
 

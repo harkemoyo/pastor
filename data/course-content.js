@@ -152,17 +152,22 @@ const courseContent = {
               <li>Outline 3 biblical truths you will preach the following Sunday to restore sound doctrine.</li>
             </ol>
 
-            <div class="interactive-submission-area">
+            <div class="interactive-submission-area" data-submission-type="assignment" data-max-score="100">
               <h4>Your Assignment Submission:</h4>
               <p class="sub-help">Type or paste your response below. You may save a draft or submit directly for faculty grading.</p>
               <textarea id="assignmentInput" class="assignment-textarea" rows="8" placeholder="Type your pastoral evaluation here... (e.g., In addressing the visiting speaker's claims, Scripture is unambiguous...)"></textarea>
+              <label class="integrity-pledge-box" for="integrityPledgeCheck">
+                <input type="checkbox" id="integrityPledgeCheck" class="integrity-pledge-input" required>
+                <span><strong>Academic Honesty Pledge:</strong> I affirm before the Lord that this reflection is my own original pastoral work and not copied from another student or source without citation.</span>
+              </label>
               <div class="submission-actions">
-                <button type="button" class="btn btn-outline" onclick="alert('Draft saved locally to your device.')">Save Draft</button>
+                <button type="button" class="btn btn-outline" id="btnSaveAssignmentDraft" onclick="alert('Draft saved locally to your device.')">Save Draft</button>
                 <button type="button" class="btn btn-primary" id="btnSubmitAssignment">Submit for Faculty Evaluation</button>
               </div>
               <div id="assignmentSuccessMsg" class="assignment-success" style="display: none;">
                 ✓ <strong>Assignment Successfully Submitted!</strong> Your faculty mentor Dr. Mwangi will review your theological case study within 48 hours.
               </div>
+              <div id="assignmentGradeBox" class="assignment-grade-box" hidden></div>
             </div>
           `
         },
@@ -603,6 +608,48 @@ function escapeHtml(str) {
     .replace(/"/g, '&quot;');
 }
 
+function getEastAfricaDateIso() {
+  try {
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Africa/Nairobi',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).format(new Date());
+  } catch {
+    return new Date(Date.now() + 3 * 3600 * 1000).toISOString().slice(0, 10);
+  }
+}
+
+function stripQuizAnswerKeys(html) {
+  return String(html || '').replace(/\s+data-correct\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '');
+}
+
+function extractQuestionsFromHtml(html) {
+  const source = String(html || '');
+  const questions = [];
+  const tagRegex = /<div\b([^>]*\bclass\s*=\s*["'][^"']*quiz-question-card[^"']*["'][^>]*)>/gi;
+  let match;
+  while ((match = tagRegex.exec(source)) !== null) {
+    const attrs = match[1] || '';
+    const qMatch = attrs.match(/\bdata-q\s*=\s*["']?(\d+)["']?/i);
+    const cMatch = attrs.match(/\bdata-correct\s*=\s*["']?([a-d])["']?/i);
+    if (qMatch && cMatch) {
+      questions.push({
+        qNum: Number(qMatch[1]),
+        correct: String(cMatch[1]).toLowerCase()
+      });
+    }
+  }
+  return questions;
+}
+
+const INTEGRITY_PLEDGE_HTML = `
+  <label class="integrity-pledge-box" for="integrityPledgeCheck">
+    <input type="checkbox" id="integrityPledgeCheck" class="integrity-pledge-input" required>
+    <span><strong>Academic Honesty Pledge:</strong> I affirm before the Lord that this reflection is my own original pastoral work and not copied from another student or source without citation.</span>
+  </label>`;
+
 function buildCustomLessonHtml(lesson) {
   const safeTitle = escapeHtml(lesson.title);
   const safeScripture = escapeHtml(lesson.scripture_ref);
@@ -636,6 +683,7 @@ function buildCustomLessonHtml(lesson) {
       <div class="assignment-submission-box" data-submission-type="${lesson.topic_type}" data-max-score="${Number(lesson.max_score) || 100}">
         <h4>✍️ ${label}</h4>
         <textarea id="assignmentInput" class="assignment-textarea" rows="7" placeholder="Type your pastoral reflection or assignment response here..."></textarea>
+        ${INTEGRITY_PLEDGE_HTML}
         <div class="assignment-actions-row">
           <button type="button" class="btn btn-primary" id="btnSubmitAssignment">Submit to Instructor</button>
           <span id="assignmentSuccessMsg" class="assignment-saved-msg" style="display:none;">✓ Saved and sent to your instructor for grading!</span>
@@ -689,15 +737,20 @@ function buildCustomLessonHtml(lesson) {
 /**
  * Returns structured modules with their topics for a given course.
  * Merges browser-authored custom lessons & quizzes from data/custom-lessons.json.
+ * By default strips quiz answer keys (`data-correct`) before rendering to student browsers.
  */
-function getCourseModulesWithTopics(course) {
+function getCourseModulesWithTopics(course, options = {}) {
+  const includeAnswerKeys = Boolean(options.includeAnswerKeys);
   const courseId = course.id;
   const customCourse = courseContent[courseId] || {};
-  const todayIso = new Date().toISOString().slice(0, 10);
+  const todayIso = getEastAfricaDateIso();
 
   return (course.modules || []).map(mod => {
     const modCustom = customCourse[mod.id];
     const authoredLessons = getCustomLessonsSync(courseId, mod.id);
+    const modDueIso = (mod.due_date && /^\d{4}-\d{2}-\d{2}$/.test(String(mod.due_date).trim()))
+      ? String(mod.due_date).trim()
+      : null;
     let topics = [];
 
     if (modCustom && modCustom.topics) {
@@ -828,7 +881,7 @@ function getCourseModulesWithTopics(course) {
       }
     }
 
-    // Ensure every built-in assignment topic has a live submission form
+    // Ensure every built-in assignment topic has a live submission form + pledge
     topics = topics.map(t => {
       if (t.type === 'assignment' && t.contentHtml && !t.contentHtml.includes('id="assignmentInput"')) {
         return {
@@ -837,6 +890,7 @@ function getCourseModulesWithTopics(course) {
             <div class="assignment-submission-box" data-submission-type="assignment" data-max-score="100">
               <h4>✍️ Your Written Submission</h4>
               <textarea id="assignmentInput" class="assignment-textarea" rows="7" placeholder="Write your pastoral reflection or assignment response here..."></textarea>
+              ${INTEGRITY_PLEDGE_HTML}
               <div class="assignment-actions-row">
                 <button type="button" class="btn btn-primary" id="btnSubmitAssignment">Submit to Instructor</button>
                 <span id="assignmentSuccessMsg" class="assignment-saved-msg" style="display:none;">✓ Saved and sent to your instructor for grading!</span>
@@ -856,16 +910,44 @@ function getCourseModulesWithTopics(course) {
         title: lesson.title,
         subtitle: lesson.due_date ? `Due: ${lesson.due_date}` : (lesson.topic_type === 'exam' ? 'Graded Exam' : 'Lesson'),
         dueDate: lesson.due_date || '',
+        dueDateIso: (lesson.due_date && /^\d{4}-\d{2}-\d{2}$/.test(String(lesson.due_date).trim()))
+          ? String(lesson.due_date).trim()
+          : modDueIso,
         bannerTitle: lesson.banner_title || lesson.title,
         maxScore: lesson.max_score || 100,
         passScore: lesson.pass_score || 60,
         maxAttempts: lesson.max_attempts || 3,
         timeLimitMinutes: lesson.time_limit_minutes || null,
         isCustom: true,
+        quizQuestions: Array.isArray(lesson.quiz_questions) ? lesson.quiz_questions : [],
         contentHtml: buildCustomLessonHtml(lesson)
       }));
       topics = topics.concat(mappedCustom);
     }
+
+    // Normalize dueDateIso & question count metadata, then strip answer keys unless explicitly requested
+    topics = topics.map(t => {
+      const dueDateIso = t.dueDateIso || (
+        (t.dueDate && /^\d{4}-\d{2}-\d{2}$/.test(String(t.dueDate).trim()))
+          ? String(t.dueDate).trim()
+          : modDueIso
+      );
+      const parsedQuestions = Array.isArray(t.quizQuestions) && t.quizQuestions.length > 0
+        ? t.quizQuestions.length
+        : extractQuestionsFromHtml(t.contentHtml).length;
+
+      const cleaned = {
+        ...t,
+        dueDateIso: dueDateIso || null,
+        questionCount: parsedQuestions,
+        maxScore: Number(t.maxScore) > 0 ? Number(t.maxScore) : 100,
+        passScore: Number(t.passScore) > 0 ? Number(t.passScore) : 60,
+        maxAttempts: Number(t.maxAttempts) > 0 ? Number(t.maxAttempts) : 5,
+        contentHtml: includeAnswerKeys ? t.contentHtml : stripQuizAnswerKeys(t.contentHtml)
+      };
+      delete cleaned.quizQuestions;
+      return cleaned;
+    });
 
     const isLocked = Boolean(mod.unlock_date && mod.unlock_date > todayIso);
 
@@ -877,7 +959,48 @@ function getCourseModulesWithTopics(course) {
   });
 }
 
+/**
+ * Authoritative server-side quiz/exam answer key lookup.
+ */
+function getQuizDefinition(course, moduleId, topicId) {
+  if (!course) return null;
+  const mods = getCourseModulesWithTopics(course, { includeAnswerKeys: true });
+  const mod = mods.find(m => Number(m.id) === Number(moduleId));
+  if (!mod) return null;
+  const topic = (mod.topics || []).find(t => String(t.id) === String(topicId));
+  if (!topic) return null;
+
+  let questions = [];
+  if (topic.isCustom) {
+    const lessons = getCustomLessonsSync(course.id, mod.id);
+    const lesson = lessons.find(l => String(l.topic_key) === String(topicId));
+    if (lesson && Array.isArray(lesson.quiz_questions)) {
+      questions = lesson.quiz_questions.map((q, idx) => ({
+        qNum: idx + 1,
+        correct: String(q.correct || 'a').toLowerCase()
+      }));
+    }
+  }
+  if (questions.length === 0) {
+    questions = extractQuestionsFromHtml(topic.contentHtml);
+  }
+
+  return {
+    mod,
+    topic,
+    questions,
+    maxScore: Number(topic.maxScore) > 0 ? Number(topic.maxScore) : 100,
+    passScore: Number(topic.passScore) > 0 ? Number(topic.passScore) : 60,
+    maxAttempts: Number(topic.maxAttempts) > 0 ? Number(topic.maxAttempts) : (topic.isCustom ? 3 : 5),
+    timeLimitMinutes: topic.timeLimitMinutes || null,
+    dueDateIso: topic.dueDateIso || null,
+    isExam: topic.type === 'exam'
+  };
+}
+
 module.exports = {
   courseContent,
+  stripQuizAnswerKeys,
+  getQuizDefinition,
   getCourseModulesWithTopics
 };

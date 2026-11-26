@@ -600,9 +600,34 @@
   margin-top: 0.5rem;
 }
 
+.extension-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 1rem;
+  align-items: end;
+  background: #F4F0E7;
+  border: 1px solid #DFD5C3;
+  border-radius: 12px;
+  padding: 1.15rem 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
+.extension-reason-field {
+  grid-column: span 2;
+}
+
+.extension-submit-wrap {
+  display: flex;
+  align-items: flex-end;
+}
+
 @media (max-width: 900px) {
   .teacher-announce-grid {
     grid-template-columns: 1fr;
+  }
+
+  .extension-reason-field {
+    grid-column: auto;
   }
 }
 

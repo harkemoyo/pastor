@@ -495,8 +495,9 @@ function loadTopic(moduleId, topicId, topicElement) {
   const bodyContainer = document.getElementById('topicBodyContent');
   if (bodyContainer) {
     bodyContainer.innerHTML = targetTopic.contentHtml;
+    renderTopicDeadlineBanner(bodyContainer, targetTopic);
     // Re-attach listeners for interactive quizzes and submission forms
-    initBrightspaceInteractiveForms();
+    initBrightspaceInteractiveForms(targetTopic);
   }
 
   // 5b. Update Assigned Module / Course Instructor Card (WhatsApp & Email)
@@ -659,13 +660,77 @@ function refreshCourseProgressUI() {
   }
 }
 
+function showTopicToast(message, isError = true) {
+  const container = document.getElementById('topicBodyContent');
+  if (!container) {
+    alert(message);
+    return;
+  }
+  const existing = document.getElementById('bpTopicToast');
+  if (existing) existing.remove();
+  const toast = document.createElement('div');
+  toast.id = 'bpTopicToast';
+  toast.className = `bp-topic-toast ${isError ? 'bp-topic-toast-error' : 'bp-topic-toast-ok'}`;
+  toast.setAttribute('role', 'status');
+  toast.textContent = message;
+  container.prepend(toast);
+  toast.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function renderTopicDeadlineBanner(container, topic) {
+  if (!container || !topic || !topic.deadlineInfo) return;
+  const info = topic.deadlineInfo;
+  if (info.locked) {
+    const banner = document.createElement('div');
+    banner.className = 'deadline-locked-banner';
+    banner.innerHTML = `<strong>🔒 Submissions Closed:</strong> The deadline for this unit (<strong>${escapeUiText(info.effectiveDueDate)} at 11:59 PM EAT</strong>) has passed. If you experienced an emergency or pastoral duty, please contact your instructor to request a deadline extension.`;
+    container.prepend(banner);
+    const submitAssign = container.querySelector('#btnSubmitAssignment');
+    const submitQuiz = container.querySelector('#btnSubmitQuiz');
+    if (submitAssign) {
+      submitAssign.disabled = true;
+      submitAssign.textContent = 'Deadline Passed (Locked)';
+    }
+    if (submitQuiz) {
+      submitQuiz.disabled = true;
+      submitQuiz.textContent = 'Deadline Passed (Locked)';
+    }
+  } else if (info.hasExtension && info.effectiveDueDate) {
+    const banner = document.createElement('div');
+    banner.className = 'deadline-extension-banner';
+    banner.innerHTML = `<strong>📅 Deadline Extension Active:</strong> Your instructor granted you an extension until <strong>${escapeUiText(info.effectiveDueDate)} at 11:59 PM EAT</strong>.`;
+    container.prepend(banner);
+  }
+}
+
 async function setTopicCompletion(targetItem, shouldBeCompleted) {
-  if (!targetItem) return;
+  if (!targetItem) return false;
   const modId = targetItem.getAttribute('data-module-id') || currentModuleId;
   const topId = targetItem.getAttribute('data-topic-id') || currentTopicId;
   const btnComplete = document.getElementById('btnMarkTopicComplete');
   const courseId = (btnComplete && btnComplete.getAttribute('data-course-id')) || '1';
   const direction = shouldBeCompleted ? 'inc' : 'dec';
+
+  if (btnComplete) btnComplete.disabled = true;
+
+  try {
+    const res = await fetch(`/courses/${courseId}/modules/${modId}/toggle`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ direction, topicId: topId })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.success) {
+      showTopicToast(data.error || 'Could not update lesson completion status.', true);
+      return false;
+    }
+  } catch (err) {
+    console.warn('Could not sync completion to server:', err);
+    showTopicToast('Connection required to verify and save completion.', true);
+    return false;
+  } finally {
+    if (btnComplete) btnComplete.disabled = false;
+  }
 
   if (shouldBeCompleted) {
     targetItem.classList.add('completed');
@@ -707,16 +772,7 @@ async function setTopicCompletion(targetItem, shouldBeCompleted) {
   }
 
   refreshCourseProgressUI();
-
-  try {
-    await fetch(`/courses/${courseId}/modules/${modId}/toggle`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ direction, topicId: topId })
-    });
-  } catch (err) {
-    console.warn('Could not sync completion to server:', err);
-  }
+  return true;
 }
 
 /**
@@ -737,7 +793,8 @@ function initBrightspaceTopicFooter() {
   if (footerBtnNext) {
     footerBtnNext.addEventListener('click', async () => {
       const selectedItem = document.querySelector('.bp-topic-item.selected');
-      if (selectedItem && !selectedItem.classList.contains('completed')) {
+      const topicType = selectedItem ? selectedItem.getAttribute('data-topic-type') : '';
+      if (selectedItem && !selectedItem.classList.contains('completed') && (topicType === 'doc' || topicType === 'reading')) {
         await setTopicCompletion(selectedItem, true);
       }
       const btnNext = document.getElementById('btnNextTopic');
@@ -774,7 +831,7 @@ function updateMarkCompleteBtnState(isCompleted) {
 /**
  * 6. Interactive Quizzes & Assignment Submissions inside Content Body
  */
-function initBrightspaceInteractiveForms() {
+function initBrightspaceInteractiveForms(targetTopic = null) {
   if (activeExamTimer) {
     clearInterval(activeExamTimer);
     activeExamTimer = null;
@@ -782,6 +839,7 @@ function initBrightspaceInteractiveForms() {
 
   const course = window.PASTORS_LMS_COURSE;
   const courseId = course ? course.id : null;
+  const isDeadlineLocked = Boolean(targetTopic && targetTopic.deadlineInfo && targetTopic.deadlineInfo.locked);
 
   // Discussion CTA buttons inside custom lessons
   document.querySelectorAll('.btn-open-discussions').forEach(btn => {
@@ -795,15 +853,15 @@ function initBrightspaceInteractiveForms() {
   const submitAssignmentBtn = document.getElementById('btnSubmitAssignment');
   if (submitAssignmentBtn) {
     const textarea = document.getElementById('assignmentInput');
+    const pledgeCheck = document.getElementById('integrityPledgeCheck');
     const successMsg = document.getElementById('assignmentSuccessMsg');
     const gradeBox = document.getElementById('assignmentGradeBox');
-    const wrap = submitAssignmentBtn.closest('.assignment-submission-box');
+    const wrap = submitAssignmentBtn.closest('.assignment-submission-box, .interactive-submission-area');
     const subType = (wrap && wrap.getAttribute('data-submission-type')) || 'assignment';
-    const maxScore = Number((wrap && wrap.getAttribute('data-max-score')) || 100);
 
     if (existingSub && existingSub.content_text && textarea) {
       textarea.value = existingSub.content_text;
-      submitAssignmentBtn.textContent = 'Update Submission';
+      if (!isDeadlineLocked) submitAssignmentBtn.textContent = 'Update Submission';
       if (successMsg) {
         successMsg.style.display = 'inline-block';
         successMsg.textContent = existingSub.status === 'graded'
@@ -818,9 +876,15 @@ function initBrightspaceInteractiveForms() {
     }
 
     submitAssignmentBtn.addEventListener('click', async () => {
+      if (isDeadlineLocked) return;
       if (!textarea || textarea.value.trim().length < 10) {
         alert('Please write your pastoral reflection (at least 10 characters) before submitting.');
         if (textarea) textarea.focus();
+        return;
+      }
+      if (pledgeCheck && !pledgeCheck.checked) {
+        alert('Please tick the Academic Honesty Pledge confirming this is your own original work.');
+        pledgeCheck.focus();
         return;
       }
       if (!courseId) return;
@@ -838,7 +902,7 @@ function initBrightspaceInteractiveForms() {
             topic_title: currentTopicTitle,
             submission_type: subType,
             content_text: textarea.value.trim(),
-            max_score: maxScore
+            integrity_pledge: pledgeCheck ? pledgeCheck.checked : true
           })
         });
         const data = await res.json();
@@ -854,9 +918,9 @@ function initBrightspaceInteractiveForms() {
         submitAssignmentBtn.disabled = false;
         fetchMyCourseSubmissions(false);
 
-        const completeBtn = document.getElementById('btnMarkTopicComplete');
-        if (completeBtn && !completeBtn.classList.contains('is-completed')) {
-          completeBtn.click();
+        const selectedItem = document.querySelector('.bp-topic-item.selected');
+        if (selectedItem && !selectedItem.classList.contains('completed')) {
+          await setTopicCompletion(selectedItem, true);
         }
       } catch (err) {
         alert(err.message || 'Unable to submit right now. If you are offline, copy your response and try again when connected.');
@@ -866,17 +930,15 @@ function initBrightspaceInteractiveForms() {
     });
   }
 
-  // Graded Quiz / Timed Exam Engine (saves score & attempt to backend)
+  // Server-Graded Quiz / Timed Exam Engine (answer keys stay strictly on backend)
   const submitQuizBtn = document.getElementById('btnSubmitQuiz');
   if (submitQuizBtn) {
     const quizWrap = submitQuizBtn.closest('.graded-quiz-wrapper');
     const quizType = (quizWrap && quizWrap.getAttribute('data-quiz-type')) || 'quiz';
-    const maxAttempts = Number((quizWrap && quizWrap.getAttribute('data-max-attempts')) || 5);
-    const passScore = Number((quizWrap && quizWrap.getAttribute('data-pass-score')) || 60);
-    const maxScore = Number((quizWrap && quizWrap.getAttribute('data-max-score')) || 100);
     const timeLimitMin = Number((quizWrap && quizWrap.getAttribute('data-time-limit')) || 0);
+    let timedOut = false;
 
-    if (timeLimitMin > 0) {
+    if (timeLimitMin > 0 && !isDeadlineLocked) {
       let remainingSec = timeLimitMin * 60;
       const timerDisplay = document.getElementById('quizTimerDisplay');
       activeExamTimer = setInterval(() => {
@@ -889,94 +951,113 @@ function initBrightspaceInteractiveForms() {
         if (remainingSec <= 0) {
           clearInterval(activeExamTimer);
           activeExamTimer = null;
+          timedOut = true;
           if (!submitQuizBtn.disabled) submitQuizBtn.click();
         }
       }, 1000);
     }
 
     submitQuizBtn.addEventListener('click', async () => {
+      if (isDeadlineLocked || !courseId) return;
       const questionCards = document.querySelectorAll('.quiz-question-card');
-      let correctCount = 0;
-      const total = questionCards.length || 1;
       const answers = {};
+      let firstMissingEl = null;
 
       questionCards.forEach(card => {
         const qNum = card.getAttribute('data-q');
-        const correctVal = (card.getAttribute('data-correct') || '').toLowerCase();
         const selectedRadio = card.querySelector(`input[name="q${qNum}"]:checked`);
         const feedbackEl = document.getElementById(`feedback-q${qNum}`);
 
         if (!selectedRadio) {
+          if (!firstMissingEl) firstMissingEl = card;
           if (feedbackEl) {
             feedbackEl.className = 'quiz-feedback incorrect';
-            feedbackEl.textContent = '⚠️ Please select an answer.';
+            feedbackEl.textContent = '⚠️ Please select an answer before submitting.';
           }
           return;
         }
-
-        answers[`q${qNum}`] = selectedRadio.value;
-        if (selectedRadio.value.toLowerCase() === correctVal) {
-          correctCount++;
-          if (feedbackEl) {
-            feedbackEl.className = 'quiz-feedback correct';
-            feedbackEl.textContent = '✓ Correct! Sound theological answer.';
-          }
-        } else {
-          if (feedbackEl) {
-            feedbackEl.className = 'quiz-feedback incorrect';
-            feedbackEl.textContent = `✗ Not quite. The correct answer was (${correctVal.toUpperCase()}).`;
-          }
+        if (feedbackEl) {
+          feedbackEl.className = 'quiz-feedback';
+          feedbackEl.textContent = '';
         }
+        answers[`q${qNum}`] = selectedRadio.value;
       });
+
+      if (firstMissingEl && !timedOut) {
+        firstMissingEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
 
       if (activeExamTimer) {
         clearInterval(activeExamTimer);
         activeExamTimer = null;
       }
 
-      const percent = Math.round((correctCount / total) * 100);
-      const scaledScore = Math.round((percent / 100) * maxScore);
+      const originalLabel = submitQuizBtn.textContent;
+      submitQuizBtn.disabled = true;
+      submitQuizBtn.textContent = 'Grading on server...';
+
       const scoreDisplay = document.getElementById('quizScoreDisplay');
-      if (scoreDisplay) {
-        scoreDisplay.style.display = 'inline-block';
-        scoreDisplay.textContent = `Your Score: ${correctCount}/${total} (${percent}%)`;
-      }
-
-      if (courseId) {
-        try {
-          const res = await fetch(`/api/courses/${courseId}/submissions`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              module_id: currentModuleId,
-              topic_id: currentTopicId,
-              topic_title: currentTopicTitle,
-              submission_type: quizType,
-              quiz_answers: answers,
-              score: scaledScore,
-              max_score: maxScore,
-              max_attempts: maxAttempts
-            })
-          });
-          const data = await res.json();
-          if (!res.ok || !data.success) {
-            if (scoreDisplay) scoreDisplay.textContent += ` — ${data.error || 'Max attempts reached'}`;
-          } else {
-            if (scoreDisplay) {
-              scoreDisplay.textContent = `Recorded: ${correctCount}/${total} (${percent}%) • Attempt #${data.attemptsUsed}`;
-            }
-            fetchMyCourseSubmissions(false);
+      try {
+        const res = await fetch(`/api/courses/${courseId}/submissions`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            module_id: currentModuleId,
+            topic_id: currentTopicId,
+            topic_title: currentTopicTitle,
+            submission_type: quizType,
+            quiz_answers: answers
+          })
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          if (scoreDisplay) {
+            scoreDisplay.style.display = 'inline-block';
+            scoreDisplay.textContent = data.error || 'Could not grade quiz.';
           }
-        } catch {
-          // keep local score visible even if offline
+          submitQuizBtn.disabled = false;
+          submitQuizBtn.textContent = originalLabel;
+          return;
         }
-      }
 
-      if (percent >= passScore) {
-        const completeBtn = document.getElementById('btnMarkTopicComplete');
-        if (completeBtn && !completeBtn.classList.contains('is-completed')) {
-          completeBtn.click();
+        const results = data.results || {};
+        questionCards.forEach(card => {
+          const qNum = card.getAttribute('data-q');
+          const r = results[`q${qNum}`];
+          const feedbackEl = document.getElementById(`feedback-q${qNum}`);
+          if (!feedbackEl || !r) return;
+          if (r.correct) {
+            feedbackEl.className = 'quiz-feedback correct';
+            feedbackEl.textContent = '✓ Correct! Sound theological answer.';
+          } else {
+            feedbackEl.className = 'quiz-feedback incorrect';
+            feedbackEl.textContent = r.correctOption
+              ? `✗ Not quite. The correct answer was (${String(r.correctOption).toUpperCase()}).`
+              : '✗ Incorrect answer.';
+          }
+        });
+
+        if (scoreDisplay) {
+          scoreDisplay.style.display = 'inline-block';
+          const statusWord = data.passed ? 'Passed' : `Pass requires ${data.passScore || 60}%`;
+          scoreDisplay.textContent = `Recorded: ${data.correctCount}/${data.totalQuestions} (${data.percent}%) • ${statusWord} • Attempt #${data.attemptsUsed} (${data.attemptsRemaining} left)`;
         }
+
+        fetchMyCourseSubmissions(false);
+
+        if (data.passed) {
+          const selectedItem = document.querySelector('.bp-topic-item.selected');
+          if (selectedItem && !selectedItem.classList.contains('completed')) {
+            await setTopicCompletion(selectedItem, true);
+          }
+        }
+        submitQuizBtn.disabled = data.attemptsRemaining <= 0;
+        submitQuizBtn.textContent = data.attemptsRemaining <= 0 ? 'Max Attempts Reached' : originalLabel;
+      } catch {
+        alert('Quiz grading requires an internet connection. Please try again when connected.');
+        submitQuizBtn.disabled = false;
+        submitQuizBtn.textContent = originalLabel;
       }
     });
   }
@@ -1011,6 +1092,16 @@ async function fetchMyCourseSubmissions(renderGradebook = false) {
       if (gCount) gCount.textContent = String(s.gradedCount || 0);
       if (gAvg) gAvg.textContent = s.averagePercent !== null ? `${s.averagePercent}%` : '—';
       if (gLet) gLet.textContent = s.letterGrade || 'IP';
+
+      const weightsGrid = document.getElementById('gradebookWeightsGrid');
+      if (weightsGrid && Array.isArray(s.categoryBreakdown)) {
+        weightsGrid.innerHTML = s.categoryBreakdown.map(cat => `
+          <div class="gb-weight-card">
+            <span class="gb-weight-label">${escapeUiText(cat.label)} (${cat.weight}%)</span>
+            <strong class="gb-weight-val">${cat.averagePercent !== null ? `${cat.averagePercent}%` : '—'}</strong>
+          </div>
+        `).join('');
+      }
 
       if (tbody) {
         if (!s.items || s.items.length === 0) {
