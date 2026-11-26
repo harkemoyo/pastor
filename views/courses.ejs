@@ -29,6 +29,17 @@
       </div>
     <% } %>
 
+    <% if (locals.user && user.role === 'student' && (typeof orientationStatus === 'undefined' || !orientationStatus || !orientationStatus.completed)) { %>
+      <div class="orientation-banner" id="orientationBanner">
+        <div>
+          <span class="orientation-banner-tag">IDA 0001 ORIENTATION</span>
+          <h3><%= (typeof requireOrientation !== 'undefined' && requireOrientation) ? 'Required: Complete Pastors LMS Orientation First' : 'Explore Pastors LMS (IDA 0001 Orientation)' %></h3>
+          <p>Review the Thursday &rarr; Wednesday weekly study rhythm (EAT) and affirm our Doctrinal &amp; Integrity Covenant.</p>
+        </div>
+        <a href="/orientation" class="btn btn-primary" id="btnStartOrientation">Start Orientation &rarr;</a>
+      </div>
+    <% } %>
+
     <div class="section-header-row">
       <h1 class="section-title">My Courses</h1>
       <div class="course-tabs">

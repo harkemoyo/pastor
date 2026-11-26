@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title || 'Academic Terms & Calendar | Pastors LMS' %></title>
+  <link rel="stylesheet" href="/css/global.css?v=<%= locals.assetVersion || '3' %>">
+  <link rel="stylesheet" href="/css/dashboard.css?v=<%= locals.assetVersion || '3' %>">
+  <link rel="stylesheet" href="/css/admin.css?v=<%= locals.assetVersion || '3' %>">
+  <link rel="stylesheet" href="/css/footer.css?v=<%= locals.assetVersion || '3' %>">
+  <link rel="icon" type="image/x-icon" href="/images/favicon.ico">
+</head>
+<body class="app-container">
+  <%- include('../partials/header') %>
+
+  <main class="admin-page">
+    <div class="admin-topbar">
+      <div>
+        <h1 class="admin-title">Academic Terms &amp; Study Calendar</h1>
+        <p class="admin-subtitle">Configure UoPeople-style 9-week pastoral terms, Thursday-to-Wednesday weekly study rhythm (EAT), and mandatory orientation settings.</p>
+      </div>
+      <div class="admin-actions">
+        <a href="/admin/courses" class="btn btn-secondary" id="btnTermsToCourses">Manage Courses &amp; Units</a>
+        <a href="/orientation" class="btn btn-outline" id="btnPreviewOrientation">Preview IDA 0001 Orientation</a>
+      </div>
+    </div>
+
+    <% if (success) { %>
+      <div class="alert alert-success" role="status"><%= success %></div>
+    <% } %>
+    <% if (error) { %>
+      <div class="alert alert-danger" role="alert"><%= error %></div>
+    <% } %>
+
+    <!-- Active Term Live Summary -->
+    <% if (activeTerm) { %>
+      <section class="term-summary-banner" id="activeTermBanner">
+        <div>
+          <span class="term-summary-eyebrow">ACTIVE ACADEMIC TERM</span>
+          <h2><%= activeTerm.code %> &mdash; <%= activeTerm.name %></h2>
+          <p class="term-summary-meta">
+            <strong><%= termWeekInfo.statusLabel %></strong>
+            &bull; Runs <strong><%= activeTerm.start_date %></strong> to <strong><%= activeTerm.end_date %></strong>
+            &bull; Current Weekly Deadline: <strong><%= termWeekInfo.nextDeadlineLabel %></strong>
+          </p>
+        </div>
+        <div class="term-summary-badges">
+          <% if (activeTerm.registration_open && activeTerm.registration_close) { %>
+            <span class="lecturer-scope-tag lecturer-scope-course">Registration: <%= activeTerm.registration_open %> &rarr; <%= activeTerm.registration_close %></span>
+          <% } %>
+          <% if (activeTerm.add_drop_end) { %>
+            <span class="lecturer-scope-tag lecturer-scope-module">Add/Drop Ends: <%= activeTerm.add_drop_end %></span>
+          <% } %>
+        </div>
+      </section>
+    <% } %>
+
+    <!-- Academic Policy & Mandatory Orientation Gate -->
+    <section class="admin-surface admin-section-spaced" id="orientationPolicySection">
+      <h2>Orientation &amp; Academic Rhythm Policy</h2>
+      <form action="/admin/terms/settings" method="POST" class="orientation-policy-form" id="orientationGateForm">
+        <label class="orientation-toggle-label" for="chkRequireOrientation">
+          <input type="checkbox" id="chkRequireOrientation" name="require_orientation" class="orientation-toggle-input" <%= settings && settings.require_orientation ? 'checked' : '' %>>
+          <span>
+            <strong>Require IDA 0001 Orientation before opening courses</strong>
+            <small>When enabled, new or un-oriented pastors are gently guided to complete the IDA 0001 Campus Orientation &amp; Doctrinal Covenant first before accessing course classrooms.</small>
+          </span>
+        </label>
+        <button type="submit" class="btn btn-primary" id="btnSaveAcademicSettings">Save Policy</button>
+      </form>
+    </section>
+
+    <!-- Create / Update Academic Term -->
+    <section class="admin-surface admin-section-spaced" id="termEditorSection">
+      <h2>Add or Update Academic Term</h2>
+      <p class="admin-subtitle">Terms follow the UoPeople weekly cycle: Units open Thursday morning EAT and written assignments, discussions, and quizzes close the following Wednesday at 11:55 PM EAT.</p>
+
+      <form action="/admin/terms/save" method="POST" class="extension-form-grid" id="termCreateForm">
+        <div>
+          <label class="form-label" for="termCodeInput">Term Code *</label>
+          <input type="text" id="termCodeInput" name="code" class="form-input" placeholder="e.g. AY2027-T3" required>
+        </div>
+
+        <div>
+          <label class="form-label" for="termNameInput">Term Name *</label>
+          <input type="text" id="termNameInput" name="name" class="form-input" placeholder="e.g. Term 3 — 2026/2027 Academic Year" required>
+        </div>
+
+        <div>
+          <label class="form-label" for="termStartInput">Term Start Date (Thursday) *</label>
+          <input type="date" id="termStartInput" name="start_date" class="form-input" required>
+        </div>
+
+        <div>
+          <label class="form-label" for="termEndInput">Term End Date (Wednesday) *</label>
+          <input type="date" id="termEndInput" name="end_date" class="form-input" required>
+        </div>
+
+        <div>
+          <label class="form-label" for="termWeeksInput">Length (Weeks)</label>
+          <input type="number" id="termWeeksInput" name="weeks" class="form-input" value="9" min="1" max="16">
+        </div>
+
+        <div>
+          <label class="form-label" for="termRegOpenInput">Registration Opens</label>
+          <input type="date" id="termRegOpenInput" name="registration_open" class="form-input">
+        </div>
+
+        <div>
+          <label class="form-label" for="termRegCloseInput">Registration Closes</label>
+          <input type="date" id="termRegCloseInput" name="registration_close" class="form-input">
+        </div>
+
+        <div>
+          <label class="form-label" for="termAddDropInput">Add/Drop Ends</label>
+          <input type="date" id="termAddDropInput" name="add_drop_end" class="form-input">
+        </div>
+
+        <div class="extension-submit-wrap">
+          <label class="term-active-checkbox" for="termIsActiveChk">
+            <input type="checkbox" id="termIsActiveChk" name="is_active">
+            <span>Set as Active Term</span>
+          </label>
+        </div>
+
+        <div class="extension-submit-wrap">
+          <button type="submit" class="btn btn-primary" id="btnSaveTerm">Save Academic Term</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- Configured Terms List -->
+    <section class="admin-surface admin-section-spaced" id="termsListSection">
+      <h2>Configured Academic Terms (<%= terms.length %>)</h2>
+      <div class="admin-table-wrap">
+        <table class="admin-table" id="termsTable">
+          <thead>
+            <tr>
+              <th>Term Code</th>
+              <th>Name</th>
+              <th>Dates (Start &rarr; End)</th>
+              <th>Registration &amp; Add/Drop</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% terms.forEach(t => { %>
+              <tr id="termRow-<%= t.id %>">
+                <td><strong><%= t.code %></strong></td>
+                <td><%= t.name %> (<%= t.weeks || 9 %> wks)</td>
+                <td><%= t.start_date %> &rarr; <%= t.end_date %></td>
+                <td>
+                  <%= t.registration_open ? (t.registration_open + ' to ' + (t.registration_close || '')) : 'Open' %>
+                  <% if (t.add_drop_end) { %><br><small>Add/Drop until <%= t.add_drop_end %></small><% } %>
+                </td>
+                <td>
+                  <% if (t.is_active) { %>
+                    <span class="lecturer-scope-tag lecturer-scope-course">Active Term</span>
+                  <% } else { %>
+                    <span class="lecturer-scope-tag">Scheduled</span>
+                  <% } %>
+                </td>
+                <td>
+                  <div class="action-row-inline">
+                    <% if (!t.is_active) { %>
+                      <form action="/admin/terms/<%= t.id %>/activate" method="POST">
+                        <button type="submit" class="btn btn-primary btn-sm" id="btnActivateTerm-<%= t.id %>">Activate</button>
+                      </form>
+                      <form action="/admin/terms/<%= t.id %>/delete" method="POST">
+                        <button type="submit" class="btn btn-outline btn-sm" id="btnDeleteTerm-<%= t.id %>">Delete</button>
+                      </form>
+                    <% } else { %>
+                      <span class="lecturer-subtitle">Current Term</span>
+                    <% } %>
+                  </div>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <%- include('../partials/footer') %>
+</body>
+</html>

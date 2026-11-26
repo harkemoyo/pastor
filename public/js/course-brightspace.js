@@ -28,6 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initBrightspaceTopicFooter();
   initBrightspaceInteractiveForms();
   initDiscussionForum();
+  initExtensionRequestModal();
   initOfflineCourseSave();
   initHomeModuleCards();
   initCourseWorkToDoLinks();
@@ -215,6 +216,8 @@ function initBrightspaceTopActions() {
         if (typeof window.switchBrightspaceTab === 'function') window.switchBrightspaceTab('home');
         const btnOff = document.getElementById('btnSaveCourseOffline');
         if (btnOff) btnOff.click();
+      } else if (action === 'extension') {
+        openExtensionRequestModal(currentModuleId);
       }
     });
   });
@@ -683,8 +686,12 @@ function renderTopicDeadlineBanner(container, topic) {
   if (info.locked) {
     const banner = document.createElement('div');
     banner.className = 'deadline-locked-banner';
-    banner.innerHTML = `<strong>🔒 Submissions Closed:</strong> The deadline for this unit (<strong>${escapeUiText(info.effectiveDueDate)} at 11:59 PM EAT</strong>) has passed. If you experienced an emergency or pastoral duty, please contact your instructor to request a deadline extension.`;
+    banner.innerHTML = `<div><strong>🔒 Submissions Closed:</strong> The deadline for this unit (<strong>${escapeUiText(info.effectiveDueDate)} at 11:59 PM EAT</strong>) has passed. If you experienced an emergency or pastoral duty, request an extension from your instructor.</div><button type="button" class="btn btn-secondary btn-sm btn-open-ext-modal" id="btnLockedRequestExtension">Request Deadline Extension</button>`;
     container.prepend(banner);
+    const reqBtn = banner.querySelector('#btnLockedRequestExtension');
+    if (reqBtn) {
+      reqBtn.addEventListener('click', () => openExtensionRequestModal(currentModuleId));
+    }
     const submitAssign = container.querySelector('#btnSubmitAssignment');
     const submitQuiz = container.querySelector('#btnSubmitQuiz');
     if (submitAssign) {
@@ -1549,5 +1556,116 @@ function applyUrlDeepLink() {
 
   if (tab === 'content' && typeof window.switchBrightspaceTab === 'function') {
     window.switchBrightspaceTab('content');
+  }
+}
+
+/**
+ * Student Deadline Extension Request Modal Controller
+ */
+function openExtensionRequestModal(defaultModuleId = null) {
+  const modal = document.getElementById('extensionRequestModal');
+  if (!modal) return;
+  const modSelect = document.getElementById('extReqModuleSelect');
+  const dateInput = document.getElementById('extReqDateInput');
+  const feedbackEl = document.getElementById('extReqFeedbackMsg');
+  if (modSelect && defaultModuleId) {
+    modSelect.value = String(defaultModuleId);
+  }
+  if (dateInput && !dateInput.value) {
+    const plusFourDays = new Date(Date.now() + 4 * 86400000).toISOString().slice(0, 10);
+    dateInput.value = plusFourDays;
+  }
+  if (feedbackEl) feedbackEl.hidden = true;
+  modal.hidden = false;
+}
+
+function initExtensionRequestModal() {
+  const modal = document.getElementById('extensionRequestModal');
+  const form = document.getElementById('extensionRequestForm');
+  const btnClose = document.getElementById('btnCloseExtModal');
+  const btnCancel = document.getElementById('btnCancelExtModal');
+  const listEl = document.getElementById('myExtRequestsList');
+  const feedbackEl = document.getElementById('extReqFeedbackMsg');
+  const course = window.PASTORS_LMS_COURSE;
+  if (!modal) return;
+
+  function closeExtModal() {
+    modal.hidden = true;
+  }
+
+  if (btnClose) btnClose.addEventListener('click', closeExtModal);
+  if (btnCancel) btnCancel.addEventListener('click', closeExtModal);
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) closeExtModal();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !modal.hidden) closeExtModal();
+  });
+
+  async function refreshExtensionRequests() {
+    if (!course || !course.id || !listEl) return;
+    try {
+      const res = await fetch(`/api/courses/${course.id}/extension-requests`);
+      const data = await res.json();
+      if (!data || !data.success) return;
+      const reqs = data.requests || [];
+      if (reqs.length === 0) {
+        listEl.innerHTML = '<p class="lecturer-subtitle">No extension requests submitted for this course yet.</p>';
+        return;
+      }
+      listEl.innerHTML = reqs.map(r => `
+        <div class="ext-req-row">
+          <div>
+            <strong>Until ${escapeUiText(r.requested_until)}</strong> &mdash; ${escapeUiText(r.reason)}
+            ${r.reviewer_note ? `<div class="ext-reviewer-note">Instructor note: ${escapeUiText(r.reviewer_note)}</div>` : ''}
+          </div>
+          <span class="ext-status-pill ext-status-${escapeUiText(r.status)}">${escapeUiText(r.status)}</span>
+        </div>
+      `).join('');
+    } catch {
+      // ignore offline
+    }
+  }
+
+  if (form && course && course.id) {
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const modId = document.getElementById('extReqModuleSelect')?.value;
+      const reqDate = document.getElementById('extReqDateInput')?.value;
+      const reasonEl = document.getElementById('extReqReasonInput');
+      const reason = (reasonEl ? reasonEl.value : '').trim();
+      const submitBtn = document.getElementById('btnSubmitExtReq');
+      if (reason.length < 6) {
+        alert('Please briefly describe your reason (at least 6 characters).');
+        if (reasonEl) reasonEl.focus();
+        return;
+      }
+      if (submitBtn) submitBtn.disabled = true;
+      try {
+        const res = await fetch(`/api/courses/${course.id}/extension-requests`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            module_id: modId,
+            requested_until: reqDate,
+            reason
+          })
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          throw new Error(data.error || 'Could not submit request.');
+        }
+        if (reasonEl) reasonEl.value = '';
+        if (feedbackEl) {
+          feedbackEl.hidden = false;
+          feedbackEl.textContent = '✓ Request sent to your instructor for review.';
+        }
+        await refreshExtensionRequests();
+      } catch (err) {
+        alert(err.message || 'Unable to send request right now.');
+      } finally {
+        if (submitBtn) submitBtn.disabled = false;
+      }
+    });
   }
 }

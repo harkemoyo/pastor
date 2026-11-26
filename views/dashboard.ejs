@@ -70,9 +70,9 @@
           </div>
           <div class="stat-content">
             <div class="stat-number">
-              <%= stats.currentCount %> Active
+              <%= (typeof termWeekInfo !== 'undefined' && termWeekInfo) ? termWeekInfo.statusLabel : (stats.currentCount + ' Active') %>
             </div>
-            <div class="stat-label">Term AY2027-T1</div>
+            <div class="stat-label"><%= (typeof activeTerm !== 'undefined' && activeTerm) ? activeTerm.code : 'Term AY2027-T1' %></div>
           </div>
         </div>
 
@@ -109,6 +109,17 @@
       </div>
 
       <!-- Resume Active Study Direct Shortcut (Ideal for older pastors to jump straight in) -->
+      <% if (locals.user && user.role === 'student' && (typeof orientationStatus === 'undefined' || !orientationStatus || !orientationStatus.completed)) { %>
+        <div class="orientation-banner" id="orientationBanner">
+          <div>
+            <span class="orientation-banner-tag">IDA 0001 ORIENTATION</span>
+            <h3><%= (typeof requireOrientation !== 'undefined' && requireOrientation) ? 'Required Before Opening Courses: Complete Pastors LMS Orientation' : 'New to Pastors LMS? Complete Your 5-Minute Orientation' %></h3>
+            <p>Learn the weekly Thursday &rarr; Wednesday rhythm (EAT), offline reading tools, and affirm our Seminary Covenant.</p>
+          </div>
+          <a href="/orientation" class="btn btn-primary" id="btnStartOrientation">Start IDA 0001 Orientation &rarr;</a>
+        </div>
+      <% } %>
+
       <% const activeCourse = courses.find(c => c.status === 'current') || courses[0]; %>
       <% if (activeCourse) { %>
         <div class="resume-study-card">
@@ -156,6 +167,37 @@
                 </p>
               </div>
               <% } %>
+
+                <!-- Weekly Pastoral Study Rhythm Card (Thu -> Wed EAT) -->
+                <% if (typeof termWeekInfo !== 'undefined' && termWeekInfo) { %>
+                  <section class="weekly-rhythm-card" id="weeklyRhythmCard">
+                    <div class="weekly-rhythm-head">
+                      <div>
+                        <h3>Weekly Pastoral Study Rhythm &mdash; <%= (typeof activeTerm !== 'undefined' && activeTerm) ? activeTerm.code : 'Active Term' %> (<%= termWeekInfo.statusLabel %>)</h3>
+                        <p>Current Weekly Deadline: <strong><%= termWeekInfo.nextDeadlineLabel %></strong></p>
+                      </div>
+                      <a href="/orientation" class="btn btn-outline btn-sm" id="btnRhythmGuide">Study Guide (IDA 0001)</a>
+                    </div>
+                    <div class="rhythm-steps-grid">
+                      <div class="rhythm-step">
+                        <strong>Thu</strong>
+                        <span>New Unit &amp; Scriptures Open</span>
+                      </div>
+                      <div class="rhythm-step">
+                        <strong>Fri &ndash; Sun</strong>
+                        <span>Readings &amp; First Forum Post</span>
+                      </div>
+                      <div class="rhythm-step">
+                        <strong>Mon &ndash; Tue</strong>
+                        <span>Encourage 2 Cohort Pastors</span>
+                      </div>
+                      <div class="rhythm-step">
+                        <strong>Wed 11:55 PM</strong>
+                        <span>Assignment &amp; Quiz Lock (EAT)</span>
+                      </div>
+                    </div>
+                  </section>
+                <% } %>
 
                 <!-- Courses Section Header & Tabs -->
                 <div class="section-header-row">
@@ -230,7 +272,12 @@
         </section>
 
         <!-- Right Column: UoPeople-style Time & Work To Do Sidebar -->
-        <%- include('partials/sidebar', { workToDo: typeof workToDo !== 'undefined' ? workToDo : null, isCoursePage: false }) %>
+        <%- include('partials/sidebar', {
+          workToDo: typeof workToDo !== 'undefined' ? workToDo : null,
+          isCoursePage: false,
+          activeTerm: typeof activeTerm !== 'undefined' ? activeTerm : null,
+          termWeekInfo: typeof termWeekInfo !== 'undefined' ? termWeekInfo : null
+        }) %>
       </div>
     </main>
 

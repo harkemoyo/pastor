@@ -30,7 +30,15 @@ const {
   getDeadlineExtensions,
   saveDeadlineExtension,
   deleteDeadlineExtension,
-  checkDeadlineLock
+  checkDeadlineLock,
+  getAcademicConfig,
+  getActiveTerm,
+  computeTermWeekInfo,
+  getOrientationStatus,
+  saveOrientationCompletion,
+  getExtensionRequests,
+  createExtensionRequest,
+  resolveExtensionRequest
 } = require('../utils/lms-store');
 const {
   DEFAULT_TOKEN_FEE,
@@ -512,6 +520,18 @@ router.get('/teacher/grading', requireTeacher, async (req, res) => {
       };
     });
 
+  const extensionRequestsList = getExtensionRequests()
+    .filter(reqItem => allowedCourseIds.has(Number(reqItem.course_id)))
+    .map(reqItem => {
+      const c = allCourses.find(item => Number(item.id) === Number(reqItem.course_id));
+      const m = c && (c.modules || []).find(item => Number(item.id) === Number(reqItem.module_id));
+      return {
+        ...reqItem,
+        course_code: c ? c.code : `Course #${reqItem.course_id}`,
+        module_title: m ? m.title : `Module ${reqItem.module_id}`
+      };
+    });
+
   res.render('teacher-grading', {
     title: 'Grading Queue | Pastors LMS',
     user,
@@ -523,10 +543,54 @@ router.get('/teacher/grading', requireTeacher, async (req, res) => {
     allowedCourses: allowedCoursesList,
     students: studentsList,
     extensions: extensionsList,
+    extensionRequests: extensionRequestsList,
     filterStatus,
     success: req.query.success || null,
     error: req.query.error || null
   });
+});
+
+// POST /teacher/extension-requests/:id/resolve - Approve or deny student extension request
+router.post('/teacher/extension-requests/:id/resolve', requireTeacher, (req, res) => {
+  const decision = req.body.decision === 'approve' ? 'approved' : (req.body.decision === 'deny' ? 'denied' : null);
+  if (!decision) {
+    return res.redirect('/teacher/grading?error=' + encodeURIComponent('Invalid extension request decision.'));
+  }
+
+  const allReqs = getExtensionRequests();
+  const target = allReqs.find(r => r.id === req.params.id);
+  if (!target) {
+    return res.redirect('/teacher/grading?error=' + encodeURIComponent('Extension request not found.'));
+  }
+
+  const user = req.session.user;
+  const isStaffAdmin = ['admin', 'super_admin'].includes(user.role);
+  if (!isStaffAdmin) {
+    const assignments = getTeacherAssignments(getCourses(), user.username);
+    const hasAccess = assignments.some(a =>
+      Number(a.course.id) === Number(target.course_id) &&
+      a.assignedModules.some(m => Number(m.id) === Number(target.module_id))
+    );
+    if (!hasAccess) {
+      return res.redirect('/teacher/grading?error=' + encodeURIComponent('You may only review requests for your assigned modules.'));
+    }
+  }
+
+  const resolved = resolveExtensionRequest(req.params.id, {
+    status: decision,
+    approved_until: req.body.approved_until,
+    reviewer_name: user.full_name || user.username,
+    reviewer_note: req.body.reviewer_note
+  });
+
+  if (!resolved) {
+    return res.redirect('/teacher/grading?error=' + encodeURIComponent('Could not update extension request.'));
+  }
+
+  const msg = decision === 'approved'
+    ? `Approved extension for ${resolved.student_name} until ${resolved.requested_until}.`
+    : `Declined extension request from ${resolved.student_name}.`;
+  res.redirect('/teacher/grading?success=' + encodeURIComponent(msg));
 });
 
 // POST /teacher/extensions - Grant per-student module/topic deadline extension
@@ -1028,7 +1092,143 @@ router.get('/courses/:id/certificate', requireAuth, async (req, res) => {
 });
 
 // ==========================================================================
-// 5. OFFLINE PWA FALLBACK PAGE
+// 5. MANDATORY ORIENTATION COURSE (IDA 0001) & STUDENT EXTENSION REQUESTS
+// ==========================================================================
+const ORIENTATION_QUESTIONS = [
+  {
+    id: 'q1',
+    prompt: 'When do weekly learning units open and close in Pastors LMS (East Africa Time)?',
+    options: {
+      a: 'Units stay open without any weekly deadline.',
+      b: 'Units open each Thursday and close the following Wednesday at 11:55 PM EAT.',
+      c: 'Only on Sunday mornings during church service.'
+    },
+    correct: 'b'
+  },
+  {
+    id: 'q2',
+    prompt: 'What is our Seminary standard regarding written pastoral assignments and quizzes?',
+    options: {
+      a: 'Students can ask another pastor to write their essays and take quizzes for them.',
+      b: 'Self-reported checkboxes unlock certificates even with failing quiz scores.',
+      c: 'All work must be your own original pastoral reflection, affirmed with the Academic Honesty Pledge.'
+    },
+    correct: 'c'
+  },
+  {
+    id: 'q3',
+    prompt: 'What should a pastor do if ministry bereavement or rural network loss prevents meeting a deadline?',
+    options: {
+      a: 'Message your assigned instructor or submit a Deadline Extension Request inside Course Tools.',
+      b: 'Stop attending the cohort silently without telling anyone.',
+      c: 'Wait until after the final exam ends.'
+    },
+    correct: 'a'
+  }
+];
+
+router.get('/orientation', requireAuth, (req, res) => {
+  const username = req.session.user.username || req.session.user.email;
+  const activeTerm = getActiveTerm();
+  const academicConfig = getAcademicConfig();
+  const safeQuestions = ORIENTATION_QUESTIONS.map(({ id, prompt, options }) => ({ id, prompt, options }));
+
+  res.render('orientation', {
+    title: 'IDA 0001: Explore Pastors LMS Orientation | Pastors LMS',
+    user: req.session.user,
+    orientationStatus: getOrientationStatus(username),
+    requireOrientation: Boolean(academicConfig.settings && academicConfig.settings.require_orientation),
+    activeTerm,
+    termWeekInfo: computeTermWeekInfo(activeTerm),
+    questions: safeQuestions,
+    requiredNotice: req.query.required === '1',
+    success: req.query.success || null,
+    error: req.query.error || null
+  });
+});
+
+router.post('/orientation/complete', requireAuth, (req, res) => {
+  const username = req.session.user.username || req.session.user.email;
+  const covenantAccepted = req.body.covenant_accepted === 'on' || req.body.covenant_accepted === 'true' || req.body.covenant_accepted === true;
+  if (!covenantAccepted) {
+    return res.redirect('/orientation?error=' + encodeURIComponent('Please tick the Doctrinal & Academic Integrity Covenant checkbox to complete orientation.'));
+  }
+
+  let score = 0;
+  ORIENTATION_QUESTIONS.forEach(q => {
+    const ans = String(req.body[q.id] || '').trim().toLowerCase();
+    if (ans === q.correct) score += 1;
+  });
+
+  if (score < 2) {
+    return res.redirect('/orientation?error=' + encodeURIComponent(`You answered ${score} of ${ORIENTATION_QUESTIONS.length} correctly. Please review the Weekly Rhythm notes above and answer at least 2 correctly.`));
+  }
+
+  saveOrientationCompletion(username, {
+    full_name: req.session.user.full_name || username,
+    score,
+    total: ORIENTATION_QUESTIONS.length,
+    covenant_accepted: true
+  });
+
+  res.redirect('/orientation?success=' + encodeURIComponent(`Orientation completed (${score}/${ORIENTATION_QUESTIONS.length})! Welcome to Intentional Discipleship Africa — your courses are now unlocked.`));
+});
+
+router.get('/api/courses/:id/extension-requests', requireAuth, (req, res) => {
+  const courseId = parseInt(req.params.id, 10);
+  const allCourses = getCourses();
+  if (!isCourseEnrolled(allCourses, courseId, req.session.user)) {
+    return res.status(403).json({ success: false, error: 'You are not enrolled in this course.' });
+  }
+  const username = req.session.user.username || req.session.user.email;
+  const requests = getExtensionRequests({ course_id: courseId, student_username: username });
+  res.json({ success: true, requests });
+});
+
+router.post('/api/courses/:id/extension-requests', requireAuth, (req, res) => {
+  const courseId = parseInt(req.params.id, 10);
+  const allCourses = getCourses();
+  const course = allCourses.find(c => Number(c.id) === courseId);
+  if (!course) {
+    return res.status(404).json({ success: false, error: 'Course not found.' });
+  }
+  if (!isCourseEnrolled(allCourses, courseId, req.session.user)) {
+    return res.status(403).json({ success: false, error: 'You are not enrolled in this course.' });
+  }
+
+  const moduleId = parseInt(req.body.module_id, 10);
+  const requestedUntil = String(req.body.requested_until || '').trim();
+  const reason = String(req.body.reason || '').trim();
+  const modExists = (course.modules || []).some(m => Number(m.id) === moduleId);
+
+  if (!modExists) {
+    return res.status(400).json({ success: false, error: 'Please select a valid unit for your extension request.' });
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(requestedUntil)) {
+    return res.status(400).json({ success: false, error: 'Please choose a valid requested deadline date.' });
+  }
+  if (reason.length < 6) {
+    return res.status(400).json({ success: false, error: 'Please explain briefly (at least 6 characters) why you need an extension.' });
+  }
+
+  const username = req.session.user.username || req.session.user.email;
+  const saved = createExtensionRequest({
+    student_username: username,
+    student_name: req.session.user.full_name || username,
+    course_id: courseId,
+    module_id: moduleId,
+    requested_until: requestedUntil,
+    reason
+  });
+
+  if (!saved) {
+    return res.status(400).json({ success: false, error: 'Could not save extension request.' });
+  }
+  res.json({ success: true, request: saved });
+});
+
+// ==========================================================================
+// 6. OFFLINE PWA FALLBACK PAGE
 // ==========================================================================
 router.get('/offline', (req, res) => {
   res.render('offline', {

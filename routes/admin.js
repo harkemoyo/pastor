@@ -6,7 +6,19 @@ const bcrypt = require('bcrypt');
 const { requireAdmin, requireSuperAdmin, requireTeacher } = require('../middleware/auth');
 const { supabaseAdmin } = require('../config/supabase');
 const { getTeachers, findTeacherByUsername, resolveModuleInstructor } = require('../utils/instructors');
-const { getCustomLessonsSync, saveCustomLesson, deleteCustomLesson } = require('../utils/lms-store');
+const {
+  getCustomLessonsSync,
+  saveCustomLesson,
+  deleteCustomLesson,
+  getAcademicConfig,
+  getActiveTerm,
+  saveTerm,
+  setActiveTerm,
+  deleteTerm,
+  updateAcademicSettings,
+  computeTermWeekInfo,
+  addDaysIso
+} = require('../utils/lms-store');
 
 const USERS_FILE = path.join(__dirname, '../data/users.json');
 const COURSES_FILE = path.join(__dirname, '../data/courses.json');
@@ -1158,6 +1170,91 @@ router.get('/courses/new', requireAdmin, (req, res) => {
   });
 });
 
+// ==========================================================================
+// Academic Terms Calendar & Orientation Requirement Settings
+// ==========================================================================
+router.get('/terms', requireAdmin, (req, res) => {
+  const config = getAcademicConfig();
+  const activeTerm = getActiveTerm();
+  res.render('admin/terms', {
+    title: 'Academic Terms & Calendar | Pastors LMS',
+    user: req.session.user,
+    terms: config.terms,
+    settings: config.settings,
+    activeTerm,
+    termWeekInfo: computeTermWeekInfo(activeTerm),
+    success: req.query.success || null,
+    error: req.query.error || null
+  });
+});
+
+router.post('/terms/save', requireAdmin, (req, res) => {
+  const saved = saveTerm({
+    id: req.body.id,
+    code: req.body.code,
+    name: req.body.name,
+    start_date: req.body.start_date,
+    end_date: req.body.end_date,
+    weeks: req.body.weeks,
+    registration_open: req.body.registration_open,
+    registration_close: req.body.registration_close,
+    add_drop_end: req.body.add_drop_end,
+    is_active: req.body.is_active
+  });
+
+  if (!saved) {
+    return res.redirect('/admin/terms?error=' + encodeURIComponent('Please provide Term Code, Name, Start Date, and End Date.'));
+  }
+
+  appendActivity({
+    adminUsername: req.session.user.username,
+    adminName: req.session.user.full_name,
+    action: `Saved academic term ${saved.code} (${saved.start_date} to ${saved.end_date})`,
+    targetType: 'term',
+    targetId: saved.id
+  });
+  res.redirect('/admin/terms?success=' + encodeURIComponent(`Term ${saved.code} saved.`));
+});
+
+router.post('/terms/:id/activate', requireAdmin, (req, res) => {
+  const activated = setActiveTerm(req.params.id);
+  if (!activated) {
+    return res.redirect('/admin/terms?error=' + encodeURIComponent('Term not found.'));
+  }
+  appendActivity({
+    adminUsername: req.session.user.username,
+    adminName: req.session.user.full_name,
+    action: `Activated academic term ${activated.code}`,
+    targetType: 'term',
+    targetId: activated.id
+  });
+  res.redirect('/admin/terms?success=' + encodeURIComponent(`${activated.code} is now the active academic term.`));
+});
+
+router.post('/terms/:id/delete', requireAdmin, (req, res) => {
+  const removed = deleteTerm(req.params.id);
+  if (!removed) {
+    return res.redirect('/admin/terms?error=' + encodeURIComponent('Cannot delete an active term or the only remaining term.'));
+  }
+  res.redirect('/admin/terms?success=' + encodeURIComponent('Scheduled term deleted.'));
+});
+
+router.post('/terms/settings', requireAdmin, (req, res) => {
+  const requireOrientation = req.body.require_orientation === 'on' || req.body.require_orientation === 'true' || req.body.require_orientation === true;
+  updateAcademicSettings({
+    require_orientation: requireOrientation,
+    weekly_due_time_eat: '23:55'
+  });
+  appendActivity({
+    adminUsername: req.session.user.username,
+    adminName: req.session.user.full_name,
+    action: `${requireOrientation ? 'Enabled' : 'Disabled'} mandatory IDA 0001 orientation gate`,
+    targetType: 'settings',
+    targetId: 'require_orientation'
+  });
+  res.redirect('/admin/terms?success=' + encodeURIComponent(`Orientation requirement ${requireOrientation ? 'enabled' : 'disabled'}.`));
+});
+
 router.post('/courses/new', requireAdmin, (req, res) => {
   const { title, code, description, instructor, status, capacity } = req.body;
   const cleanTitle = (title || '').trim();
@@ -1288,6 +1385,7 @@ router.get('/courses/:id/modules', requireAdmin, (req, res) => {
     resolvedInstructor: resolveModuleInstructor(course, mod, allUsers),
     hasOverride: Boolean(mod.instructor_username)
   }));
+  const academicConfig = getAcademicConfig();
 
   res.render('admin/modules', {
     title: `Manage Modules – ${course.code} | Pastors LMS`,
@@ -1297,9 +1395,88 @@ router.get('/courses/:id/modules', requireAdmin, (req, res) => {
     teachers,
     courseInstructor,
     modulesWithInstructors,
+    terms: academicConfig.terms,
+    activeTerm: getActiveTerm(),
     success: req.query.success || null,
     error: req.query.error || null
   });
+});
+
+// POST /admin/courses/:id/modules/generate-schedule - Auto-generate Thu->Wed weekly unit dates
+router.post('/courses/:id/modules/generate-schedule', requireAdmin, (req, res) => {
+  const data = getCoursesData();
+  const course = (data.courses || []).find(item => Number(item.id) === Number(req.params.id));
+  if (!course) return res.redirect('/admin/courses');
+
+  const config = getAcademicConfig();
+  const chosenTerm = req.body.term_id
+    ? config.terms.find(t => t.id === req.body.term_id)
+    : getActiveTerm();
+
+  const startIso = (/^\d{4}-\d{2}-\d{2}$/.test(String(req.body.start_date || '').trim()))
+    ? String(req.body.start_date).trim()
+    : (chosenTerm ? chosenTerm.start_date : '');
+
+  if (!startIso) {
+    return res.redirect(`/admin/courses/${course.id}/modules?error=${encodeURIComponent('Provide a valid term or start date (YYYY-MM-DD).')}`);
+  }
+
+  const mods = [...(course.modules || [])].sort((a, b) => (Number(a.sort_order) || 0) - (Number(b.sort_order) || 0));
+  let learningUnitIndex = 0;
+
+  mods.forEach((mod, idx) => {
+    const isIntro = (Number(mod.sort_order) === 1 || idx === 0) && /intro/i.test(String(mod.title || ''));
+    if (isIntro) {
+      mod.unlock_date = startIso;
+      mod.due_date = null;
+    } else {
+      const unlockIso = addDaysIso(startIso, learningUnitIndex * 7);
+      const dueIso = addDaysIso(unlockIso, 6);
+      mod.unlock_date = unlockIso;
+      mod.due_date = dueIso;
+      learningUnitIndex += 1;
+    }
+  });
+
+  if (chosenTerm) {
+    course.term = chosenTerm.code;
+    course.start_date = chosenTerm.start_date;
+    course.end_date = chosenTerm.end_date;
+  }
+
+  saveCoursesData(data);
+  appendActivity({
+    adminUsername: req.session.user.username,
+    adminName: req.session.user.full_name,
+    action: `Generated weekly Thu→Wed schedule for ${course.code} starting ${startIso}`,
+    targetType: 'course',
+    targetId: course.id
+  });
+
+  res.redirect(`/admin/courses/${course.id}/modules?success=${encodeURIComponent(`Weekly unit schedule generated starting ${startIso} (Thursday → Wednesday rhythm).`)}`);
+});
+
+// POST /admin/courses/:id/modules/clear-schedule - Reset unit unlock & due dates to open access
+router.post('/courses/:id/modules/clear-schedule', requireAdmin, (req, res) => {
+  const data = getCoursesData();
+  const course = (data.courses || []).find(item => Number(item.id) === Number(req.params.id));
+  if (!course) return res.redirect('/admin/courses');
+
+  (course.modules || []).forEach(mod => {
+    mod.unlock_date = null;
+    mod.due_date = null;
+  });
+
+  saveCoursesData(data);
+  appendActivity({
+    adminUsername: req.session.user.username,
+    adminName: req.session.user.full_name,
+    action: `Cleared module schedule dates for ${course.code}`,
+    targetType: 'course',
+    targetId: course.id
+  });
+
+  res.redirect(`/admin/courses/${course.id}/modules?success=${encodeURIComponent('All unit schedule dates cleared (all units open).')}`);
 });
 
 // POST /admin/courses/:id/modules/new - Add a new module

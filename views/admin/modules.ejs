@@ -60,6 +60,38 @@
       </div>
     <% } %>
 
+    <!-- Weekly Rhythm Schedule Auto-Generator -->
+    <section class="weekly-schedule-card" id="weeklyScheduleCard">
+      <div class="weekly-schedule-head">
+        <div>
+          <h3>Weekly Unit Release Schedule (Thu &rarr; Wed, EAT)</h3>
+          <p class="lecturer-subtitle">Automatically assign weekly unlock dates (Thursday) and due dates (Wednesday) across all learning units in <strong><%= course.code %></strong>.</p>
+        </div>
+        <form action="/admin/courses/<%= course.id %>/modules/clear-schedule" method="POST">
+          <button type="submit" class="btn btn-outline btn-sm" id="btnClearWeeklySchedule">Clear Schedule (Open All Units)</button>
+        </form>
+      </div>
+      <form action="/admin/courses/<%= course.id %>/modules/generate-schedule" method="POST" class="extension-form-grid" id="generateScheduleForm">
+        <div>
+          <label class="form-label" for="scheduleTermSelect">Select Academic Term</label>
+          <select id="scheduleTermSelect" name="term_id" class="form-input">
+            <% (typeof terms !== 'undefined' ? terms : []).forEach(t => { %>
+              <option value="<%= t.id %>" <%= (activeTerm && activeTerm.id === t.id) ? 'selected' : '' %>>
+                <%= t.code %> (Starts <%= t.start_date %>)
+              </option>
+            <% }) %>
+          </select>
+        </div>
+        <div>
+          <label class="form-label" for="scheduleStartInput">Or Custom Start Date (Thursday)</label>
+          <input type="date" id="scheduleStartInput" name="start_date" class="form-input">
+        </div>
+        <div class="extension-submit-wrap">
+          <button type="submit" class="btn btn-primary" id="btnGenerateWeeklySchedule">Auto-Generate Weekly Unit Dates</button>
+        </div>
+      </form>
+    </section>
+
     <!-- Add New Module Form -->
     <div class="form-container add-module-form">
       <h3>Add New Module</h3>
@@ -131,6 +163,14 @@
                   <div class="stat-item">
                     <span class="stat-label">Total Topics:</span>
                     <span class="stat-value"><%= module.total_topics %></span>
+                  </div>
+                  <div class="stat-item">
+                    <span class="stat-label">Opens:</span>
+                    <span class="stat-value"><%= module.unlock_date || 'Open immediately' %></span>
+                  </div>
+                  <div class="stat-item">
+                    <span class="stat-label">Due:</span>
+                    <span class="stat-value"><%= module.due_date || 'No hard lock' %></span>
                   </div>
                   <div class="stat-item">
                     <span class="stat-label">Lecturer:</span>

@@ -142,9 +142,44 @@
 
     <!-- Student Deadline Extensions -->
     <section class="admin-surface admin-section-spaced" id="deadlineExtensionsSection">
-      <h2>Grant Deadline Extension (EAT)</h2>
-      <p class="admin-subtitle">Approve extra time for a pastor facing ministry emergencies, bereavement, or rural connectivity outages. Deadlines lock automatically at 11:59 PM EAT unless extended.</p>
+      <h2>Student Extension Requests &amp; Deadline Overrides (EAT)</h2>
+      <p class="admin-subtitle">Review pastors' extension requests or directly grant extra time for ministry emergencies, bereavement, or rural connectivity outages.</p>
 
+      <% const pendingReqs = (typeof extensionRequests !== 'undefined' ? extensionRequests : []).filter(r => r.status === 'pending'); %>
+      <div class="ext-req-review-wrap" id="pendingExtensionRequestsList">
+        <h3>Pending Extension Requests (<%= pendingReqs.length %>)</h3>
+        <% if (pendingReqs.length === 0) { %>
+          <p class="lecturer-subtitle">No pending deadline extension requests from pastors right now.</p>
+        <% } else { %>
+          <% pendingReqs.forEach(reqItem => { %>
+            <article class="ext-req-review-card" id="extReqCard-<%= reqItem.id %>">
+              <div class="ext-req-review-head">
+                <div>
+                  <span class="badge badge-purple"><%= reqItem.course_code %></span>
+                  <span class="lecturer-scope-tag lecturer-scope-course"><%= reqItem.module_title %></span>
+                  <strong><%= reqItem.student_name %> (@<%= reqItem.student_username %>)</strong>
+                </div>
+                <span class="lecturer-scope-tag lecturer-scope-module">Requested until <%= reqItem.requested_until %></span>
+              </div>
+              <p class="ext-req-reason">"<%= reqItem.reason %>"</p>
+              <form action="/teacher/extension-requests/<%= reqItem.id %>/resolve" method="POST" class="ext-review-actions" id="extResolveForm-<%= reqItem.id %>">
+                <div>
+                  <label class="form-label" for="approveDate-<%= reqItem.id %>">Approve Until</label>
+                  <input type="date" id="approveDate-<%= reqItem.id %>" name="approved_until" class="form-input" value="<%= reqItem.requested_until %>">
+                </div>
+                <div class="grading-field-feedback">
+                  <label class="form-label" for="approveNote-<%= reqItem.id %>">Note to Pastor (Optional)</label>
+                  <input type="text" id="approveNote-<%= reqItem.id %>" name="reviewer_note" class="form-input" placeholder="e.g. Praying with you — granted until Wednesday">
+                </div>
+                <button type="submit" name="decision" value="approve" class="btn btn-primary btn-sm" id="btnApproveExtReq-<%= reqItem.id %>">Approve Extension</button>
+                <button type="submit" name="decision" value="deny" class="btn btn-outline btn-sm" id="btnDenyExtReq-<%= reqItem.id %>">Decline</button>
+              </form>
+            </article>
+          <% }) %>
+        <% } %>
+      </div>
+
+      <h3 class="admin-subhead-spaced">Grant Manual Deadline Extension</h3>
       <form action="/teacher/extensions" method="POST" class="extension-form-grid" id="extensionForm">
         <div>
           <label class="form-label" for="extStudentSelect">Pastor / Student</label>

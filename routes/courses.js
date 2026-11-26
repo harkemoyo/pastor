@@ -11,6 +11,11 @@ const {
   isCourseEnrolled,
   getEastAfricaNow,
   checkDeadlineLock,
+  getAcademicConfig,
+  getActiveTerm,
+  computeTermWeekInfo,
+  getOrientationStatus,
+  getExtensionRequests,
   getAnnouncements,
   getSubmissions,
   getDiscussions,
@@ -462,6 +467,11 @@ router.get('/', requireAuth, async (req, res) => {
   const totalTopicsAll = enrichedCourses.reduce((sum, c) => sum + c.totalTopics, 0);
   const overallPercent = totalTopicsAll > 0 ? Math.round((totalCompletedTopics / totalTopicsAll) * 100) : 0;
 
+  const academicConfig = getAcademicConfig();
+  const activeTerm = getActiveTerm();
+  const termWeekInfo = computeTermWeekInfo(activeTerm);
+  const orientationStatus = getOrientationStatus(username);
+
   res.render('dashboard', {
     title: 'Pastor Dashboard | Pastors LMS',
     courses: enrichedCourses,
@@ -469,6 +479,10 @@ router.get('/', requireAuth, async (req, res) => {
     pastCourses,
     tasks: data.tasks || [],
     workToDo,
+    activeTerm,
+    termWeekInfo,
+    orientationStatus,
+    requireOrientation: Boolean(academicConfig.settings && academicConfig.settings.require_orientation),
     stats: {
       totalEnrolled,
       currentCount: currentCourses.length,
@@ -487,10 +501,17 @@ router.get('/courses', requireAuth, (req, res) => {
   const courses = visibleCourses.map(c => enrichCourseStats(c, userProg));
   const currentCount = courses.filter(c => c.status === 'current' || c.status === 'active').length;
   const pastCount = courses.filter(c => c.status === 'past').length;
+  const username = req.session.user.username || req.session.user.email;
+  const academicConfig = getAcademicConfig();
+  const activeTerm = getActiveTerm();
 
   res.render('courses', {
     title: 'My Courses | Pastors LMS',
     courses,
+    activeTerm,
+    termWeekInfo: computeTermWeekInfo(activeTerm),
+    orientationStatus: getOrientationStatus(username),
+    requireOrientation: Boolean(academicConfig.settings && academicConfig.settings.require_orientation),
     stats: { currentCount, pastCount }
   });
 });
@@ -524,6 +545,16 @@ router.get('/courses/:id', requireAuth, async (req, res) => {
   const isStaff = ['admin', 'super_admin', 'teacher'].includes(req.session.user.role);
   const username = req.session.user.username || req.session.user.email;
   const userRole = req.session.user.role || 'student';
+
+  const academicConfig = getAcademicConfig();
+  const orientationStatus = getOrientationStatus(username);
+  if (!isStaff && academicConfig.settings && academicConfig.settings.require_orientation && !orientationStatus.completed) {
+    return res.redirect('/orientation?required=1');
+  }
+
+  const activeTerm = getActiveTerm();
+  const termWeekInfo = computeTermWeekInfo(activeTerm);
+  const myExtensionRequests = getExtensionRequests({ course_id: courseId, student_username: username });
 
   if (Array.isArray(course.modulesWithTopics)) {
     course.modulesWithTopics = course.modulesWithTopics.map(mod => {
@@ -668,6 +699,10 @@ router.get('/courses/:id', requireAuth, async (req, res) => {
     gradeSummary,
     mySubmissions: mySubs,
     workToDo,
+    activeTerm,
+    termWeekInfo,
+    orientationStatus,
+    myExtensionRequests,
     courseTasks: [],
     allTasks: data.tasks || []
   });

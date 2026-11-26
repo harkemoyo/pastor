@@ -800,6 +800,348 @@ function checkDeadlineLock({ courseId, moduleId, topicId, dueDateIso, username, 
 }
 
 // ==========================================================================
+// Academic Terms Calendar, Weekly Rhythm & Orientation (Phase 2)
+// ==========================================================================
+function addDaysIso(isoDate, days) {
+  if (!isoDate || !/^\d{4}-\d{2}-\d{2}$/.test(String(isoDate).trim())) return '';
+  const [y, m, d] = String(isoDate).trim().split('-').map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d + Number(days || 0), 12, 0, 0));
+  return dt.toISOString().slice(0, 10);
+}
+
+function formatUtcShortDate(isoDate) {
+  if (!isoDate || !/^\d{4}-\d{2}-\d{2}$/.test(String(isoDate))) return String(isoDate || '');
+  const [y, m, d] = isoDate.split('-').map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
+  return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+}
+
+function buildDefaultAcademicConfig() {
+  return {
+    settings: {
+      require_orientation: false,
+      weekly_due_time_eat: '23:55'
+    },
+    terms: [
+      {
+        id: 'term-ay2027-t1',
+        code: 'AY2027-T1',
+        name: 'Term 1 — 2026/2027 Academic Year',
+        start_date: '2026-11-12',
+        end_date: '2027-01-13',
+        weeks: 9,
+        registration_open: '2026-10-15',
+        registration_close: '2026-11-11',
+        add_drop_end: '2026-11-18',
+        is_active: true
+      },
+      {
+        id: 'term-ay2027-t2',
+        code: 'AY2027-T2',
+        name: 'Term 2 — 2026/2027 Academic Year',
+        start_date: '2027-01-21',
+        end_date: '2027-03-24',
+        weeks: 9,
+        registration_open: '2026-12-20',
+        registration_close: '2027-01-20',
+        add_drop_end: '2027-01-27',
+        is_active: false
+      }
+    ]
+  };
+}
+
+function getAcademicConfig() {
+  const defaults = buildDefaultAcademicConfig();
+  const saved = readLocalJson('terms.json', null);
+  if (!saved || typeof saved !== 'object') return defaults;
+  const terms = Array.isArray(saved.terms) && saved.terms.length > 0 ? saved.terms : defaults.terms;
+  const settings = { ...defaults.settings, ...(saved.settings || {}) };
+  return { settings, terms };
+}
+
+function getActiveTerm() {
+  const { terms } = getAcademicConfig();
+  return terms.find(t => t && t.is_active) || terms[0] || null;
+}
+
+function saveTerm(payload) {
+  const config = getAcademicConfig();
+  const code = String(payload.code || '').trim().toUpperCase().slice(0, 32);
+  const name = String(payload.name || '').trim().slice(0, 120);
+  const startDate = String(payload.start_date || '').trim();
+  const endDate = String(payload.end_date || '').trim();
+  const weeks = Math.min(16, Math.max(1, parseInt(payload.weeks, 10) || 9));
+  if (!code || !name || !/^\d{4}-\d{2}-\d{2}$/.test(startDate) || !/^\d{4}-\d{2}-\d{2}$/.test(endDate)) {
+    return null;
+  }
+
+  const termId = String(payload.id || `term-${code.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`).trim();
+  const makeActive = payload.is_active === true || payload.is_active === 'true' || payload.is_active === 'on';
+
+  const record = {
+    id: termId,
+    code,
+    name,
+    start_date: startDate,
+    end_date: endDate,
+    weeks,
+    registration_open: /^\d{4}-\d{2}-\d{2}$/.test(String(payload.registration_open || '')) ? String(payload.registration_open).trim() : null,
+    registration_close: /^\d{4}-\d{2}-\d{2}$/.test(String(payload.registration_close || '')) ? String(payload.registration_close).trim() : null,
+    add_drop_end: /^\d{4}-\d{2}-\d{2}$/.test(String(payload.add_drop_end || '')) ? String(payload.add_drop_end).trim() : null,
+    is_active: makeActive
+  };
+
+  let nextTerms = [...config.terms];
+  if (makeActive) {
+    nextTerms = nextTerms.map(t => ({ ...t, is_active: false }));
+  }
+
+  const idx = nextTerms.findIndex(t => t.id === termId || String(t.code).toUpperCase() === code);
+  if (idx >= 0) nextTerms[idx] = { ...nextTerms[idx], ...record };
+  else nextTerms.push(record);
+
+  if (!nextTerms.some(t => t.is_active) && nextTerms.length > 0) {
+    nextTerms[0].is_active = true;
+  }
+  nextTerms.sort((a, b) => String(a.start_date).localeCompare(String(b.start_date)));
+
+  writeLocalJson('terms.json', { settings: config.settings, terms: nextTerms });
+  return nextTerms.find(t => t.id === termId || String(t.code).toUpperCase() === code);
+}
+
+function setActiveTerm(termId) {
+  const config = getAcademicConfig();
+  const found = config.terms.find(t => t.id === termId);
+  if (!found) return null;
+  const nextTerms = config.terms.map(t => ({ ...t, is_active: t.id === termId }));
+  writeLocalJson('terms.json', { settings: config.settings, terms: nextTerms });
+  return nextTerms.find(t => t.id === termId);
+}
+
+function deleteTerm(termId) {
+  const config = getAcademicConfig();
+  if (config.terms.length <= 1) return false;
+  const target = config.terms.find(t => t.id === termId);
+  if (!target || target.is_active) return false;
+  const nextTerms = config.terms.filter(t => t.id !== termId);
+  writeLocalJson('terms.json', { settings: config.settings, terms: nextTerms });
+  return true;
+}
+
+function updateAcademicSettings(partial = {}) {
+  const config = getAcademicConfig();
+  const nextSettings = {
+    ...config.settings,
+    require_orientation: partial.require_orientation !== undefined
+      ? Boolean(partial.require_orientation)
+      : config.settings.require_orientation,
+    weekly_due_time_eat: partial.weekly_due_time_eat || config.settings.weekly_due_time_eat
+  };
+  writeLocalJson('terms.json', { settings: nextSettings, terms: config.terms });
+  return nextSettings;
+}
+
+function computeTermWeekInfo(term) {
+  if (!term || !term.start_date || !term.end_date) {
+    return {
+      phase: 'active',
+      currentWeek: 1,
+      totalWeeks: 9,
+      statusLabel: 'Active Term',
+      nextDeadlineLabel: 'Wednesdays at 11:55 PM EAT',
+      weekStartIso: null,
+      weekEndIso: null,
+      inRegistrationWindow: false,
+      inAddDropWindow: false
+    };
+  }
+  const todayIso = getEastAfricaNow().isoDate;
+  const totalWeeks = Number(term.weeks) > 0 ? Number(term.weeks) : 9;
+  const [sy, sm, sd] = term.start_date.split('-').map(Number);
+  const [ty, tm, td] = todayIso.split('-').map(Number);
+  const startUtc = Date.UTC(sy, sm - 1, sd);
+  const todayUtc = Date.UTC(ty, tm - 1, td);
+  const diffDays = Math.floor((todayUtc - startUtc) / 86400000);
+
+  const inRegistrationWindow = Boolean(
+    term.registration_open && term.registration_close &&
+    todayIso >= term.registration_open && todayIso <= term.registration_close
+  );
+  const inAddDropWindow = Boolean(
+    term.add_drop_end && todayIso >= term.start_date && todayIso <= term.add_drop_end
+  );
+
+  if (todayIso < term.start_date) {
+    return {
+      phase: 'upcoming',
+      currentWeek: 0,
+      totalWeeks,
+      statusLabel: `Starts ${formatUtcShortDate(term.start_date)}`,
+      nextDeadlineLabel: `Orientation & Registration Open • Term starts ${formatUtcShortDate(term.start_date)}`,
+      weekStartIso: term.start_date,
+      weekEndIso: addDaysIso(term.start_date, 6),
+      inRegistrationWindow,
+      inAddDropWindow
+    };
+  }
+
+  if (todayIso > term.end_date) {
+    return {
+      phase: 'completed',
+      currentWeek: totalWeeks,
+      totalWeeks,
+      statusLabel: 'Term Completed',
+      nextDeadlineLabel: `Ended ${formatUtcShortDate(term.end_date)}`,
+      weekStartIso: addDaysIso(term.end_date, -6),
+      weekEndIso: term.end_date,
+      inRegistrationWindow,
+      inAddDropWindow
+    };
+  }
+
+  const currentWeek = Math.min(totalWeeks, Math.max(1, Math.floor(diffDays / 7) + 1));
+  const weekStartIso = addDaysIso(term.start_date, (currentWeek - 1) * 7);
+  const weekEndIso = addDaysIso(weekStartIso, 6);
+
+  return {
+    phase: 'active',
+    currentWeek,
+    totalWeeks,
+    statusLabel: `Week ${currentWeek} of ${totalWeeks}`,
+    nextDeadlineLabel: `Wed, ${formatUtcShortDate(weekEndIso)} at 11:55 PM EAT`,
+    weekStartIso,
+    weekEndIso,
+    inRegistrationWindow,
+    inAddDropWindow
+  };
+}
+
+// ==========================================================================
+// Student Extension Requests (Requested by Pastor -> Reviewed by Instructor)
+// ==========================================================================
+function getExtensionRequests(filter = {}) {
+  let rows = readLocalJson('extension-requests.json', []);
+  if (!Array.isArray(rows)) rows = [];
+  if (filter.student_username) {
+    const target = String(filter.student_username).toLowerCase();
+    rows = rows.filter(r => String(r.student_username || '').toLowerCase() === target);
+  }
+  if (filter.course_id) {
+    rows = rows.filter(r => Number(r.course_id) === Number(filter.course_id));
+  }
+  if (filter.status) {
+    rows = rows.filter(r => String(r.status) === String(filter.status));
+  }
+  return rows.sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')));
+}
+
+function createExtensionRequest(payload) {
+  const studentUsername = String(payload.student_username || '').trim().toLowerCase();
+  const courseId = Number(payload.course_id);
+  const moduleId = Number(payload.module_id);
+  const requestedUntil = String(payload.requested_until || '').trim();
+  const reason = String(payload.reason || '').trim().slice(0, 400);
+  if (!studentUsername || !courseId || !moduleId || !/^\d{4}-\d{2}-\d{2}$/.test(requestedUntil) || reason.length < 6) {
+    return null;
+  }
+
+  const record = {
+    id: `extreq-${crypto.randomUUID()}`,
+    student_username: studentUsername,
+    student_name: String(payload.student_name || studentUsername).trim(),
+    course_id: courseId,
+    module_id: moduleId,
+    topic_id: String(payload.topic_id || '*').trim() || '*',
+    requested_until: requestedUntil,
+    reason,
+    status: 'pending',
+    reviewer_name: null,
+    reviewer_note: '',
+    reviewed_at: null,
+    created_at: new Date().toISOString()
+  };
+
+  const all = getExtensionRequests();
+  all.unshift(record);
+  writeLocalJson('extension-requests.json', all);
+  return record;
+}
+
+function resolveExtensionRequest(reqId, { status, approved_until, reviewer_name, reviewer_note }) {
+  const cleanStatus = status === 'approved' ? 'approved' : (status === 'denied' ? 'denied' : null);
+  if (!cleanStatus) return null;
+
+  const all = getExtensionRequests();
+  const idx = all.findIndex(r => r.id === reqId);
+  if (idx < 0) return null;
+
+  const target = all[idx];
+  const finalDate = (approved_until && /^\d{4}-\d{2}-\d{2}$/.test(String(approved_until).trim()))
+    ? String(approved_until).trim()
+    : target.requested_until;
+
+  const updated = {
+    ...target,
+    status: cleanStatus,
+    requested_until: finalDate,
+    reviewer_name: String(reviewer_name || 'Instructor').trim(),
+    reviewer_note: String(reviewer_note || '').trim().slice(0, 240),
+    reviewed_at: new Date().toISOString()
+  };
+  all[idx] = updated;
+  writeLocalJson('extension-requests.json', all);
+
+  if (cleanStatus === 'approved') {
+    saveDeadlineExtension({
+      student_username: updated.student_username,
+      student_name: updated.student_name,
+      course_id: updated.course_id,
+      module_id: updated.module_id,
+      topic_id: updated.topic_id || '*',
+      extended_until: finalDate,
+      reason: updated.reason,
+      granted_by: updated.reviewer_name
+    });
+  }
+  return updated;
+}
+
+// ==========================================================================
+// Orientation Course (IDA 0001) Completion Tracking
+// ==========================================================================
+function getOrientationStatus(username) {
+  if (!username) {
+    return { completed: false, completed_at: null, score: 0, total: 3, covenant_accepted: false };
+  }
+  const map = readLocalJson('orientation.json', {});
+  const rec = map && typeof map === 'object' ? map[String(username).toLowerCase()] : null;
+  if (!rec || !rec.completed) {
+    return { completed: false, completed_at: null, score: 0, total: 3, covenant_accepted: false };
+  }
+  return rec;
+}
+
+function saveOrientationCompletion(username, { full_name, score, total, covenant_accepted }) {
+  if (!username) return null;
+  const key = String(username).toLowerCase();
+  const map = readLocalJson('orientation.json', {});
+  const next = (map && typeof map === 'object' && !Array.isArray(map)) ? { ...map } : {};
+  const record = {
+    username: key,
+    full_name: String(full_name || username).trim(),
+    completed: true,
+    score: Number(score) || 0,
+    total: Number(total) || 3,
+    covenant_accepted: Boolean(covenant_accepted),
+    completed_at: new Date().toISOString()
+  };
+  next[key] = record;
+  writeLocalJson('orientation.json', next);
+  return record;
+}
+
+// ==========================================================================
 // Supabase Storage Upload for Profile Pictures (Vercel Cloud Support)
 // ==========================================================================
 async function uploadProfilePictureToStorage(buffer, username, contentType = 'image/webp') {
@@ -845,5 +1187,18 @@ module.exports = {
   saveDeadlineExtension,
   deleteDeadlineExtension,
   checkDeadlineLock,
+  addDaysIso,
+  getAcademicConfig,
+  getActiveTerm,
+  saveTerm,
+  setActiveTerm,
+  deleteTerm,
+  updateAcademicSettings,
+  computeTermWeekInfo,
+  getExtensionRequests,
+  createExtensionRequest,
+  resolveExtensionRequest,
+  getOrientationStatus,
+  saveOrientationCompletion,
   uploadProfilePictureToStorage
 };

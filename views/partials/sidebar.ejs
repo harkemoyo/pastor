@@ -11,6 +11,12 @@
       <div class="uop-time-date" id="uopWidgetDate">Loading date...</div>
       <div class="uop-time-clock" id="uopWidgetClock">--:--:--</div>
       <div class="uop-time-zone" id="uopWidgetZone">East Africa Time (EAT)</div>
+      <% if (typeof activeTerm !== 'undefined' && activeTerm && typeof termWeekInfo !== 'undefined' && termWeekInfo) { %>
+        <div class="uop-term-week-pill" id="uopTermWeekPill">
+          <strong><%= activeTerm.code %> &bull; <%= termWeekInfo.statusLabel %></strong>
+          <span><%= termWeekInfo.nextDeadlineLabel %></span>
+        </div>
+      <% } %>
     </div>
   </section>
 

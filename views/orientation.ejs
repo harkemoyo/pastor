@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title || 'IDA 0001 Orientation | Pastors LMS' %></title>
+  <link rel="stylesheet" href="/css/global.css?v=<%= locals.assetVersion || '3' %>">
+  <link rel="stylesheet" href="/css/dashboard.css?v=<%= locals.assetVersion || '3' %>">
+  <link rel="stylesheet" href="/css/course.css?v=<%= locals.assetVersion || '3' %>">
+  <link rel="stylesheet" href="/css/footer.css?v=<%= locals.assetVersion || '3' %>">
+  <link rel="icon" type="image/x-icon" href="/images/favicon.ico">
+</head>
+<body class="app-container">
+  <%- include('partials/header') %>
+
+  <main class="main-content orientation-page">
+    <section class="orientation-hero">
+      <span class="course-code-tag">IDA 0001 &middot; MANDATORY CAMPUS ORIENTATION</span>
+      <h1>Explore the Pastoral Training Campus</h1>
+      <p>
+        Before opening weekly theology units, take 5 minutes to learn how Pastors LMS works, our Thursday-to-Wednesday weekly study rhythm in East Africa Time (EAT), and our shared doctrinal and academic integrity covenant.
+      </p>
+      <% if (activeTerm) { %>
+        <div class="orientation-term-badge" id="orientationActiveTermBadge">
+          Active Term: <strong><%= activeTerm.code %></strong> &bull; <%= termWeekInfo ? termWeekInfo.statusLabel : '' %>
+        </div>
+      <% } %>
+    </section>
+
+    <% if (requiredNotice) { %>
+      <div class="alert alert-danger" id="orientationRequiredAlert" role="alert">
+        Please complete the short IDA 0001 Orientation check and Doctrinal Covenant below before entering your course rooms.
+      </div>
+    <% } %>
+
+    <% if (success) { %>
+      <div class="alert alert-success" role="status"><%= success %></div>
+    <% } %>
+    <% if (error) { %>
+      <div class="alert alert-danger" role="alert"><%= error %></div>
+    <% } %>
+
+    <% if (orientationStatus && orientationStatus.completed) { %>
+      <section class="orientation-completed-banner" id="orientationCompletedBanner">
+        <div>
+          <h2>✓ IDA 0001 Orientation Completed</h2>
+          <p>
+            Verified on <strong><%= new Date(orientationStatus.completed_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) %></strong>
+            &bull; Readiness Score: <strong><%= orientationStatus.score %>/<%= orientationStatus.total %></strong>
+            &bull; Doctrinal Covenant Accepted
+          </p>
+        </div>
+        <a href="/courses" class="btn btn-primary" id="btnOrientationGoCourses">Go to My Courses &rarr;</a>
+      </section>
+    <% } %>
+
+    <!-- 3 Orientation Guide Cards -->
+    <div class="orientation-cards-grid">
+      <article class="orientation-step-card">
+        <div class="orientation-step-num">1</div>
+        <h2>Navigating Your Course Room</h2>
+        <ul>
+          <li><strong>Home Tab:</strong> Read instructor announcements, check your weekly Work To Do deadlines, and jump to any unit card.</li>
+          <li><strong>Content Tab:</strong> Read Bible-centered lessons step-by-step and save units offline for rural preaching travel.</li>
+          <li><strong>Classlist &amp; Support:</strong> Contact your module lecturer directly via WhatsApp or Email whenever you need pastoral guidance.</li>
+        </ul>
+      </article>
+
+      <article class="orientation-step-card">
+        <div class="orientation-step-num">2</div>
+        <h2>Weekly Study Rhythm (EAT)</h2>
+        <ul>
+          <li><strong>Thursday:</strong> New unit lessons, readings, and cohort discussion questions open at dawn (EAT).</li>
+          <li><strong>Friday &ndash; Sunday:</strong> Study the prescribed Scripture passages and share your first reflection in the Discussion Forum.</li>
+          <li><strong>Monday &ndash; Tuesday:</strong> Encourage at least two brother/sister pastors in their posts and write your assignment reflection.</li>
+          <li><strong>Wednesday 11:55 PM EAT:</strong> Weekly deadline locks automatically. Need extra time for church bereavement or outage? Request an extension in Course Tools.</li>
+        </ul>
+      </article>
+
+      <article class="orientation-step-card">
+        <div class="orientation-step-num">3</div>
+        <h2>Sound Doctrine &amp; Integrity</h2>
+        <ul>
+          <li><strong>Scripture-Centered Faith:</strong> We hold fast to Holy Scripture as our sufficient rule of faith and pastoral practice (2 Timothy 3:16).</li>
+          <li><strong>Original Pastoral Work:</strong> Quizzes are graded on the server; written work requires the Academic Honesty Pledge.</li>
+          <li><strong>Official Recognition:</strong> Both 100% unit progress and a 60%+ weighted average unlock your Certificate; Transcripts carry a tamper-proof QR seal.</li>
+        </ul>
+      </article>
+    </div>
+
+    <!-- Orientation Check & Covenant Form -->
+    <section class="bp-tab-card orientation-quiz-section" id="orientationQuizSection">
+      <h2>Orientation Readiness Check &amp; Pastoral Covenant</h2>
+      <p>Answer the 3 quick check questions below and affirm our Seminary Covenant to unlock your courses.</p>
+
+      <form action="/orientation/complete" method="POST" id="orientationQuizForm">
+        <% (questions || []).forEach((q, idx) => { %>
+          <div class="quiz-question-card">
+            <p class="quiz-q-title"><strong>Q<%= idx + 1 %>.</strong> <%= q.prompt %></p>
+            <% Object.entries(q.options).forEach(([letter, label]) => { %>
+              <label class="quiz-option-label">
+                <input type="radio" name="<%= q.id %>" value="<%= letter %>" required>
+                <span><strong><%= letter.toUpperCase() %>.</strong> <%= label %></span>
+              </label>
+            <% }) %>
+          </div>
+        <% }) %>
+
+        <label class="orientation-covenant-box" for="orientationCovenantCheck">
+          <input type="checkbox" id="orientationCovenantCheck" name="covenant_accepted" class="integrity-pledge-input" <%= (orientationStatus && orientationStatus.covenant_accepted) ? 'checked' : '' %> required>
+          <span>
+            <strong>Doctrinal &amp; Academic Integrity Covenant:</strong> I affirm the biblical authority of Scripture for faithful pastoral ministry, and I commit to submitting only my own honest work throughout my studies at Intentional Discipleship Africa.
+          </span>
+        </label>
+
+        <div class="orientation-submit-row">
+          <button type="submit" class="btn btn-primary" id="btnCompleteOrientation">
+            <%= (orientationStatus && orientationStatus.completed) ? 'Re-Verify Orientation' : 'Complete Orientation & Unlock Courses →' %>
+          </button>
+          <a href="/" class="btn btn-secondary" id="btnOrientationDashboard">Return to Dashboard</a>
+        </div>
+      </form>
+    </section>
+  </main>
+
+  <%- include('partials/footer') %>
+</body>
+</html>

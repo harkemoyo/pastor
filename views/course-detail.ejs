@@ -88,6 +88,10 @@
                 </div>
               <% }) %>
               <div class="bp-switcher-divider"></div>
+              <a href="/orientation" class="bp-switcher-portal-link" id="switcherOrientationLink">
+                IDA 0001 &mdash; Explore Pastors LMS Orientation
+                <% if (typeof orientationStatus !== 'undefined' && orientationStatus && orientationStatus.completed) { %>✓<% } %>
+              </a>
               <a href="/library" class="bp-switcher-portal-link" id="switcherLibraryLink">Pastors Theological Library &mdash; Study Resources</a>
               <a href="/library?type=document" class="bp-switcher-portal-link" id="switcherGuidesLink">Printable Pastoral Study Guides</a>
               <a href="/" class="bp-switcher-portal-link" id="switcherDashboardLink">Pastoral Training Dashboard</a>
@@ -359,6 +363,7 @@
         <div class="bp-nav-submenu" id="courseToolsDropdownMenu" role="menu">
           <button type="button" id="btnToolAnnouncements" role="menuitem" data-tool-action="announcements">Announcements</button>
           <button type="button" id="btnToolWorkToDo" role="menuitem" data-tool-action="worktodo">Work To Do &amp; Deadlines</button>
+          <button type="button" id="btnToolRequestExtension" role="menuitem" data-tool-action="extension">Request Deadline Extension</button>
           <button type="button" id="btnToolOfflineSave" role="menuitem" data-tool-action="offline">Save Course for Offline</button>
           <a href="/transcript?courseId=<%= course.id %>" id="btnToolTranscript" role="menuitem">Course Transcript (<%= course.code %>)</a>
           <a href="/transcript" id="btnToolCumulativeTranscript" role="menuitem">Cumulative Transcript (All Courses)</a>
@@ -415,6 +420,7 @@
           <a href="mailto:<%= (primaryInst && primaryInst.email) ? primaryInst.email : 'info@ida-africa.org' %>" id="btnHelpEmail" role="menuitem">
             Email Faculty Support
           </a>
+          <a href="/orientation" id="btnHelpOrientation" role="menuitem">Campus Orientation (IDA 0001)</a>
           <a href="/offline" id="btnHelpOffline" role="menuitem">Offline Reading Help</a>
         </div>
       </div>
@@ -886,7 +892,9 @@
       <%- include('partials/sidebar', {
         workToDo: typeof workToDo !== 'undefined' ? workToDo : null,
         isCoursePage: true,
-        courseInstructor: course.courseInstructor
+        courseInstructor: course.courseInstructor,
+        activeTerm: typeof activeTerm !== 'undefined' ? activeTerm : null,
+        termWeekInfo: typeof termWeekInfo !== 'undefined' ? termWeekInfo : null
       }) %>
     </div>
   </main>
@@ -909,6 +917,10 @@
             <% }) %>
           </select>
         </div>
+      </div>
+
+      <div class="discussion-rhythm-banner" id="discussionRhythmBanner">
+        <strong>Weekly Cohort Rhythm (EAT):</strong> Share your main reflection by <strong>Sunday night</strong> and reply encouragingly to at least <strong>2 fellow pastors</strong> before the unit closes on <strong>Wednesday at 11:55 PM EAT</strong>.
       </div>
 
       <!-- New Discussion Post Form -->
@@ -1115,7 +1127,67 @@
 
   <%- include('partials/footer') %>
 
-  <!-- Embed Rich Course Content into Client Script for Instant Fast Switching -->
+  <!-- Request Deadline Extension Modal -->
+  <div class="ext-modal-backdrop" id="extensionRequestModal" role="dialog" aria-modal="true" aria-labelledby="extModalTitle" hidden>
+    <div class="ext-modal-card">
+      <div class="ext-modal-head">
+        <div>
+          <h2 id="extModalTitle">Request Deadline Extension</h2>
+          <p>Submit a brief request to your instructor if ministry duties, bereavement, or rural connectivity interrupted your study week.</p>
+        </div>
+        <button type="button" class="ext-modal-close" id="btnCloseExtModal" aria-label="Close modal">&times;</button>
+      </div>
+
+      <form id="extensionRequestForm" class="ext-modal-form">
+        <div>
+          <label class="form-label" for="extReqModuleSelect">Unit / Module</label>
+          <select id="extReqModuleSelect" class="form-input" required>
+            <% (course.modulesWithTopics || course.modules || []).forEach(m => { %>
+              <option value="<%= m.id %>"><%= m.title %></option>
+            <% }) %>
+          </select>
+        </div>
+
+        <div>
+          <label class="form-label" for="extReqDateInput">Requested New Due Date (11:59 PM EAT)</label>
+          <input type="date" id="extReqDateInput" class="form-input" required>
+        </div>
+
+        <div>
+          <label class="form-label" for="extReqReasonInput">Pastoral Reason</label>
+          <textarea id="extReqReasonInput" class="assignment-textarea" rows="3" placeholder="e.g. Hospital bereavement visit in the parish or 3-day power outage..." required></textarea>
+        </div>
+
+        <div class="ext-modal-actions">
+          <button type="submit" class="btn btn-primary" id="btnSubmitExtReq">Submit Request to Instructor</button>
+          <button type="button" class="btn btn-secondary" id="btnCancelExtModal">Cancel</button>
+        </div>
+        <div id="extReqFeedbackMsg" class="assignment-saved-msg" hidden></div>
+      </form>
+
+      <div class="ext-req-history">
+        <h3>Your Extension Requests for <%= course.code %></h3>
+        <div id="myExtRequestsList" class="ext-req-list">
+          <% const extReqs = typeof myExtensionRequests !== 'undefined' ? myExtensionRequests : []; %>
+          <% if (!extReqs || extReqs.length === 0) { %>
+            <p class="lecturer-subtitle">No extension requests submitted for this course yet.</p>
+          <% } else { %>
+            <% extReqs.forEach(r => { %>
+              <div class="ext-req-row">
+                <div>
+                  <strong>Until <%= r.requested_until %></strong> &mdash; <%= r.reason %>
+                  <% if (r.reviewer_note) { %><div class="ext-reviewer-note">Instructor note: <%= r.reviewer_note %></div><% } %>
+                </div>
+                <span class="ext-status-pill ext-status-<%= r.status %>"><%= r.status %></span>
+              </div>
+            <% }) %>
+          <% } %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Embed Rich Course Content into Client Script into Fast Switching -->
   <div id="courseDataJson" hidden data-json="<%= JSON.stringify(course) %>"></div>
   <script src="/js/course-brightspace.js?v=<%= locals.assetVersion || '3' %>"></script>
 </body>
