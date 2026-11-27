@@ -880,6 +880,91 @@
   }
 }
 
+/* Phase 5 Staff & Admin Attendance, Reminders & Practicum Review */
+.attendance-roll-table .form-input,
+.admin-inline-update-form .form-input,
+.practicum-review-card .form-input {
+  min-height: 48px;
+}
+
+.roll-submit-row {
+  margin-top: 16px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.roll-submit-row .btn,
+.admin-actions .btn,
+.admin-topbar .btn,
+.broadcast-actions-row .btn {
+  min-height: 48px;
+}
+
+.broadcast-textarea {
+  width: 100%;
+  font-size: 1rem;
+  line-height: 1.5;
+  margin-top: 6px;
+}
+
+.broadcast-actions-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 12px;
+  align-items: center;
+}
+
+.teacher-practicum-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.practicum-review-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.prac-review-body p {
+  margin: 0 0 8px;
+  font-size: 1rem;
+  color: #0B192C;
+}
+
+.low-att-alert-banner {
+  background: #FBE9ED;
+  border: 2px solid #670C21;
+  color: #670C21;
+  padding: 14px 18px;
+  border-radius: 12px;
+  margin-bottom: 18px;
+  font-size: 1.05rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.admin-inline-update-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.admin-inline-update-form .btn {
+  min-height: 48px;
+}
+
+@media (max-width: 768px) {
+  .admin-inline-update-form {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
 @media print {
   .top-navbar, .site-footer, .filters-bar, .admin-actions, .pagination, .action-stack, .status-pill-list, .btn {
     display: none !important;

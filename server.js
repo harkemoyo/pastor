@@ -13,6 +13,7 @@ const onboardingRoutes = require('./routes/onboarding');
 const libraryRoutes = require('./routes/library');
 const teacherRoutes = require('./routes/teacher');
 const academicsRoutes = require('./routes/academics');
+const engagementRoutes = require('./routes/engagement');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -22,7 +23,7 @@ app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
 // Asset version string to prevent stale CSS/JS from old caches
-const ASSET_VERSION = '20261126d';
+const ASSET_VERSION = '20261127a';
 app.use((req, res, next) => {
   res.locals.assetVersion = ASSET_VERSION;
   next();
@@ -268,6 +269,7 @@ app.use('/', authRoutes);
 app.use('/', coursesRoutes);
 app.use('/', libraryRoutes);
 app.use('/', academicsRoutes);
+app.use('/', engagementRoutes);
 app.use('/teacher', teacherRoutes);
 app.use('/admin', adminRoutes);
 app.use('/onboarding', onboardingRoutes);

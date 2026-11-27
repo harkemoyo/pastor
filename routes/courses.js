@@ -24,6 +24,12 @@ const {
   getDiscussions,
   computeCourseGradeSummary
 } = require('../utils/lms-store');
+const {
+  getLiveSessions,
+  getAttendanceRecords,
+  computeStudentAttendanceSummary,
+  getPracticumSubmissions
+} = require('../utils/engagement-store');
 
 const COURSES_FILE = path.join(__dirname, '../data/courses.json');
 const USERS_FILE = path.join(__dirname, '../data/users.json');
@@ -495,6 +501,16 @@ router.get('/', requireAuth, async (req, res) => {
   const cumGpa = gradedCreds > 0 ? (totalQP / gradedCreds).toFixed(2) : null;
   const academicStanding = computeAcademicStanding(cumGpa, gradedCoursesCount);
 
+  const visibleCourseIds = visibleCourses.map(c => Number(c.id));
+  const todayEat = getEastAfricaNow().isoDate;
+  const upcomingSessions = visibleCourseIds.length > 0
+    ? getLiveSessions({ course_ids: visibleCourseIds }).filter(s => String(s.session_date || '') >= todayEat).slice(0, 3)
+    : [];
+  const attendanceSummary = computeStudentAttendanceSummary(getAttendanceRecords({ student_username: username }));
+  const practicumApprovedHours = getPracticumSubmissions({ student_username: username })
+    .filter(p => p.status === 'approved')
+    .reduce((sum, p) => sum + (Number(p.hours_approved) || 0), 0);
+
   res.render('dashboard', {
     title: 'Pastor Dashboard | Pastors LMS',
     courses: enrichedCourses,
@@ -506,6 +522,9 @@ router.get('/', requireAuth, async (req, res) => {
     termWeekInfo,
     orientationStatus,
     academicStanding,
+    upcomingSessions,
+    attendanceSummary,
+    practicumApprovedHours,
     requireOrientation: Boolean(academicConfig.settings && academicConfig.settings.require_orientation),
     stats: {
       totalEnrolled,

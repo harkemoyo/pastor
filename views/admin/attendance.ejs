@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title || 'Attendance Reports & Audit | Pastors LMS Admin' %></title>
+  <link rel="stylesheet" href="/css/global.css?v=<%= locals.assetVersion || '3' %>">
+  <link rel="stylesheet" href="/css/dashboard.css?v=<%= locals.assetVersion || '3' %>">
+  <link rel="stylesheet" href="/css/admin.css?v=<%= locals.assetVersion || '3' %>">
+  <link rel="stylesheet" href="/css/footer.css?v=<%= locals.assetVersion || '3' %>">
+  <link rel="icon" type="image/x-icon" href="/images/favicon.ico">
+</head>
+<body class="app-container">
+  <%- include('../partials/header') %>
+
+  <main class="admin-page">
+    <div class="admin-topbar">
+      <div>
+        <h1 class="admin-title">Attendance Reports &amp; Record Audit</h1>
+        <p class="admin-subtitle">
+          Monitor cohort attendance rates, review low-attendance pastors (&lt;75%), update individual records, and export official CSV reports.
+        </p>
+      </div>
+      <div class="admin-actions">
+        <a href="/admin/attendance/report.csv<%= courseFilter ? ('?course_id=' + courseFilter) : '' %>" class="btn btn-primary" id="btnExportAttendanceCsv">Download CSV Report</a>
+        <a href="/teacher/attendance" class="btn btn-secondary" id="btnAdminToTakeAtt">Take Attendance</a>
+        <a href="/admin/timetable" class="btn btn-outline" id="btnAdminToTimetable">Live Timetable</a>
+      </div>
+    </div>
+
+    <% if (success) { %>
+      <div class="alert alert-success" role="status"><%= success %></div>
+    <% } %>
+    <% if (error) { %>
+      <div class="alert alert-danger" role="alert"><%= error %></div>
+    <% } %>
+
+    <!-- Low Attendance Alert Banner -->
+    <% if (lowAttendanceStudents && lowAttendanceStudents.length > 0) { %>
+      <section class="low-att-alert-banner" id="lowAttendanceAlertSection">
+        <strong>Follow-Up Needed (&lt;75% Attendance):</strong>
+        <span><%= lowAttendanceStudents.length %> pastor(s) are currently below the 75% attendance threshold and may benefit from a WhatsApp or mentor check-in.</span>
+      </section>
+    <% } %>
+
+    <!-- Filter Form -->
+    <section class="admin-surface admin-section-spaced">
+      <form method="GET" action="/admin/attendance" class="extension-form-grid" id="adminAttendanceFilterForm">
+        <div>
+          <label class="form-label" for="adminAttCourseFilter">Course</label>
+          <select id="adminAttCourseFilter" name="course_id" class="form-input">
+            <option value="">All Courses</option>
+            <% (courses || []).forEach(c => { %>
+              <option value="<%= c.id %>" <%= courseFilter && Number(courseFilter) === Number(c.id) ? 'selected' : '' %>><%= c.code %> &mdash; <%= c.title %></option>
+            <% }) %>
+          </select>
+        </div>
+        <div>
+          <label class="form-label" for="adminAttStudentSearch">Search Pastor / ID</label>
+          <input type="text" id="adminAttStudentSearch" name="student" class="form-input" value="<%= studentQuery || '' %>" placeholder="Name, username, or ID">
+        </div>
+        <div class="extension-submit-wrap">
+          <button type="submit" class="btn btn-secondary" id="btnFilterAdminAttendance">Apply Filter</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- Student Attendance Summary Table (UML: View Reports) -->
+    <section class="admin-surface admin-section-spaced" id="adminAttendanceSummarySection">
+      <h2>Pastor Attendance Summary (<%= studentSummaries.length %>)</h2>
+      <% if (!studentSummaries || studentSummaries.length === 0) { %>
+        <div class="empty-state">No attendance records have been submitted yet.</div>
+      <% } else { %>
+        <div class="admin-table-wrap">
+          <table class="admin-table" id="adminAttendanceSummaryTable">
+            <thead>
+              <tr>
+                <th>Pastor</th>
+                <th>Sessions</th>
+                <th>Present</th>
+                <th>Late / Excused</th>
+                <th>Absent</th>
+                <th>Rate &amp; Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% studentSummaries.forEach(s => { %>
+                <tr id="adminSumRow-<%= s.student_username %>">
+                  <td><strong><%= s.student_name %></strong> (<%= s.student_id %>)</td>
+                  <td><%= s.totalSessions %></td>
+                  <td><%= s.presentCount %></td>
+                  <td><%= s.lateCount %> / <%= s.excusedCount %></td>
+                  <td><%= s.absentCount %></td>
+                  <td>
+                    <span class="att-badge <%= s.needsFollowUp ? 'att-absent' : 'att-present' %>">
+                      <%= s.attendancePercent !== null ? (s.attendancePercent + '%') : '—' %>
+                      &bull; <%= s.needsFollowUp ? 'Follow-Up' : 'Good' %>
+                    </span>
+                  </td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      <% } %>
+    </section>
+
+    <!-- Individual Record Audit & Update (UML: Check Details & Update Details) -->
+    <section class="admin-surface" id="adminAttendanceAuditSection">
+      <h2>Individual Session Records (<%= records.length %>)</h2>
+      <% if (!records || records.length === 0) { %>
+        <div class="empty-state">No individual session records match the current filter.</div>
+      <% } else { %>
+        <div class="admin-table-wrap">
+          <table class="admin-table" id="adminAttendanceRecordsTable">
+            <thead>
+              <tr>
+                <th>Date &amp; Course</th>
+                <th>Session</th>
+                <th>Pastor</th>
+                <th>Current Status</th>
+                <th>Admin Update</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% records.forEach(rec => { %>
+                <tr id="adminAttRecRow-<%= rec.id %>">
+                  <td>
+                    <strong><%= rec.session_date %></strong>
+                    <div><span class="badge badge-purple"><%= rec.course_code %></span></div>
+                  </td>
+                  <td><%= rec.session_title %></td>
+                  <td>
+                    <strong><%= rec.student_name %></strong>
+                    <div><small><%= rec.student_id %></small></div>
+                  </td>
+                  <td>
+                    <span class="att-badge att-<%= rec.status %>">
+                      <%= rec.status === 'present' ? 'Present' : (rec.status === 'late' ? 'Late' : (rec.status === 'excused' ? 'Excused' : 'Absent')) %>
+                    </span>
+                  </td>
+                  <td>
+                    <form method="POST" action="/admin/attendance/update" class="admin-inline-update-form" id="updateAttForm-<%= rec.id %>">
+                      <input type="hidden" name="record_id" value="<%= rec.id %>">
+                      <select id="adminAttStatus-<%= rec.id %>" name="status" class="form-input" aria-label="Update status for <%= rec.student_name %>">
+                        <% validStatuses.forEach(st => { %>
+                          <option value="<%= st %>" <%= rec.status === st ? 'selected' : '' %>>
+                            <%= st.charAt(0).toUpperCase() + st.slice(1) %>
+                          </option>
+                        <% }) %>
+                      </select>
+                      <input type="text" id="adminAttNote-<%= rec.id %>" name="note" class="form-input" value="<%= rec.note || '' %>" placeholder="Reason or audit note" aria-label="Audit note for <%= rec.student_name %>">
+                      <button type="submit" class="btn btn-primary btn-sm" id="btnUpdateAttendance-<%= rec.id %>">Update</button>
+                    </form>
+                  </td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      <% } %>
+    </section>
+  </main>
+
+  <%- include('../partials/footer') %>
+</body>
+</html>

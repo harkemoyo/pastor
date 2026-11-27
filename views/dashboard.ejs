@@ -39,6 +39,8 @@
         </p>
         <div class="hero-quick-links">
           <a href="/courses" class="btn btn-accent" id="btnHeroMyCourses">Continue My Courses</a>
+          <a href="/timetable" class="btn btn-hero-outline" id="btnHeroTimetable">Live Timetable &amp; Attendance</a>
+          <a href="/practicum" class="btn btn-hero-outline" id="btnHeroPracticum">Ministry Practicum</a>
           <a href="/academics" class="btn btn-hero-outline" id="btnHeroMyAcademics">My Academics &amp; Registration</a>
           <a href="/transcript" class="btn btn-hero-outline" id="btnHeroMyTranscript">Official Transcript</a>
           <% if (typeof academicStanding !== 'undefined' && academicStanding) { %>
@@ -202,6 +204,48 @@
                     </div>
                   </section>
                 <% } %>
+
+                <!-- Upcoming Live Cohort Sessions & Attendance Summary -->
+                <section class="upcoming-live-card" id="upcomingLiveSessionsCard">
+                  <div class="weekly-rhythm-head">
+                    <div>
+                      <h3>Upcoming Live Cohort Sessions (EAT)</h3>
+                      <p>Join Zoom fellowships or in-person study seminars, track attendance, and log ministry hours.</p>
+                    </div>
+                    <div class="live-summary-pills">
+                      <span class="lecturer-scope-tag lecturer-scope-course" id="dashAttendanceRatePill">
+                        Attendance: <%= (typeof attendanceSummary !== 'undefined' && attendanceSummary && attendanceSummary.attendancePercent !== null) ? (attendanceSummary.attendancePercent + '%') : 'No sessions yet' %>
+                      </span>
+                      <span class="lecturer-scope-tag lecturer-scope-module" id="dashPracticumHoursPill">
+                        Practicum: <%= typeof practicumApprovedHours !== 'undefined' ? practicumApprovedHours : 0 %> hrs approved
+                      </span>
+                    </div>
+                  </div>
+                  <% if (typeof upcomingSessions !== 'undefined' && upcomingSessions && upcomingSessions.length > 0) { %>
+                    <div class="dash-sessions-list">
+                      <% upcomingSessions.forEach(sess => { %>
+                        <div class="dash-session-row" id="dashSession-<%= sess.id %>">
+                          <div>
+                            <span class="badge badge-purple"><%= sess.course_code %></span>
+                            <strong><%= sess.title %></strong>
+                            <div class="dash-session-meta">
+                              <span><%= sess.session_date %> &bull; <%= sess.start_time %>&ndash;<%= sess.end_time %> EAT</span>
+                              &bull; <span><%= sess.mode %></span>
+                              <% if (sess.venue_or_link) { %>
+                                &bull; <span><%= sess.venue_or_link %></span>
+                              <% } %>
+                            </div>
+                          </div>
+                          <div class="dash-session-actions">
+                            <a href="/timetable" class="btn btn-primary btn-sm" id="btnDashOpenTimetable-<%= sess.id %>">View Timetable</a>
+                          </div>
+                        </div>
+                      <% }) %>
+                    </div>
+                  <% } else { %>
+                    <p class="dash-empty-live-note">No upcoming live sessions are scheduled right now. <a href="/timetable" id="linkEmptyTimetable">Open Live Timetable &amp; Attendance</a>.</p>
+                  <% } %>
+                </section>
 
                 <!-- Courses Section Header & Tabs -->
                 <div class="section-header-row">

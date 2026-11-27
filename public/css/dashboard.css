@@ -1773,8 +1773,241 @@
   padding-top: 6px;
 }
 
+/* Phase 5: Live Session Timetable, Attendance, Reminders & Practicum */
+.upcoming-live-card {
+  background: #FCFDFD;
+  border: 1px solid #D9C7AA;
+  border-radius: 14px;
+  padding: 20px 22px;
+  margin-bottom: 22px;
+}
+
+.live-summary-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.dash-sessions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.dash-session-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #F4F0E7;
+  border: 1px solid #D9C7AA;
+  flex-wrap: wrap;
+}
+
+.dash-session-meta {
+  font-size: 0.96rem;
+  color: #30383A;
+  margin-top: 4px;
+}
+
+.dash-session-actions .btn {
+  min-height: 48px;
+}
+
+.dash-empty-live-note {
+  margin: 12px 0 0;
+  font-size: 1rem;
+  color: #30383A;
+}
+
+.timetable-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 18px;
+  margin-top: 16px;
+}
+
+.session-card {
+  background: #F4F0E7;
+  border: 1px solid #D9C7AA;
+  border-radius: 14px;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.session-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.session-mode-tag {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  background: #E8EEF5;
+  color: #192F47;
+}
+
+.session-card h3 {
+  margin: 0;
+  font-size: 1.15rem;
+  color: #0B192C;
+}
+
+.session-course-name {
+  margin: 0;
+  font-size: 0.96rem;
+  color: #30383A;
+  font-weight: 600;
+}
+
+.session-details-list {
+  margin: 4px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.98rem;
+}
+
+.session-details-list div {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  border-bottom: 1px solid #D9C7AA;
+  padding-bottom: 4px;
+}
+
+.session-details-list dt {
+  font-weight: 700;
+  color: #192F47;
+}
+
+.session-details-list dd {
+  margin: 0;
+  color: #0B192C;
+  text-align: right;
+  word-break: break-word;
+}
+
+.session-notes {
+  margin: 2px 0 0;
+  font-size: 0.95rem;
+  color: #30383A;
+}
+
+.session-card-actions {
+  margin-top: auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding-top: 6px;
+}
+
+.session-card-actions .btn {
+  min-height: 48px;
+}
+
+.attendance-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin: 14px 0 18px;
+}
+
+.att-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.att-present {
+  background: #E6F4EC;
+  color: #1B5E3A;
+}
+
+.att-late {
+  background: #F4F0E7;
+  color: #192F47;
+  border: 1px solid #192F47;
+}
+
+.att-excused {
+  background: #E8EEF5;
+  color: #0B192C;
+}
+
+.att-absent {
+  background: #FBE9ED;
+  color: #670C21;
+}
+
+.reminder-prefs-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-top: 14px;
+}
+
+.reminder-checkbox-stack {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.practicum-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-top: 14px;
+}
+
+.prac-full-span {
+  grid-column: 1 / -1;
+}
+
+.prac-status-badge {
+  display: inline-block;
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.prac-approved {
+  background: #E6F4EC;
+  color: #1B5E3A;
+}
+
+.prac-pending {
+  background: #E8EEF5;
+  color: #192F47;
+}
+
+.prac-revision {
+  background: #FBE9ED;
+  color: #670C21;
+}
+
 @media (max-width: 900px) {
-  .academics-top-grid {
+  .academics-top-grid,
+  .attendance-metrics-grid,
+  .reminder-prefs-grid,
+  .practicum-form-grid {
     grid-template-columns: 1fr;
   }
 

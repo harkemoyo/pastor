@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title || 'Live Session Timetable & Attendance | Pastors LMS' %></title>
+  <link rel="stylesheet" href="/css/global.css?v=<%= locals.assetVersion || '3' %>">
+  <link rel="stylesheet" href="/css/dashboard.css?v=<%= locals.assetVersion || '3' %>">
+  <link rel="stylesheet" href="/css/admin.css?v=<%= locals.assetVersion || '3' %>">
+  <link rel="stylesheet" href="/css/footer.css?v=<%= locals.assetVersion || '3' %>">
+  <link rel="icon" type="image/x-icon" href="/images/favicon.ico">
+</head>
+<body class="app-container">
+  <%- include('partials/header') %>
+
+  <main class="main-content academics-page">
+    <div class="admin-topbar">
+      <div>
+        <h1 class="admin-title">Live Session Timetable &amp; Attendance</h1>
+        <p class="admin-subtitle">
+          Join upcoming live Zoom or cohort seminars in East Africa Time (EAT), view your attendance record, and choose how we remind you.
+        </p>
+      </div>
+      <div class="admin-actions">
+        <a href="/practicum" class="btn btn-primary" id="btnOpenPracticumPortal">Ministry Practicum</a>
+        <a href="/academics" class="btn btn-secondary" id="btnTimetableToAcademics">My Academics</a>
+        <a href="/" class="btn btn-outline" id="btnTimetableToHome">Dashboard</a>
+      </div>
+    </div>
+
+    <% if (success) { %>
+      <div class="alert alert-success" role="status"><%= success %></div>
+    <% } %>
+    <% if (error) { %>
+      <div class="alert alert-danger" role="alert"><%= error %></div>
+    <% } %>
+
+    <!-- 1. Live Session Timetable -->
+    <section class="admin-surface admin-section-spaced" id="liveTimetableSection">
+      <div class="lecturer-header-row">
+        <div>
+          <h2>Upcoming Live Seminars &amp; Cohort Fellowships (<%= upcomingSessions.length %>)</h2>
+          <p class="lecturer-subtitle">All session times are shown in East Africa Time (EAT / Nairobi, UTC+3). Download a calendar file so your phone reminds you automatically.</p>
+        </div>
+        <% if (activeTerm) { %>
+          <span class="lecturer-scope-tag lecturer-scope-course"><%= activeTerm.code %> &bull; <%= termWeekInfo ? termWeekInfo.statusLabel : '' %></span>
+        <% } %>
+      </div>
+
+      <% if (!upcomingSessions || upcomingSessions.length === 0) { %>
+        <div class="empty-state">No upcoming live sessions are scheduled for your courses yet.</div>
+      <% } else { %>
+        <div class="timetable-grid" id="upcomingSessionsGrid">
+          <% upcomingSessions.forEach(sess => { %>
+            <article class="session-card" id="sessionCard-<%= sess.id %>">
+              <div class="session-card-top">
+                <span class="badge badge-purple"><%= sess.course_code %></span>
+                <span class="session-mode-tag"><%= sess.mode %></span>
+              </div>
+              <h3><%= sess.title %></h3>
+              <p class="session-course-name"><%= sess.course_title %></p>
+              <dl class="session-details-list">
+                <div>
+                  <dt>Date &amp; Time</dt>
+                  <dd><strong><%= sess.session_date %></strong> &bull; <%= sess.start_time %>&ndash;<%= sess.end_time %> EAT</dd>
+                </div>
+                <div>
+                  <dt>Lecturer</dt>
+                  <dd><%= sess.lecturer_name || 'Cohort Lecturer' %></dd>
+                </div>
+                <div>
+                  <dt>Venue / Link</dt>
+                  <dd><%= sess.venue_or_link || 'TBA' %></dd>
+                </div>
+              </dl>
+              <% if (sess.notes) { %>
+                <p class="session-notes"><%= sess.notes %></p>
+              <% } %>
+              <div class="session-card-actions">
+                <% if (sess.venue_or_link && /^https?:\/\//i.test(sess.venue_or_link)) { %>
+                  <a href="<%= sess.venue_or_link %>" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm" id="btnJoinSession-<%= sess.id %>">Join Live Session</a>
+                <% } %>
+                <a href="/timetable/<%= sess.id %>/ics" class="btn btn-secondary btn-sm" id="btnDownloadIcs-<%= sess.id %>">Add to Calendar (.ics)</a>
+              </div>
+            </article>
+          <% }) %>
+        </div>
+      <% } %>
+    </section>
+
+    <!-- 2. Student Attendance Report (UML: View Reports) -->
+    <section class="admin-surface admin-section-spaced" id="myAttendanceSection">
+      <div class="lecturer-header-row">
+        <div>
+          <h2>My Live Session Attendance</h2>
+          <p class="lecturer-subtitle">Pastors are encouraged to maintain at least <strong>75% live attendance</strong> across Zoom or in-person cohort gatherings.</p>
+        </div>
+        <% if (attendanceSummary.attendancePercent !== null) { %>
+          <span class="standing-pill <%= attendanceSummary.needsFollowUp ? 'standing-warning' : 'standing-good' %>" id="myAttendanceStatusPill">
+            <%= attendanceSummary.attendancePercent %>% Attendance <%= attendanceSummary.needsFollowUp ? '(Needs Follow-Up)' : '(On Track)' %>
+          </span>
+        <% } %>
+      </div>
+
+      <div class="attendance-metrics-grid" id="studentAttendanceSummary">
+        <div class="info-card">
+          <strong>Attendance Rate</strong>
+          <div class="metric-big" id="myAttendancePercentValue">
+            <%= attendanceSummary.attendancePercent !== null ? (attendanceSummary.attendancePercent + '%') : '—' %>
+          </div>
+        </div>
+        <div class="info-card">
+          <strong>Present</strong>
+          <div class="metric-big"><%= attendanceSummary.presentCount %></div>
+        </div>
+        <div class="info-card">
+          <strong>Late / Excused</strong>
+          <div class="metric-big"><%= attendanceSummary.lateCount %> / <%= attendanceSummary.excusedCount %></div>
+        </div>
+        <div class="info-card">
+          <strong>Absent</strong>
+          <div class="metric-big"><%= attendanceSummary.absentCount %></div>
+        </div>
+      </div>
+
+      <% if (!myAttendanceRecords || myAttendanceRecords.length === 0) { %>
+        <div class="empty-state">No attendance has been recorded for you yet this term.</div>
+      <% } else { %>
+        <div class="admin-table-wrap">
+          <table class="admin-table" id="studentAttendanceTable">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Course</th>
+                <th>Live Session</th>
+                <th>Status</th>
+                <th>Lecturer Note</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% myAttendanceRecords.forEach(rec => { %>
+                <tr id="myAttRow-<%= rec.id %>">
+                  <td><strong><%= rec.session_date %></strong></td>
+                  <td><%= rec.course_code %></td>
+                  <td><%= rec.session_title %></td>
+                  <td>
+                    <span class="att-badge att-<%= rec.status %>">
+                      <%= rec.status === 'present' ? 'Present' : (rec.status === 'late' ? 'Late' : (rec.status === 'excused' ? 'Excused' : 'Absent')) %>
+                    </span>
+                  </td>
+                  <td><%= rec.note || '—' %></td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      <% } %>
+    </section>
+
+    <!-- 3. Reminder Channel Preferences (WhatsApp & Email) -->
+    <section class="admin-surface admin-section-spaced" id="reminderPrefsSection">
+      <h2>Weekly Study &amp; Session Reminder Preferences</h2>
+      <p class="lecturer-subtitle">Choose your preferred channel so your lecturer and mentor can remind you before Wednesday deadlines and live Zoom fellowships.</p>
+
+      <form method="POST" action="/academics/reminder-prefs" class="reminder-prefs-grid" id="reminderPrefsForm">
+        <input type="hidden" name="return_to" value="timetable">
+        <div>
+          <label class="form-label" for="remPhoneInput">WhatsApp Phone Number</label>
+          <input type="tel" id="remPhoneInput" name="phone" class="form-input" value="<%= reminderPrefs.phone || '' %>" placeholder="e.g. +254712345678" autocomplete="tel">
+        </div>
+        <div>
+          <label class="form-label" for="remChannelSelect">Preferred Reminder Channel</label>
+          <select id="remChannelSelect" name="channel" class="form-input">
+            <option value="whatsapp" <%= reminderPrefs.channel === 'whatsapp' ? 'selected' : '' %>>WhatsApp Only</option>
+            <option value="email" <%= reminderPrefs.channel === 'email' ? 'selected' : '' %>>Email Only</option>
+            <option value="both" <%= reminderPrefs.channel === 'both' ? 'selected' : '' %>>Both WhatsApp &amp; Email</option>
+          </select>
+        </div>
+        <div class="reminder-checkbox-stack">
+          <label class="orientation-toggle-label" for="chkRemDeadlines">
+            <input type="checkbox" id="chkRemDeadlines" name="deadline_reminders" class="orientation-toggle-input" <%= reminderPrefs.deadline_reminders ? 'checked' : '' %>>
+            <span>Wednesday 11:55 PM EAT deadline reminders</span>
+          </label>
+          <label class="orientation-toggle-label" for="chkRemSessions">
+            <input type="checkbox" id="chkRemSessions" name="session_reminders" class="orientation-toggle-input" <%= reminderPrefs.session_reminders ? 'checked' : '' %>>
+            <span>Live Zoom &amp; seminar timetable reminders</span>
+          </label>
+          <label class="orientation-toggle-label" for="chkRemGrades">
+            <input type="checkbox" id="chkRemGrades" name="grade_alerts" class="orientation-toggle-input" <%= reminderPrefs.grade_alerts ? 'checked' : '' %>>
+            <span>Grade &amp; lecturer feedback alerts</span>
+          </label>
+        </div>
+        <div class="extension-submit-wrap">
+          <button type="submit" class="btn btn-primary" id="btnSaveReminderPrefs">Save Reminder Settings</button>
+        </div>
+      </form>
+    </section>
+  </main>
+
+  <%- include('partials/footer') %>
+</body>
+</html>

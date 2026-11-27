@@ -24,7 +24,10 @@
         </p>
       </div>
       <div class="admin-actions">
-        <a href="/teacher/grading" class="btn btn-primary" id="btnTeacherGradingQueue">Grading Queue</a>
+        <a href="/teacher/attendance" class="btn btn-primary" id="btnTeacherAttendance">Take Attendance</a>
+        <a href="/teacher/reminders" class="btn btn-secondary" id="btnTeacherReminders">Send Reminders</a>
+        <a href="/teacher/practicums" class="btn btn-secondary" id="btnTeacherPracticums">Review Practicums</a>
+        <a href="/teacher/grading" class="btn btn-secondary" id="btnTeacherGradingQueue">Grading Queue</a>
         <a href="/teacher/library" class="btn btn-secondary" id="btnTeacherLibraryFromClasses">Manage Library Materials</a>
         <% if (user && user.role === 'super_admin') { %>
           <a href="/admin/courses" class="btn btn-outline" id="btnSuperAdminAssignCourses">Assign Lecturers</a>

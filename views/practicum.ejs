@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title || 'Ministry Practicum Portfolio | Pastors LMS' %></title>
+  <link rel="stylesheet" href="/css/global.css?v=<%= locals.assetVersion || '3' %>">
+  <link rel="stylesheet" href="/css/dashboard.css?v=<%= locals.assetVersion || '3' %>">
+  <link rel="stylesheet" href="/css/admin.css?v=<%= locals.assetVersion || '3' %>">
+  <link rel="stylesheet" href="/css/footer.css?v=<%= locals.assetVersion || '3' %>">
+  <link rel="icon" type="image/x-icon" href="/images/favicon.ico">
+</head>
+<body class="app-container">
+  <%- include('partials/header') %>
+
+  <main class="main-content academics-page">
+    <div class="admin-topbar">
+      <div>
+        <h1 class="admin-title">Ministry Practicum Portfolio</h1>
+        <p class="admin-subtitle">
+          Submit real parish ministry evidence—recorded sermons, church visitation reports, and supervising elder endorsements—to connect classroom doctrine with church service.
+        </p>
+      </div>
+      <div class="admin-actions">
+        <a href="/timetable" class="btn btn-secondary" id="btnPracticumToTimetable">Live Timetable &amp; Attendance</a>
+        <a href="/academics" class="btn btn-outline" id="btnPracticumToAcademics">My Academics</a>
+      </div>
+    </div>
+
+    <% if (success) { %>
+      <div class="alert alert-success" role="status"><%= success %></div>
+    <% } %>
+    <% if (error) { %>
+      <div class="alert alert-danger" role="alert"><%= error %></div>
+    <% } %>
+
+    <!-- Practicum Overview Cards -->
+    <section class="academics-metrics-row" id="practicumStatsRow">
+      <div class="info-card">
+        <strong>Approved Practicum Hours</strong>
+        <div class="metric-big" id="pracApprovedHoursMetric"><%= approvedHours %> hrs</div>
+      </div>
+      <div class="info-card">
+        <strong>Total Practicum Submissions</strong>
+        <div class="metric-big"><%= practicums.length %></div>
+      </div>
+      <div class="info-card">
+        <strong>Awaiting Lecturer Review</strong>
+        <div class="metric-big"><%= pendingCount %></div>
+      </div>
+    </section>
+
+    <!-- Submit New Ministry Practicum -->
+    <section class="admin-surface admin-section-spaced" id="practicumSubmitSection">
+      <h2>Submit New Ministry Practicum Evidence</h2>
+      <p class="lecturer-subtitle">Every practicum requires supervision details from a Church Elder or Board leader so our lecturers can verify your field service.</p>
+
+      <form method="POST" action="/practicum/submit" class="practicum-form-grid" id="practicumSubmitForm">
+        <div>
+          <label class="form-label" for="pracCourseSelect">Course *</label>
+          <select id="pracCourseSelect" name="course_id" class="form-input" required>
+            <% (visibleCourses || []).forEach(c => { %>
+              <option value="<%= c.id %>"><%= c.code %> &mdash; <%= c.title %></option>
+            <% }) %>
+          </select>
+        </div>
+
+        <div>
+          <label class="form-label" for="pracTypeSelect">Practicum Type *</label>
+          <select id="pracTypeSelect" name="practicum_type" class="form-input" required>
+            <option value="sermon_media">Recorded Sermon (Audio / Video Link &amp; Notes)</option>
+            <option value="church_visit">Pastoral Church / Hospital Visit Report</option>
+            <option value="elder_endorsement">Elder-Endorsed Ministry Service Log</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="form-label" for="pracTitleInput">Ministry Activity Title *</label>
+          <input type="text" id="pracTitleInput" name="title" class="form-input" placeholder="e.g. Sunday Expository Sermon on Romans 8" required>
+        </div>
+
+        <div>
+          <label class="form-label" for="pracDateInput">Date of Ministry Activity *</label>
+          <input type="date" id="pracDateInput" name="ministry_date" class="form-input" value="<%= todayEat %>" required>
+        </div>
+
+        <div>
+          <label class="form-label" for="pracChurchInput">Church / Parish Name *</label>
+          <input type="text" id="pracChurchInput" name="location_church" class="form-input" placeholder="e.g. Grace Fellowship Kikuyu" required>
+        </div>
+
+        <div>
+          <label class="form-label" for="pracHoursInput">Hours Served *</label>
+          <input type="number" id="pracHoursInput" name="hours_served" class="form-input" min="0.5" max="100" step="0.5" value="2" required>
+        </div>
+
+        <div class="prac-full-span">
+          <label class="form-label" for="pracEvidenceUrl">Audio / Video / Document Link (Optional HTTPS URL)</label>
+          <input type="url" id="pracEvidenceUrl" name="evidence_url" class="form-input" placeholder="https://... (YouTube, Google Drive, or WhatsApp-shared Sermon Audio link)">
+        </div>
+
+        <div class="prac-full-span">
+          <label class="form-label" for="pracReflection">Pastoral Reflection &amp; Scripture Summary (minimum 30 characters) *</label>
+          <textarea id="pracReflection" name="reflection" class="form-input" rows="4" placeholder="Summarize the Scripture passage taught or ministry care given, and what the Lord taught you..." required></textarea>
+        </div>
+
+        <div>
+          <label class="form-label" for="pracElderName">Supervising Church Elder Name *</label>
+          <input type="text" id="pracElderName" name="elder_name" class="form-input" placeholder="e.g. Elder John Kamau" required>
+        </div>
+
+        <div>
+          <label class="form-label" for="pracElderPhone">Elder WhatsApp / Phone Number *</label>
+          <input type="tel" id="pracElderPhone" name="elder_phone" class="form-input" placeholder="e.g. +254712345678" required>
+        </div>
+
+        <div class="prac-full-span">
+          <label class="orientation-toggle-label" for="pracElderConfirm">
+            <input type="checkbox" id="pracElderConfirm" name="elder_confirmed" class="orientation-toggle-input" required>
+            <span><strong>Elder Witness Confirmation:</strong> I confirm my supervising Church Elder witnessed this ministry service and may be contacted on WhatsApp/phone for verification.</span>
+          </label>
+        </div>
+
+        <div class="prac-full-span">
+          <button type="submit" class="btn btn-primary" id="btnSubmitPracticum">Submit Ministry Practicum</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- Submission History -->
+    <section class="admin-surface admin-section-spaced" id="myPracticumsList">
+      <h2>My Submitted Practicums (<%= practicums.length %>)</h2>
+      <% if (!practicums || practicums.length === 0) { %>
+        <div class="empty-state">You have not submitted any Ministry Practicum logs yet. Use the form above to record your parish ministry hours.</div>
+      <% } else { %>
+        <div class="admin-table-wrap">
+          <table class="admin-table" id="myPracticumsTable">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Course &amp; Activity</th>
+                <th>Church &amp; Elder</th>
+                <th>Hours</th>
+                <th>Status</th>
+                <th>Lecturer Feedback</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% practicums.forEach(p => { %>
+                <tr id="pracRow-<%= p.id %>">
+                  <td><strong><%= p.ministry_date %></strong></td>
+                  <td>
+                    <span class="badge badge-purple"><%= p.course_code %></span>
+                    <div><strong><%= p.title %></strong></div>
+                    <small><%= p.practicum_type.replace('_', ' ') %></small>
+                  </td>
+                  <td>
+                    <div><%= p.location_church %></div>
+                    <small>Elder: <%= p.elder_name %> (<%= p.elder_phone %>)</small>
+                  </td>
+                  <td>
+                    <% if (p.status === 'approved') { %>
+                      <strong><%= p.hours_approved %></strong> / <%= p.hours_served %> hrs
+                    <% } else { %>
+                      <%= p.hours_served %> hrs claimed
+                    <% } %>
+                  </td>
+                  <td>
+                    <span class="prac-status-badge prac-<%= p.status === 'approved' ? 'approved' : (p.status === 'needs_revision' ? 'revision' : 'pending') %>">
+                      <%= p.status === 'approved' ? 'Approved' : (p.status === 'needs_revision' ? 'Revision Requested' : 'Pending Review') %>
+                    </span>
+                  </td>
+                  <td><%= p.reviewer_feedback || '—' %></td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      <% } %>
+    </section>
+  </main>
+
+  <%- include('partials/footer') %>
+</body>
+</html>

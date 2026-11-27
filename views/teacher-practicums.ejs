@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title || 'Ministry Practicum Review | Pastors LMS' %></title>
+  <link rel="stylesheet" href="/css/global.css?v=<%= locals.assetVersion || '3' %>">
+  <link rel="stylesheet" href="/css/dashboard.css?v=<%= locals.assetVersion || '3' %>">
+  <link rel="stylesheet" href="/css/admin.css?v=<%= locals.assetVersion || '3' %>">
+  <link rel="stylesheet" href="/css/footer.css?v=<%= locals.assetVersion || '3' %>">
+  <link rel="icon" type="image/x-icon" href="/images/favicon.ico">
+</head>
+<body class="app-container">
+  <%- include('partials/header') %>
+
+  <main class="admin-page">
+    <div class="admin-topbar">
+      <div>
+        <h1 class="admin-title">Ministry Practicum Review</h1>
+        <p class="admin-subtitle">
+          Verify recorded sermons, church visitation reports, and elder endorsements submitted by cohort pastors.
+        </p>
+      </div>
+      <div class="admin-actions">
+        <a href="/teacher/attendance" class="btn btn-secondary" id="btnPracReviewToAtt">Attendance</a>
+        <a href="/teacher/classes" class="btn btn-outline" id="btnPracReviewToClasses">Back to Classes</a>
+      </div>
+    </div>
+
+    <% if (success) { %>
+      <div class="alert alert-success" role="status"><%= success %></div>
+    <% } %>
+    <% if (error) { %>
+      <div class="alert alert-danger" role="alert"><%= error %></div>
+    <% } %>
+
+    <!-- Filters -->
+    <section class="admin-surface admin-section-spaced">
+      <form method="GET" action="/teacher/practicums" class="extension-form-grid" id="practicumFilterForm">
+        <div>
+          <label class="form-label" for="pracFilterCourse">Course</label>
+          <select id="pracFilterCourse" name="course_id" class="form-input">
+            <option value="">All Courses</option>
+            <% (allCourses || []).forEach(c => { %>
+              <option value="<%= c.id %>" <%= courseFilter && Number(courseFilter) === Number(c.id) ? 'selected' : '' %>><%= c.code %> &mdash; <%= c.title %></option>
+            <% }) %>
+          </select>
+        </div>
+        <div>
+          <label class="form-label" for="pracFilterStatus">Status</label>
+          <select id="pracFilterStatus" name="status" class="form-input">
+            <option value="">All Statuses</option>
+            <option value="pending" <%= statusFilter === 'pending' ? 'selected' : '' %>>Pending Review</option>
+            <option value="approved" <%= statusFilter === 'approved' ? 'selected' : '' %>>Approved</option>
+            <option value="needs_revision" <%= statusFilter === 'needs_revision' ? 'selected' : '' %>>Needs Revision</option>
+          </select>
+        </div>
+        <div class="extension-submit-wrap">
+          <button type="submit" class="btn btn-secondary" id="btnFilterPracticums">Filter</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- Submissions List -->
+    <section id="teacherPracticumsList" class="teacher-practicum-stack">
+      <% if (!submissions || submissions.length === 0) { %>
+        <section class="admin-surface">
+          <div class="empty-state">No Ministry Practicum submissions match the selected filters.</div>
+        </section>
+      <% } else { %>
+        <% submissions.forEach(p => { %>
+          <article class="admin-surface practicum-review-card" id="reviewPracCard-<%= p.id %>">
+            <div class="lecturer-header-row">
+              <div>
+                <span class="badge badge-purple"><%= p.course_code %></span>
+                <span class="prac-status-badge prac-<%= p.status === 'approved' ? 'approved' : (p.status === 'needs_revision' ? 'revision' : 'pending') %>">
+                  <%= p.status === 'approved' ? 'Approved' : (p.status === 'needs_revision' ? 'Revision Requested' : 'Pending Review') %>
+                </span>
+                <h2><%= p.title %></h2>
+                <p class="lecturer-subtitle">
+                  <strong><%= p.student_name %></strong> (<%= p.student_id %>) &bull;
+                  <%= p.ministry_date %> &bull; <%= p.location_church %> &bull;
+                  <strong><%= p.hours_served %> hrs served</strong> (<%= p.practicum_type.replace('_', ' ') %>)
+                </p>
+              </div>
+              <% if (p.elder_wa_url) { %>
+                <a href="<%= p.elder_wa_url %>" target="_blank" rel="noopener noreferrer" class="btn-wa-sm" id="btnVerifyElderWa-<%= p.id %>">
+                  Verify Elder via WhatsApp
+                </a>
+              <% } %>
+            </div>
+
+            <div class="prac-review-body">
+              <p><strong>Pastoral Reflection:</strong> <%= p.reflection %></p>
+              <p><strong>Supervising Elder:</strong> <%= p.elder_name %> (<%= p.elder_phone %>)</p>
+              <% if (p.evidence_url) { %>
+                <p><strong>Evidence Link:</strong> <a href="<%= p.evidence_url %>" target="_blank" rel="noopener noreferrer"><%= p.evidence_url %></a></p>
+              <% } %>
+            </div>
+
+            <form method="POST" action="/teacher/practicums/<%= p.id %>/review" class="extension-form-grid" id="reviewPracticumForm-<%= p.id %>">
+              <div>
+                <label class="form-label" for="pracDecision-<%= p.id %>">Decision</label>
+                <select id="pracDecision-<%= p.id %>" name="status" class="form-input">
+                  <option value="approved" <%= p.status === 'approved' ? 'selected' : '' %>>Approve Ministry Hours</option>
+                  <option value="needs_revision" <%= p.status === 'needs_revision' ? 'selected' : '' %>>Request Revision / Follow-Up</option>
+                </select>
+              </div>
+              <div>
+                <label class="form-label" for="pracApprovedHrs-<%= p.id %>">Approved Hours</label>
+                <input type="number" id="pracApprovedHrs-<%= p.id %>" name="hours_approved" class="form-input" min="0" max="100" step="0.5" value="<%= p.hours_approved || p.hours_served %>">
+              </div>
+              <div class="extension-reason-field">
+                <label class="form-label" for="pracFeedback-<%= p.id %>">Lecturer Feedback</label>
+                <input type="text" id="pracFeedback-<%= p.id %>" name="reviewer_feedback" class="form-input" value="<%= p.reviewer_feedback || '' %>" placeholder="Encourage the pastor or explain any revision needed...">
+              </div>
+              <div class="extension-submit-wrap">
+                <button type="submit" class="btn btn-primary" id="btnReviewPracticum-<%= p.id %>">Save Review</button>
+              </div>
+            </form>
+          </article>
+        <% }) %>
+      <% } %>
+    </section>
+  </main>
+
+  <%- include('partials/footer') %>
+</body>
+</html>

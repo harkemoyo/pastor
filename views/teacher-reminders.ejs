@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title || 'WhatsApp & Email Reminders | Pastors LMS' %></title>
+  <link rel="stylesheet" href="/css/global.css?v=<%= locals.assetVersion || '3' %>">
+  <link rel="stylesheet" href="/css/dashboard.css?v=<%= locals.assetVersion || '3' %>">
+  <link rel="stylesheet" href="/css/admin.css?v=<%= locals.assetVersion || '3' %>">
+  <link rel="stylesheet" href="/css/footer.css?v=<%= locals.assetVersion || '3' %>">
+  <link rel="icon" type="image/x-icon" href="/images/favicon.ico">
+</head>
+<body class="app-container">
+  <%- include('partials/header') %>
+
+  <main class="admin-page">
+    <div class="admin-topbar">
+      <div>
+        <h1 class="admin-title">WhatsApp &amp; Email Cohort Reminders</h1>
+        <p class="admin-subtitle">
+          Encourage pastors before Wednesday deadlines, live Zoom fellowships, or after marks are posted—with one-click pre-filled WhatsApp/Email links and outreach tracking.
+        </p>
+      </div>
+      <div class="admin-actions">
+        <a href="/teacher/attendance" class="btn btn-secondary" id="btnRemToAttendance">Take Attendance</a>
+        <a href="/teacher/classes" class="btn btn-outline" id="btnRemToClasses">Back to Classes</a>
+      </div>
+    </div>
+
+    <% if (success) { %>
+      <div class="alert alert-success" role="status"><%= success %></div>
+    <% } %>
+    <% if (error) { %>
+      <div class="alert alert-danger" role="alert"><%= error %></div>
+    <% } %>
+
+    <!-- Template Picker -->
+    <section class="admin-surface admin-section-spaced">
+      <form method="GET" action="/teacher/reminders" class="extension-form-grid" id="reminderTemplateForm">
+        <div>
+          <label class="form-label" for="remCourseSelect">Course Cohort</label>
+          <select id="remCourseSelect" name="course_id" class="form-input">
+            <% (staffCourses || []).forEach(c => { %>
+              <option value="<%= c.id %>" <%= selectedCourse && Number(selectedCourse.id) === Number(c.id) ? 'selected' : '' %>>
+                <%= c.code %> &mdash; <%= c.title %>
+              </option>
+            <% }) %>
+          </select>
+        </div>
+        <div>
+          <label class="form-label" for="remTemplateSelect">Reminder Template</label>
+          <select id="remTemplateSelect" name="template" class="form-input">
+            <option value="deadline" <%= templateKey === 'deadline' ? 'selected' : '' %>>Wednesday 11:55 PM EAT Deadline</option>
+            <option value="live_session" <%= templateKey === 'live_session' ? 'selected' : '' %>>Upcoming Live Zoom Session</option>
+            <option value="low_attendance" <%= templateKey === 'low_attendance' ? 'selected' : '' %>>Pastoral Attendance Check-In</option>
+            <option value="grade_posted" <%= templateKey === 'grade_posted' ? 'selected' : '' %>>Grades &amp; Feedback Posted</option>
+          </select>
+        </div>
+        <div class="extension-submit-wrap">
+          <button type="submit" class="btn btn-secondary" id="btnLoadReminderTemplate">Load Messages</button>
+        </div>
+      </form>
+    </section>
+
+    <% if (selectedCourse) { %>
+      <!-- Group WhatsApp Broadcast Draft -->
+      <section class="admin-surface admin-section-spaced" id="cohortBroadcastSection">
+        <h2>WhatsApp Group Broadcast Draft &mdash; <%= selectedCourse.code %></h2>
+        <p class="lecturer-subtitle">Copy this message directly into your cohort WhatsApp group, then log the broadcast for seminary records.</p>
+        <label class="form-label" for="cohortBroadcastBox">Broadcast Message</label>
+        <textarea id="cohortBroadcastBox" class="form-input broadcast-textarea" rows="3" readonly><%= groupBroadcastText %></textarea>
+        <div class="broadcast-actions-row">
+          <button type="button" class="btn btn-secondary" id="btnCopyBroadcast">Copy Broadcast Message</button>
+          <form method="POST" action="/teacher/reminders/log" id="logBroadcastForm">
+            <input type="hidden" name="course_id" value="<%= selectedCourse.id %>">
+            <input type="hidden" name="course_code" value="<%= selectedCourse.code %>">
+            <input type="hidden" name="template_key" value="<%= templateKey %>">
+            <input type="hidden" name="channel" value="whatsapp">
+            <input type="hidden" name="recipient_username" value="cohort">
+            <input type="hidden" name="recipient_name" value="<%= selectedCourse.code %> Cohort">
+            <input type="hidden" name="message_preview" value="<%= groupBroadcastText %>">
+            <button type="submit" class="btn btn-primary" id="btnLogCohortBroadcast">Log Cohort Broadcast</button>
+          </form>
+        </div>
+      </section>
+
+      <!-- Per-Pastor Reminder Links -->
+      <section class="admin-surface admin-section-spaced" id="reminderRecipientsSection">
+        <h2>Individual Pastors (<%= recipients.length %>)</h2>
+        <% if (!recipients || recipients.length === 0) { %>
+          <div class="empty-state">No active students are enrolled in <%= selectedCourse.code %>.</div>
+        <% } else { %>
+          <div class="admin-table-wrap">
+            <table class="admin-table" id="reminderRecipientsTable">
+              <thead>
+                <tr>
+                  <th>Pastor</th>
+                  <th>Preferred Channel &amp; Phone</th>
+                  <th>Attendance</th>
+                  <th>Send Message &amp; Log</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% recipients.forEach(r => { %>
+                  <tr id="remRecipientRow-<%= r.username %>">
+                    <td>
+                      <strong><%= r.full_name %></strong>
+                      <div><small><%= r.student_id %></small></div>
+                    </td>
+                    <td>
+                      <span class="lecturer-scope-tag lecturer-scope-course"><%= r.prefs.channel %></span>
+                      <div><%= r.phone_display %></div>
+                      <div><small><%= r.email || 'No email' %></small></div>
+                    </td>
+                    <td>
+                      <%= r.attendanceSummary.attendancePercent !== null ? (r.attendanceSummary.attendancePercent + '%') : '—' %>
+                    </td>
+                    <td>
+                      <div class="contact-btn-group">
+                        <% if (r.wa_url) { %>
+                          <a href="<%= r.wa_url %>" target="_blank" rel="noopener noreferrer" class="btn-wa-sm" id="btnSendWaRem-<%= r.username %>">WhatsApp</a>
+                        <% } %>
+                        <% if (r.mailto_url) { %>
+                          <a href="<%= r.mailto_url %>" class="btn-email-sm" id="btnSendEmailRem-<%= r.username %>">Email</a>
+                        <% } %>
+                        <form method="POST" action="/teacher/reminders/log" id="logRemForm-<%= r.username %>">
+                          <input type="hidden" name="course_id" value="<%= selectedCourse.id %>">
+                          <input type="hidden" name="course_code" value="<%= selectedCourse.code %>">
+                          <input type="hidden" name="template_key" value="<%= templateKey %>">
+                          <input type="hidden" name="channel" value="<%= r.prefs.channel %>">
+                          <input type="hidden" name="recipient_username" value="<%= r.username %>">
+                          <input type="hidden" name="recipient_name" value="<%= r.full_name %>">
+                          <input type="hidden" name="message_preview" value="<%= r.message_preview %>">
+                          <button type="submit" class="btn btn-outline btn-sm" id="btnLogReminder-<%= r.username %>">Mark Sent</button>
+                        </form>
+                      </div>
+                    </td>
+                  </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+        <% } %>
+      </section>
+    <% } %>
+
+    <!-- Reminder History -->
+    <section class="admin-surface" id="reminderHistorySection">
+      <h2>Recent Outreach Log (<%= reminderLogs.length %>)</h2>
+      <% if (!reminderLogs || reminderLogs.length === 0) { %>
+        <div class="empty-state">No reminders have been logged yet.</div>
+      <% } else { %>
+        <div class="admin-table-wrap">
+          <table class="admin-table" id="reminderHistoryTable">
+            <thead>
+              <tr>
+                <th>Sent At</th>
+                <th>Course</th>
+                <th>Recipient</th>
+                <th>Channel</th>
+                <th>Message Preview</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% reminderLogs.forEach(log => { %>
+                <tr>
+                  <td><%= String(log.sent_at || '').slice(0, 16).replace('T', ' ') %> UTC</td>
+                  <td><strong><%= log.course_code || 'General' %></strong></td>
+                  <td><%= log.recipient_name %></td>
+                  <td><span class="lecturer-scope-tag"><%= log.channel %></span></td>
+                  <td><%= log.message_preview %></td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      <% } %>
+    </section>
+  </main>
+
+  <script>
+    (function () {
+      const btn = document.getElementById('btnCopyBroadcast');
+      const box = document.getElementById('cohortBroadcastBox');
+      if (!btn || !box) return;
+      btn.addEventListener('click', async function () {
+        try {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(box.value);
+          } else {
+            box.select();
+            document.execCommand('copy');
+          }
+          btn.textContent = 'Copied to Clipboard';
+        } catch (err) {
+          box.select();
+        }
+      });
+    })();
+  </script>
+
+  <%- include('partials/footer') %>
+</body>
+</html>

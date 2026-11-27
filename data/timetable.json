@@ -1,0 +1,53 @@
+[
+  {
+    "id": "sess-seed-1",
+    "course_id": 1,
+    "course_code": "THEO 101",
+    "course_title": "Sound Doctrine & Biblical Theology",
+    "term_code": "AY2027-T1",
+    "title": "Live Doctrinal Q&A & Scripture Seminar",
+    "session_date": "2026-12-03",
+    "start_time": "19:00",
+    "end_time": "20:30",
+    "mode": "Zoom / Online",
+    "venue_or_link": "https://zoom.us/j/pastors-lms-theo101",
+    "lecturer_username": "pastor.samuel",
+    "lecturer_name": "Rev. Samuel Kariuki",
+    "notes": "Evening cohort fellowship and Scripture Q&A in East Africa Time.",
+    "created_at": "2026-11-26T08:00:00.000Z"
+  },
+  {
+    "id": "sess-seed-2",
+    "course_id": 2,
+    "course_code": "CHUR 201",
+    "course_title": "Building a Healthy Church",
+    "term_code": "AY2027-T1",
+    "title": "African Church Pioneers Roundtable",
+    "session_date": "2026-12-05",
+    "start_time": "10:00",
+    "end_time": "11:30",
+    "mode": "Hybrid (Nairobi & Zoom)",
+    "venue_or_link": "Nairobi Bible Chapel & Zoom",
+    "lecturer_username": "pastor.grace",
+    "lecturer_name": "Dr. Grace Wanjiku",
+    "notes": "Bring reflection notes from Unit 3.",
+    "created_at": "2026-11-26T08:00:00.000Z"
+  },
+  {
+    "id": "sess-seed-3",
+    "course_id": 3,
+    "course_code": "PRCH 301",
+    "course_title": "Expository Preaching",
+    "term_code": "AY2027-T1",
+    "title": "Sermon Outline Workshop & Practicum Prep",
+    "session_date": "2026-12-10",
+    "start_time": "19:00",
+    "end_time": "20:30",
+    "mode": "Zoom / Online",
+    "venue_or_link": "https://zoom.us/j/pastors-lms-prch301",
+    "lecturer_username": "pastor.david",
+    "lecturer_name": "Pastor David Mutua",
+    "notes": "Prepare a 5-minute sermon outline preview.",
+    "created_at": "2026-11-26T08:00:00.000Z"
+  }
+]

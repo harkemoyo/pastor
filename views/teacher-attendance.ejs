@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title || 'Class Attendance Roll | Pastors LMS' %></title>
+  <link rel="stylesheet" href="/css/global.css?v=<%= locals.assetVersion || '3' %>">
+  <link rel="stylesheet" href="/css/dashboard.css?v=<%= locals.assetVersion || '3' %>">
+  <link rel="stylesheet" href="/css/admin.css?v=<%= locals.assetVersion || '3' %>">
+  <link rel="stylesheet" href="/css/footer.css?v=<%= locals.assetVersion || '3' %>">
+  <link rel="icon" type="image/x-icon" href="/images/favicon.ico">
+</head>
+<body class="app-container">
+  <%- include('partials/header') %>
+
+  <main class="admin-page">
+    <div class="admin-topbar">
+      <div>
+        <h1 class="admin-title">Class Attendance Roll (Input &amp; Review)</h1>
+        <p class="admin-subtitle">
+          Mark attendance for live Zoom seminars or in-person cohort gatherings. Each saved roll call updates student records and Admin reports immediately.
+        </p>
+      </div>
+      <div class="admin-actions">
+        <a href="/teacher/reminders" class="btn btn-secondary" id="btnAttToReminders">Send Reminders</a>
+        <a href="/teacher/classes" class="btn btn-outline" id="btnAttToClasses">Back to Classes</a>
+        <% if (['admin', 'super_admin'].includes(user.role)) { %>
+          <a href="/admin/attendance" class="btn btn-primary" id="btnAttToAdminReports">Admin Attendance Reports</a>
+        <% } %>
+      </div>
+    </div>
+
+    <% if (success) { %>
+      <div class="alert alert-success" role="status"><%= success %></div>
+    <% } %>
+    <% if (error) { %>
+      <div class="alert alert-danger" role="alert"><%= error %></div>
+    <% } %>
+
+    <!-- Select Course & Session -->
+    <section class="admin-surface admin-section-spaced">
+      <form method="GET" action="/teacher/attendance" class="extension-form-grid" id="attendanceFilterForm">
+        <div>
+          <label class="form-label" for="attCourseFilter">Course</label>
+          <select id="attCourseFilter" name="course_id" class="form-input">
+            <% (staffCourses || []).forEach(c => { %>
+              <option value="<%= c.id %>" <%= selectedCourse && Number(selectedCourse.id) === Number(c.id) ? 'selected' : '' %>>
+                <%= c.code %> &mdash; <%= c.title %>
+              </option>
+            <% }) %>
+          </select>
+        </div>
+        <div>
+          <label class="form-label" for="attSessionFilter">Scheduled Session</label>
+          <select id="attSessionFilter" name="session_id" class="form-input">
+            <% if (!courseSessions || courseSessions.length === 0) { %>
+              <option value="">Ad-hoc Live Session</option>
+            <% } else { %>
+              <% courseSessions.forEach(s => { %>
+                <option value="<%= s.id %>" <%= selectedSession && selectedSession.id === s.id ? 'selected' : '' %>>
+                  <%= s.session_date %> &bull; <%= s.title %> (<%= s.start_time %>)
+                </option>
+              <% }) %>
+            <% } %>
+          </select>
+        </div>
+        <div class="extension-submit-wrap">
+          <button type="submit" class="btn btn-secondary" id="btnLoadAttendanceRoll">Load Class Roll</button>
+        </div>
+      </form>
+    </section>
+
+    <% if (!selectedCourse) { %>
+      <section class="admin-surface">
+        <div class="empty-state">No courses are currently assigned to take attendance for.</div>
+      </section>
+    <% } else { %>
+      <!-- Mark Session Roll Call (UML: Input Attendance) -->
+      <section class="admin-surface admin-section-spaced" id="attendanceRollSection">
+        <h2>Take Roll Call &mdash; <%= selectedCourse.code %>: <%= selectedSession ? selectedSession.title : 'Live Session' %></h2>
+        <% if (!roster || roster.length === 0) { %>
+          <div class="empty-state">No active students are enrolled in <%= selectedCourse.code %> yet.</div>
+        <% } else { %>
+          <form method="POST" action="/teacher/attendance/record" id="attendanceRollForm">
+            <input type="hidden" name="course_id" value="<%= selectedCourse.id %>">
+            <input type="hidden" name="session_id" value="<%= selectedSession ? selectedSession.id : '' %>">
+
+            <div class="extension-form-grid">
+              <div>
+                <label class="form-label" for="attSessionTitleInput">Session Title</label>
+                <input type="text" id="attSessionTitleInput" name="session_title" class="form-input" value="<%= selectedSession ? selectedSession.title : (selectedCourse.code + ' Cohort Seminar') %>" required>
+              </div>
+              <div>
+                <label class="form-label" for="attSessionDateInput">Session Date</label>
+                <input type="date" id="attSessionDateInput" name="session_date" class="form-input" value="<%= selectedSession ? selectedSession.session_date : todayEat %>" required>
+              </div>
+            </div>
+
+            <div class="admin-table-wrap">
+              <table class="admin-table attendance-roll-table" id="attendanceRollTable">
+                <thead>
+                  <tr>
+                    <th>Student ID</th>
+                    <th>Pastor Name</th>
+                    <th>Attendance Status *</th>
+                    <th>Lecturer Note (Optional)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% roster.forEach(student => {
+                       const prevRec = existingByStudent[student.username];
+                       const currentStatus = prevRec ? prevRec.status : 'present';
+                  %>
+                    <tr id="rollRow-<%= student.username %>">
+                      <td><strong><%= student.student_id %></strong></td>
+                      <td><%= student.full_name %></td>
+                      <td>
+                        <select id="attStatus-<%= student.username %>" name="status_<%= student.username %>" class="form-input" aria-label="Attendance status for <%= student.full_name %>">
+                          <option value="present" <%= currentStatus === 'present' ? 'selected' : '' %>>Present</option>
+                          <option value="late" <%= currentStatus === 'late' ? 'selected' : '' %>>Late</option>
+                          <option value="excused" <%= currentStatus === 'excused' ? 'selected' : '' %>>Excused</option>
+                          <option value="absent" <%= currentStatus === 'absent' ? 'selected' : '' %>>Absent</option>
+                        </select>
+                      </td>
+                      <td>
+                        <input type="text" id="attNote-<%= student.username %>" name="note_<%= student.username %>" class="form-input" value="<%= prevRec ? (prevRec.note || '') : '' %>" placeholder="e.g. Network drop / Apology received" aria-label="Attendance note for <%= student.full_name %>">
+                      </td>
+                    </tr>
+                  <% }) %>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="roll-submit-row">
+              <button type="submit" class="btn btn-primary" id="btnSaveAttendanceRoll">Save Class Attendance</button>
+            </div>
+          </form>
+        <% } %>
+      </section>
+
+      <!-- Per-Student Course Attendance Summary (UML: Check Details / View Reports) -->
+      <section class="admin-surface" id="courseAttendanceSummarySection">
+        <h2>Course Attendance Overview &mdash; <%= selectedCourse.code %></h2>
+        <div class="admin-table-wrap">
+          <table class="admin-table" id="courseAttendanceSummaryTable">
+            <thead>
+              <tr>
+                <th>Pastor</th>
+                <th>Sessions Recorded</th>
+                <th>Present</th>
+                <th>Late / Excused</th>
+                <th>Absent</th>
+                <th>Overall Rate</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% (roster || []).forEach(student => {
+                   const sum = studentSummaries[student.username] || { totalSessions: 0, presentCount: 0, lateCount: 0, excusedCount: 0, absentCount: 0, attendancePercent: null, needsFollowUp: false };
+              %>
+                <tr>
+                  <td><strong><%= student.full_name %></strong> (<%= student.student_id %>)</td>
+                  <td><%= sum.totalSessions %></td>
+                  <td><%= sum.presentCount %></td>
+                  <td><%= sum.lateCount %> / <%= sum.excusedCount %></td>
+                  <td><%= sum.absentCount %></td>
+                  <td>
+                    <% if (sum.attendancePercent === null) { %>
+                      <span class="lecturer-subtitle">Not yet marked</span>
+                    <% } else { %>
+                      <span class="att-badge <%= sum.needsFollowUp ? 'att-absent' : 'att-present' %>">
+                        <%= sum.attendancePercent %>% <%= sum.needsFollowUp ? 'Needs Follow-Up' : 'Good' %>
+                      </span>
+                    <% } %>
+                  </td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    <% } %>
+  </main>
+
+  <%- include('partials/footer') %>
+</body>
+</html>
