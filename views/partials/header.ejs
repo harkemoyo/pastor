@@ -38,6 +38,12 @@
             <span>Library</span>
           </a>
         </li>
+        <li class="nav-item <%= (typeof currentPath !== 'undefined' && currentPath.startsWith('/academics')) ? 'active' : '' %>">
+          <a href="/academics" id="navMyAcademics">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+            <span>My Academics</span>
+          </a>
+        </li>
         <% if (['teacher', 'admin', 'super_admin'].includes(user.role)) { %>
           <li class="nav-item <%= (typeof currentPath !== 'undefined' && currentPath.startsWith('/teacher/classes')) ? 'active' : '' %>">
             <a href="/teacher/classes" id="navTeacherClasses">

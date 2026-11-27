@@ -1,5 +1,14 @@
 [
   {
+    "id": 1795808517499.887,
+    "admin_username": "a1000001",
+    "admin_name": "Admin User",
+    "action": "Saved academic term AY2027-T3 (2027-04-08 to 2027-06-09)",
+    "target_type": "term",
+    "target_id": "term-ay2027-t3",
+    "created_at": "2026-11-27T19:41:57.499Z"
+  },
+  {
     "id": 1795000189356.992,
     "admin_username": "a1000001",
     "admin_name": "Admin User",

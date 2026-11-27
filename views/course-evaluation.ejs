@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title || 'Anonymous Course Evaluation | Pastors LMS' %></title>
+  <link rel="stylesheet" href="/css/global.css?v=<%= locals.assetVersion || '3' %>">
+  <link rel="stylesheet" href="/css/dashboard.css?v=<%= locals.assetVersion || '3' %>">
+  <link rel="stylesheet" href="/css/course.css?v=<%= locals.assetVersion || '3' %>">
+  <link rel="stylesheet" href="/css/footer.css?v=<%= locals.assetVersion || '3' %>">
+  <link rel="icon" type="image/x-icon" href="/images/favicon.ico">
+</head>
+<body class="app-container">
+  <%- include('partials/header') %>
+
+  <main class="main-content eval-page">
+    <div class="doc-toolbar">
+      <a href="/courses/<%= course.id %>" class="btn btn-secondary" id="btnEvalBackToCourse">&larr; Back to <%= course.code %></a>
+      <a href="/" class="btn btn-outline" id="btnEvalBackDashboard">Dashboard</a>
+    </div>
+
+    <section class="orientation-hero">
+      <span class="course-code-tag"><%= course.code %> &middot; ANONYMOUS EVALUATION</span>
+      <h1>End-of-Course Evaluation Survey</h1>
+      <p>
+        Your responses are <strong>100% anonymous</strong> to your instructors. Neither your name nor your student ID is stored on any rating or comment. Help Intentional Discipleship Africa strengthen pastoral training across East Africa.
+      </p>
+    </section>
+
+    <% if (success) { %>
+      <div class="alert alert-success" role="status"><%= success %></div>
+    <% } %>
+    <% if (error) { %>
+      <div class="alert alert-danger" role="alert"><%= error %></div>
+    <% } %>
+
+    <% if (alreadySubmitted) { %>
+      <section class="orientation-completed-banner" id="evalCompletedCard">
+        <div>
+          <h2>✓ Course Evaluation Recorded Anonymously</h2>
+          <p>Asante sana! Thank you for sharing your honest pastoral feedback on <strong><%= course.code %> &mdash; <%= course.title %></strong>.</p>
+        </div>
+        <a href="/courses/<%= course.id %>" class="btn btn-primary" id="btnEvalReturnCourse">Return to Course &rarr;</a>
+      </section>
+    <% } else { %>
+      <section class="bp-tab-card">
+        <h2>Share Your Experience (<%= course.title %>)</h2>
+        <p class="lecturer-subtitle">Rate each area from <strong>1 (Strongly Disagree)</strong> to <strong>5 (Strongly Agree)</strong>.</p>
+
+        <form action="/courses/<%= course.id %>/evaluation" method="POST" id="courseEvaluationForm" class="eval-form">
+          <div class="eval-rating-row">
+            <label class="form-label" for="ratingContentSelect">1. Biblical Soundness &amp; Content Depth (Scripture-centered fidelity)</label>
+            <select id="ratingContentSelect" name="rating_content" class="form-input" required>
+              <option value="5">5 — Strongly Agree (Rich &amp; biblically faithful)</option>
+              <option value="4">4 — Agree</option>
+              <option value="3">3 — Neutral</option>
+              <option value="2">2 — Disagree</option>
+              <option value="1">1 — Strongly Disagree</option>
+            </select>
+          </div>
+
+          <div class="eval-rating-row">
+            <label class="form-label" for="ratingInstructorSelect">2. Instructor Feedback, Care &amp; Responsiveness</label>
+            <select id="ratingInstructorSelect" name="rating_instructor" class="form-input" required>
+              <option value="5">5 — Strongly Agree (Encouraging &amp; helpful)</option>
+              <option value="4">4 — Agree</option>
+              <option value="3">3 — Neutral</option>
+              <option value="2">2 — Disagree</option>
+              <option value="1">1 — Strongly Disagree</option>
+            </select>
+          </div>
+
+          <div class="eval-rating-row">
+            <label class="form-label" for="ratingClaritySelect">3. Clarity of Lessons, Quizzes &amp; Weekly Schedule (EAT)</label>
+            <select id="ratingClaritySelect" name="rating_clarity" class="form-input" required>
+              <option value="5">5 — Strongly Agree (Clear &amp; easy to follow)</option>
+              <option value="4">4 — Agree</option>
+              <option value="3">3 — Neutral</option>
+              <option value="2">2 — Disagree</option>
+              <option value="1">1 — Strongly Disagree</option>
+            </select>
+          </div>
+
+          <div class="eval-rating-row">
+            <label class="form-label" for="ratingImpactSelect">4. Practical Impact on My Local Church Ministry</label>
+            <select id="ratingImpactSelect" name="rating_ministry_impact" class="form-input" required>
+              <option value="5">5 — Strongly Agree (Directly equipped my ministry)</option>
+              <option value="4">4 — Agree</option>
+              <option value="3">3 — Neutral</option>
+              <option value="2">2 — Disagree</option>
+              <option value="1">1 — Strongly Disagree</option>
+            </select>
+          </div>
+
+          <div class="eval-rating-row">
+            <label class="form-label" for="evalCommentsInput">5. Anonymous Suggestions or Encouragement (Optional)</label>
+            <textarea id="evalCommentsInput" name="comments" class="assignment-textarea" rows="4" placeholder="What blessed your church most? What could be clearer next term?"></textarea>
+          </div>
+
+          <button type="submit" class="btn btn-primary" id="btnSubmitCourseEval">Submit Anonymous Evaluation</button>
+        </form>
+      </section>
+    <% } %>
+  </main>
+
+  <%- include('partials/footer') %>
+</body>
+</html>

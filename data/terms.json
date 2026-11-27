@@ -1,0 +1,44 @@
+{
+  "settings": {
+    "require_orientation": false,
+    "weekly_due_time_eat": "23:55"
+  },
+  "terms": [
+    {
+      "id": "term-ay2027-t1",
+      "code": "AY2027-T1",
+      "name": "Term 1 — 2026/2027 Academic Year",
+      "start_date": "2026-11-12",
+      "end_date": "2027-01-13",
+      "weeks": 9,
+      "registration_open": "2026-10-15",
+      "registration_close": "2026-11-11",
+      "add_drop_end": "2026-11-18",
+      "is_active": true
+    },
+    {
+      "id": "term-ay2027-t2",
+      "code": "AY2027-T2",
+      "name": "Term 2 — 2026/2027 Academic Year",
+      "start_date": "2027-01-21",
+      "end_date": "2027-03-24",
+      "weeks": 9,
+      "registration_open": "2026-12-20",
+      "registration_close": "2027-01-20",
+      "add_drop_end": "2027-01-27",
+      "is_active": false
+    },
+    {
+      "id": "term-ay2027-t3",
+      "code": "AY2027-T3",
+      "name": "Term 3 — Pastoral Cohort",
+      "start_date": "2027-04-08",
+      "end_date": "2027-06-09",
+      "weeks": 9,
+      "registration_open": "2027-03-01",
+      "registration_close": "2027-04-07",
+      "add_drop_end": "2027-04-14",
+      "is_active": false
+    }
+  ]
+}

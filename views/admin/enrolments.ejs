@@ -14,12 +14,58 @@
   <main class="admin-page">
     <div class="admin-topbar">
       <div>
-        <h1 class="admin-title">Enrolments</h1>
-        <div class="admin-subtitle">Manage student-course enrolments and capacity</div>
+        <h1 class="admin-title">Enrolments &amp; Term Registrations</h1>
+        <div class="admin-subtitle">Approve pastor course registration requests, check prerequisites/load limits, and manage enrolments</div>
       </div>
     </div>
 
-    <section class="admin-surface">
+    <% if (typeof success !== 'undefined' && success) { %>
+      <div class="alert alert-success" role="status"><%= success %></div>
+    <% } %>
+    <% if (typeof error !== 'undefined' && error) { %>
+      <div class="alert alert-danger" role="alert"><%= error %></div>
+    <% } %>
+
+    <!-- Pending Term Course Registration Requests (Phase 4) -->
+    <% const pendingRegReqs = (typeof registrationRequests !== 'undefined' ? registrationRequests : []).filter(r => r.status === 'pending'); %>
+    <section class="admin-surface admin-section-spaced" id="pendingRegistrationRequestsSection">
+      <h3>Pending Term Registration Requests (<%= pendingRegReqs.length %>)</h3>
+      <% if (pendingRegReqs.length === 0) { %>
+        <p class="lecturer-subtitle">No pending course registration requests from pastors right now.</p>
+      <% } else { %>
+        <div class="admin-table-wrap">
+          <table class="admin-table" id="regRequestsAdminTable">
+            <thead>
+              <tr>
+                <th>Pastor</th>
+                <th>Requested Course</th>
+                <th>Term</th>
+                <th>Requested</th>
+                <th>Decision</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% pendingRegReqs.forEach(reqItem => { %>
+                <tr>
+                  <td><strong><%= reqItem.student_name %></strong> (@<%= reqItem.student_username %>)</td>
+                  <td><span class="badge course-badge"><%= reqItem.course_code %></span> <%= reqItem.course_title %></td>
+                  <td><%= reqItem.term_code %></td>
+                  <td><%= new Date(reqItem.created_at).toLocaleDateString() %></td>
+                  <td>
+                    <form method="POST" action="/admin/enrolments/requests/<%= reqItem.id %>/resolve" class="action-row-inline" id="regApproveForm-<%= reqItem.id %>">
+                      <button type="submit" name="decision" value="approve" class="btn btn-primary btn-sm" id="btnApproveRegReq-<%= reqItem.id %>">Approve &amp; Enrol</button>
+                      <button type="submit" name="decision" value="deny" class="btn btn-outline btn-sm" id="btnDenyRegReq-<%= reqItem.id %>">Decline</button>
+                    </form>
+                  </td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      <% } %>
+    </section>
+
+    <section class="admin-surface admin-section-spaced">
       <h3>Create Enrolment</h3>
       <form method="POST" action="/admin/enrolments/new" class="filters-bar">
         <div class="filter-group" style="flex:1; min-width:220px;">

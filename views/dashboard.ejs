@@ -39,7 +39,11 @@
         </p>
         <div class="hero-quick-links">
           <a href="/courses" class="btn btn-accent" id="btnHeroMyCourses">Continue My Courses</a>
+          <a href="/academics" class="btn btn-hero-outline" id="btnHeroMyAcademics">My Academics &amp; Registration</a>
           <a href="/transcript" class="btn btn-hero-outline" id="btnHeroMyTranscript">Official Transcript</a>
+          <% if (typeof academicStanding !== 'undefined' && academicStanding) { %>
+            <span class="standing-pill <%= academicStanding.badgeClass %>" id="heroStandingBadge"><%= academicStanding.label %></span>
+          <% } %>
         </div>
       </section>
 

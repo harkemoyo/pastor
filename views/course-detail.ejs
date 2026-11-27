@@ -367,6 +367,7 @@
           <button type="button" id="btnToolOfflineSave" role="menuitem" data-tool-action="offline">Save Course for Offline</button>
           <a href="/transcript?courseId=<%= course.id %>" id="btnToolTranscript" role="menuitem">Course Transcript (<%= course.code %>)</a>
           <a href="/transcript" id="btnToolCumulativeTranscript" role="menuitem">Cumulative Transcript (All Courses)</a>
+          <a href="/courses/<%= course.id %>/evaluation" id="btnToolEvaluation" role="menuitem">Course Evaluation Survey</a>
           <a href="/courses/<%= course.id %>/certificate" id="btnToolCertificate" role="menuitem">Course Certificate</a>
         </div>
       </div>

@@ -4,6 +4,9 @@
   document.addEventListener('DOMContentLoaded', () => {
     const typeSelect = document.getElementById('lessonType');
     const settingsRow = document.getElementById('assessmentSettingsRow');
+    const practiceGroup = document.getElementById('practiceQuizToggleGroup');
+    const examMinGroup = document.getElementById('examMinProgressGroup');
+    const maxAttemptsInput = document.getElementById('lessonMaxAttempts');
     const quizBox = document.getElementById('quizBuilderBox');
     const questionsContainer = document.getElementById('quizQuestionsContainer');
     const addBtn = document.getElementById('btnAddQuizQuestion');
@@ -17,6 +20,12 @@
       const isGraded = ['assignment', 'journal', 'quiz', 'exam'].includes(t);
       const isQuiz = ['quiz', 'exam'].includes(t);
       if (settingsRow) settingsRow.hidden = !isGraded;
+      if (practiceGroup) practiceGroup.hidden = t !== 'quiz';
+      if (examMinGroup) examMinGroup.hidden = t !== 'exam';
+      if (maxAttemptsInput) {
+        if (t === 'exam' && maxAttemptsInput.value === '3') maxAttemptsInput.value = '1';
+        else if (t === 'quiz' && maxAttemptsInput.value === '1') maxAttemptsInput.value = '3';
+      }
       if (quizBox) quizBox.hidden = !isQuiz;
       if (isQuiz && questionsContainer && questionsContainer.children.length === 0) {
         addQuestionRow();
@@ -43,7 +52,7 @@
           <input type="text" class="form-input q-opt-c" placeholder="Option C (optional)">
           <input type="text" class="form-input q-opt-d" placeholder="Option D (optional)">
         </div>
-        <div class="form-group" style="margin-top: 0.75rem;">
+        <div class="form-group quiz-correct-group">
           <label class="form-label">Correct Answer</label>
           <select class="form-input q-correct">
             <option value="a">Option A</option>

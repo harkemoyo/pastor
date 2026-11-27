@@ -16,6 +16,9 @@ const {
   computeTermWeekInfo,
   getOrientationStatus,
   getExtensionRequests,
+  computeAcademicStanding,
+  letterToGradePoints,
+  computeLetterGrade,
   getAnnouncements,
   getSubmissions,
   getDiscussions,
@@ -472,6 +475,26 @@ router.get('/', requireAuth, async (req, res) => {
   const termWeekInfo = computeTermWeekInfo(activeTerm);
   const orientationStatus = getOrientationStatus(username);
 
+  let totalQP = 0;
+  let gradedCreds = 0;
+  let gradedCoursesCount = 0;
+  for (const c of visibleCourses) {
+    const subs = userSubs.filter(s => Number(s.course_id) === Number(c.id));
+    const disc = allUserDiscussions.filter(d => Number(d.course_id) === Number(c.id));
+    const gs = computeCourseGradeSummary(subs, disc, c.grade_weights || null);
+    if (gs.averagePercent !== null) {
+      const gp = letterToGradePoints(computeLetterGrade(gs.averagePercent));
+      const creds = Number(c.credits) || 3;
+      if (gp !== null) {
+        totalQP += gp * creds;
+        gradedCreds += creds;
+        gradedCoursesCount += 1;
+      }
+    }
+  }
+  const cumGpa = gradedCreds > 0 ? (totalQP / gradedCreds).toFixed(2) : null;
+  const academicStanding = computeAcademicStanding(cumGpa, gradedCoursesCount);
+
   res.render('dashboard', {
     title: 'Pastor Dashboard | Pastors LMS',
     courses: enrichedCourses,
@@ -482,6 +505,7 @@ router.get('/', requireAuth, async (req, res) => {
     activeTerm,
     termWeekInfo,
     orientationStatus,
+    academicStanding,
     requireOrientation: Boolean(academicConfig.settings && academicConfig.settings.require_orientation),
     stats: {
       totalEnrolled,
@@ -556,6 +580,20 @@ router.get('/courses/:id', requireAuth, async (req, res) => {
   const termWeekInfo = computeTermWeekInfo(activeTerm);
   const myExtensionRequests = getExtensionRequests({ course_id: courseId, student_username: username });
 
+  let nonExamTotal = 0;
+  let nonExamDone = 0;
+  if (Array.isArray(course.modulesWithTopics)) {
+    course.modulesWithTopics.forEach(mod => {
+      (mod.topics || []).forEach(t => {
+        if (t.type !== 'exam') {
+          nonExamTotal += 1;
+          if (t.completed) nonExamDone += 1;
+        }
+      });
+    });
+  }
+  const nonExamPercent = nonExamTotal > 0 ? Math.min(100, Math.round((nonExamDone / nonExamTotal) * 100)) : 100;
+
   if (Array.isArray(course.modulesWithTopics)) {
     course.modulesWithTopics = course.modulesWithTopics.map(mod => {
       const rawMod = (rawCourse.modules || []).find(m => Number(m.id) === Number(mod.id)) || mod;
@@ -563,17 +601,25 @@ router.get('/courses/:id', requireAuth, async (req, res) => {
         ...mod,
         isLocked: isStaff ? false : Boolean(mod.isLocked),
         instructor: resolveModuleInstructor(rawCourse, rawMod),
-        topics: (mod.topics || []).map(t => ({
-          ...t,
-          deadlineInfo: checkDeadlineLock({
-            courseId,
-            moduleId: mod.id,
-            topicId: t.id,
-            dueDateIso: t.dueDateIso,
-            username,
-            userRole
-          })
-        }))
+        topics: (mod.topics || []).map(t => {
+          const reqPct = t.type === 'exam' ? (Number(t.minProgressToUnlock) || 0) : 0;
+          return {
+            ...t,
+            deadlineInfo: checkDeadlineLock({
+              courseId,
+              moduleId: mod.id,
+              topicId: t.id,
+              dueDateIso: t.dueDateIso,
+              username,
+              userRole
+            }),
+            examEligibility: t.type === 'exam' ? {
+              eligible: isStaff || reqPct <= 0 || nonExamPercent >= reqPct,
+              requiredPercent: reqPct,
+              currentPercent: nonExamPercent
+            } : null
+          };
+        })
       };
     });
   }
@@ -590,7 +636,7 @@ router.get('/courses/:id', requireAuth, async (req, res) => {
   const myDiscussions = courseDiscussions.filter(
     d => String(d.author_username || '').toLowerCase() === String(username).toLowerCase()
   );
-  const gradeSummary = computeCourseGradeSummary(mySubs, myDiscussions);
+  const gradeSummary = computeCourseGradeSummary(mySubs, myDiscussions, rawCourse.grade_weights || null);
   const workToDo = buildWorkToDo([course], {
     submissions: mySubs,
     discussions: myDiscussions

@@ -3007,3 +3007,84 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ==========================================================================
+   Phase 3: Private Journals, Exam Eligibility, Rubric Peer Review & Eval
+   ========================================================================== */
+.journal-privacy-note {
+  background: #EEF2F7;
+  border: 1.5px solid #CBD6E3;
+  border-left: 5px solid #192F47;
+  border-radius: 8px;
+  padding: 12px 15px;
+  margin-bottom: 14px;
+  font-size: 0.92rem;
+  color: #0B192C;
+}
+
+.exam-locked-banner {
+  background: #FAF8F3;
+  border: 1.5px solid #670C21;
+  border-left: 5px solid #670C21;
+  border-radius: 8px;
+  padding: 14px 18px;
+  margin-bottom: 18px;
+  color: #670C21;
+  font-size: 0.95rem;
+}
+
+.integrity-flag-pill {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: #FEE2E2;
+  color: #991B1B;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.peer-rubric-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+.peer-rubric-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #192F47;
+}
+
+.peer-review-submit-row {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  flex-wrap: wrap;
+}
+
+.eval-page {
+  max-width: 860px;
+}
+
+.eval-form {
+  display: grid;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.eval-rating-row {
+  display: grid;
+  gap: 6px;
+}
+
+@media (max-width: 720px) {
+  .peer-rubric-grid {
+    grid-template-columns: 1fr;
+  }
+}

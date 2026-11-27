@@ -127,6 +127,49 @@
         </div>
       </div>
     </section>
+
+    <!-- Phase 4: Academic Program Track, Standing & Pastoral Mentor -->
+    <% const detailSlug = student.username || student.student_id; %>
+    <section class="admin-surface admin-section-spaced" id="studentAcademicsSection">
+      <div class="lecturer-header-row">
+        <div>
+          <h3>Academic Program, Standing &amp; Pastoral Mentor</h3>
+          <p class="lecturer-subtitle">Assign a Seminary program track and a dedicated Pastoral Mentor for academic &amp; spiritual guidance.</p>
+        </div>
+        <% if (typeof standing !== 'undefined' && standing) { %>
+          <span class="standing-pill <%= standing.badgeClass %>" id="adminStudentStandingBadge">
+            <%= standing.label %><% if (standing.gpa) { %> &bull; GPA <%= standing.gpa %><% } %>
+          </span>
+        <% } %>
+      </div>
+
+      <form method="POST" action="/admin/students/<%= detailSlug %>/academics" class="extension-form-grid" id="studentAcademicsForm">
+        <div>
+          <label class="form-label" for="studentProgramSelect">Program Track</label>
+          <select id="studentProgramSelect" name="program_id" class="form-input">
+            <% (typeof programs !== 'undefined' ? programs : []).forEach(p => { %>
+              <option value="<%= p.id %>" <%= (typeof academicProfile !== 'undefined' && academicProfile && academicProfile.program_id === p.id) ? 'selected' : '' %>>
+                <%= p.name %> (<%= p.id %>)
+              </option>
+            <% }) %>
+          </select>
+        </div>
+        <div>
+          <label class="form-label" for="studentMentorSelect">Assigned Pastoral Mentor</label>
+          <select id="studentMentorSelect" name="mentor_username" class="form-input">
+            <option value="">-- IDA Cohort Mentor Team --</option>
+            <% (typeof mentors !== 'undefined' ? mentors : []).forEach(m => { %>
+              <option value="<%= m.username %>" <%= (typeof academicProfile !== 'undefined' && academicProfile && academicProfile.mentor_username === String(m.username).toLowerCase()) ? 'selected' : '' %>>
+                <%= m.full_name || m.username %> (<%= m.role.toUpperCase() %>)
+              </option>
+            <% }) %>
+          </select>
+        </div>
+        <div class="extension-submit-wrap">
+          <button type="submit" class="btn btn-primary" id="btnSaveStudentAcademics">Save Program &amp; Mentor</button>
+        </div>
+      </form>
+    </section>
   </main>
   <%- include('../partials/footer') %>
 </body>

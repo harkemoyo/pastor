@@ -170,6 +170,84 @@
         <div class="empty-state">No students are enrolled in this course.</div>
       <% } %>
     </section>
+
+    <!-- Course Prerequisite (Phase 4) -->
+    <section class="admin-surface admin-section-spaced" id="coursePrereqSection">
+      <h3>Course Prerequisite</h3>
+      <p class="lecturer-subtitle">Require students to pass or complete a foundation course before registering for <strong><%= course.code %></strong>.</p>
+      <form method="POST" action="/admin/courses/<%= course.id %>/prerequisite" class="prereq-form-row" id="coursePrereqForm">
+        <label class="form-label" for="coursePrereqSelect">Required Foundation Course:</label>
+        <select id="coursePrereqSelect" name="prerequisite_code" class="lecturer-select">
+          <option value="">None (Open to all students)</option>
+          <% (typeof allCourses !== 'undefined' ? allCourses : []).filter(c => Number(c.id) !== Number(course.id)).forEach(c => { %>
+            <option value="<%= c.code %>" <%= (course.prerequisite_code && course.prerequisite_code.toUpperCase() === c.code.toUpperCase()) ? 'selected' : '' %>>
+              <%= c.code %> — <%= c.title %>
+            </option>
+          <% }) %>
+        </select>
+        <button type="submit" class="btn btn-primary btn-sm" id="btnSaveCoursePrereq">Save Prerequisite</button>
+      </form>
+    </section>
+
+    <!-- Per-Course Syllabus Grade Weights (Phase 3) -->
+    <section class="admin-surface admin-section-spaced" id="courseWeightsSection">
+      <h3>Syllabus Grade Category Weights</h3>
+      <p class="lecturer-subtitle">Set custom category weights for <strong><%= course.code %></strong> (must sum to <strong>100%</strong>). Practice Self-Quizzes remain ungraded.</p>
+      <% const w = (typeof courseWeights !== 'undefined' && courseWeights) ? courseWeights : { assignment: 25, journal: 15, discussion: 20, quiz: 15, exam: 25 }; %>
+      <form method="POST" action="/admin/courses/<%= course.id %>/weights" class="weights-form-grid" id="courseWeightsForm">
+        <div>
+          <label class="form-label" for="weightAssignInput">Written Assignments (%)</label>
+          <input type="number" id="weightAssignInput" name="weight_assignment" class="form-input" min="0" max="100" value="<%= w.assignment %>" required>
+        </div>
+        <div>
+          <label class="form-label" for="weightJournalInput">Ministry Journals (%)</label>
+          <input type="number" id="weightJournalInput" name="weight_journal" class="form-input" min="0" max="100" value="<%= w.journal %>" required>
+        </div>
+        <div>
+          <label class="form-label" for="weightDiscussionInput">Cohort Discussions (%)</label>
+          <input type="number" id="weightDiscussionInput" name="weight_discussion" class="form-input" min="0" max="100" value="<%= w.discussion %>" required>
+        </div>
+        <div>
+          <label class="form-label" for="weightQuizInput">Graded Quizzes (%)</label>
+          <input type="number" id="weightQuizInput" name="weight_quiz" class="form-input" min="0" max="100" value="<%= w.quiz %>" required>
+        </div>
+        <div>
+          <label class="form-label" for="weightExamInput">Final Exam (%)</label>
+          <input type="number" id="weightExamInput" name="weight_exam" class="form-input" min="0" max="100" value="<%= w.exam %>" required>
+        </div>
+        <div class="extension-submit-wrap">
+          <button type="submit" class="btn btn-primary" id="btnSaveCourseWeights">Save Grade Weights</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- Anonymous End-of-Course Evaluation Summary -->
+    <section class="admin-surface admin-section-spaced" id="courseEvalSummarySection">
+      <h3>Anonymous Course Evaluation Summary</h3>
+      <% const ev = typeof evaluationSummary !== 'undefined' ? evaluationSummary : { totalResponses: 0 }; %>
+      <% if (!ev || ev.totalResponses === 0) { %>
+        <div class="empty-state">No anonymous course evaluations submitted yet for <%= course.code %>.</div>
+      <% } else { %>
+        <p class="lecturer-subtitle">Aggregated across <strong><%= ev.totalResponses %></strong> anonymous pastoral response(s).</p>
+        <div class="eval-stats-grid">
+          <div class="info-card"><strong>Overall Rating</strong><div><%= ev.avgOverall %> / 5.0</div></div>
+          <div class="info-card"><strong>Biblical Content</strong><div><%= ev.avgContent %> / 5.0</div></div>
+          <div class="info-card"><strong>Instructor Care</strong><div><%= ev.avgInstructor %> / 5.0</div></div>
+          <div class="info-card"><strong>Lesson Clarity</strong><div><%= ev.avgClarity %> / 5.0</div></div>
+          <div class="info-card"><strong>Ministry Impact</strong><div><%= ev.avgMinistryImpact %> / 5.0</div></div>
+        </div>
+        <% if (ev.comments && ev.comments.length) { %>
+          <div class="eval-comments-list">
+            <% ev.comments.forEach(c => { %>
+              <blockquote class="eval-comment-card">
+                <p><%= c.text %></p>
+                <span>Rating: <%= c.overall_rating %>/5 &bull; <%= new Date(c.submitted_at).toLocaleDateString() %></span>
+              </blockquote>
+            <% }) %>
+          </div>
+        <% } %>
+      <% } %>
+    </section>
   </main>
   <%- include('../partials/footer') %>
 </body>

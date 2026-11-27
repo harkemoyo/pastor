@@ -62,9 +62,16 @@
                 <span class="lecturer-scope-tag <%= sub.status === 'graded' ? 'lecturer-scope-course' : 'lecturer-scope-module' %>">
                   <%= sub.status === 'graded' ? `Graded: ${sub.score}/${sub.max_score} (${sub.grade_letter})` : 'Awaiting Grade' %>
                 </span>
+                <% if (sub.peerAvgPercent !== null && sub.peerAvgPercent !== undefined) { %>
+                  <span class="lecturer-scope-tag lecturer-scope-course">Peer Rubric Avg: <%= sub.peerAvgPercent %>% (<%= sub.peerReviews.length %>)</span>
+                <% } %>
+                <% if (sub.integrity_flagged) { %>
+                  <span class="lecturer-scope-tag integrity-flag-pill">⚠️ Integrity Review Flagged</span>
+                <% } %>
                 <h3><%= sub.student_name %> (@<%= sub.student_username %>) — <%= sub.topic_title || sub.topic_id %></h3>
                 <span class="lecturer-contact-meta">
                   Type: <%= sub.submission_type %> &middot; Attempt #<%= sub.attempt_number || 1 %> &middot; Submitted <%= new Date(sub.updated_at || sub.created_at).toLocaleString() %>
+                  <% if (sub.submission_type === 'journal') { %> &middot; 🔒 Private Ministry Journal<% } %>
                 </span>
               </div>
             </div>
@@ -73,6 +80,12 @@
               <div class="submission-response-box">
                 <strong>Pastor's Submission:</strong>
                 <p><%= sub.content_text %></p>
+              </div>
+            <% } %>
+
+            <% if (sub.integrity_flagged && sub.integrity_flag_reason) { %>
+              <div class="alert alert-danger">
+                <strong>Integrity Note (<%= sub.integrity_flagged_by || 'Instructor' %>):</strong> <%= sub.integrity_flag_reason %>
               </div>
             <% } %>
 
@@ -88,6 +101,17 @@
                   value="<%= sub.feedback || '' %>" placeholder="Write encouraging biblical feedback for this pastor...">
               </div>
               <button type="submit" class="btn btn-primary" id="btnSaveGrade-<%= sub.id %>">Save Grade</button>
+            </form>
+
+            <form action="/teacher/submissions/<%= sub.id %>/flag" method="POST" class="flag-inline-form" id="flagForm-<%= sub.id %>">
+              <% if (sub.integrity_flagged) { %>
+                <input type="hidden" name="action" value="clear">
+                <button type="submit" class="btn btn-outline btn-sm" id="btnClearFlag-<%= sub.id %>">Clear Integrity Flag</button>
+              <% } else { %>
+                <input type="hidden" name="action" value="flag">
+                <input type="text" name="flag_reason" class="form-input flag-reason-input" placeholder="Optional academic integrity note (e.g. copied text)..." aria-label="Integrity flag reason">
+                <button type="submit" class="btn btn-outline btn-sm" id="btnFlagSub-<%= sub.id %>">Flag for Integrity Review</button>
+              <% } %>
             </form>
           </article>
         <% }) %>

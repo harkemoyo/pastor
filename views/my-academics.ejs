@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title || 'My Academics & Registration | Pastors LMS' %></title>
+  <link rel="stylesheet" href="/css/global.css?v=<%= locals.assetVersion || '3' %>">
+  <link rel="stylesheet" href="/css/dashboard.css?v=<%= locals.assetVersion || '3' %>">
+  <link rel="stylesheet" href="/css/admin.css?v=<%= locals.assetVersion || '3' %>">
+  <link rel="stylesheet" href="/css/footer.css?v=<%= locals.assetVersion || '3' %>">
+  <link rel="icon" type="image/x-icon" href="/images/favicon.ico">
+</head>
+<body class="app-container">
+  <%- include('partials/header') %>
+
+  <main class="main-content academics-page">
+    <div class="admin-topbar">
+      <div>
+        <h1 class="admin-title">My Academics, Registration &amp; Standing</h1>
+        <p class="admin-subtitle">
+          Track your Seminary program progress, term course load limits, pastoral mentor, and official registration records.
+        </p>
+      </div>
+      <div class="admin-actions">
+        <a href="/transcript" class="btn btn-primary" id="btnAcademicsToTranscript">Official Transcript</a>
+        <a href="/courses" class="btn btn-secondary" id="btnAcademicsToCourses">My Courses</a>
+      </div>
+    </div>
+
+    <% if (success) { %>
+      <div class="alert alert-success" role="status"><%= success %></div>
+    <% } %>
+    <% if (error) { %>
+      <div class="alert alert-danger" role="alert"><%= error %></div>
+    <% } %>
+
+    <!-- 1. Program & Academic Standing Overview + Pastoral Mentor -->
+    <div class="academics-top-grid">
+      <section class="admin-surface" id="academicsOverviewCard">
+        <div class="lecturer-header-row">
+          <div>
+            <span class="badge badge-purple"><%= program.id %></span>
+            <h2><%= program.name %></h2>
+            <p class="lecturer-subtitle"><%= program.description %></p>
+          </div>
+          <span class="standing-pill <%= standing.badgeClass %>" id="academicStandingBadge"><%= standing.label %></span>
+        </div>
+
+        <div class="academics-metrics-row">
+          <div class="info-card">
+            <strong>Cumulative GPA</strong>
+            <div class="metric-big"><%= cumulativeGpa %></div>
+          </div>
+          <div class="info-card">
+            <strong>Current Term (<%= termCode %>)</strong>
+            <div class="metric-big"><%= termWeekInfo.statusLabel %></div>
+          </div>
+          <div class="info-card">
+            <strong>Term Course Load</strong>
+            <div class="metric-big" id="termLoadDisplay"><%= currentTermLoad %> / <%= standing.maxCoursesPerTerm %> max</div>
+          </div>
+        </div>
+
+        <% if (standing.mentorFollowUp) { %>
+          <div class="alert alert-danger">
+            <strong>Pastoral Care Follow-Up Recommended:</strong> Your current GPA places you in <em><%= standing.label %></em>. Please connect with your Pastoral Mentor below before taking additional courses.
+          </div>
+        <% } %>
+
+        <h3 class="academics-subhead">Required Program Courses (<%= program.required_credits %> Credits Target)</h3>
+        <ul class="program-checklist" id="programChecklist">
+          <% programChecklist.forEach(item => { %>
+            <li class="program-check-item <%= item.status === 'Completed' ? 'is-complete' : '' %>">
+              <div>
+                <strong><%= item.code %></strong> &mdash; <%= item.title %>
+              </div>
+              <span class="lecturer-scope-tag <%= item.status === 'Completed' ? 'lecturer-scope-course' : 'lecturer-scope-module' %>"><%= item.status %></span>
+            </li>
+          <% }) %>
+        </ul>
+      </section>
+
+      <aside class="admin-surface mentor-card" id="pastoralMentorCard">
+        <span class="orientation-banner-tag">MY PASTORAL MENTOR</span>
+        <% if (assignedMentor) { %>
+          <h2><%= assignedMentor.full_name %></h2>
+          <p class="lecturer-subtitle">Assigned Seminary Mentor &bull; @<%= assignedMentor.username %></p>
+          <p>Reach out anytime for guidance on doctrine, study load, sermon preparation, or ministry encouragement.</p>
+          <div class="contact-btn-group">
+            <% if (assignedMentor.wa_url) { %>
+              <a href="<%= assignedMentor.wa_url %>" target="_blank" rel="noopener noreferrer" class="btn-wa-sm" id="btnMentorWhatsApp">💬 WhatsApp Mentor</a>
+            <% } %>
+            <% if (assignedMentor.email) { %>
+              <a href="mailto:<%= assignedMentor.email %>" class="btn-email-sm" id="btnMentorEmail">✉️ Email Mentor</a>
+            <% } %>
+          </div>
+        <% } else { %>
+          <h2>IDA Cohort Mentor Team</h2>
+          <p class="lecturer-subtitle">Assigned by Intentional Discipleship Africa</p>
+          <p>No individual mentor is assigned yet. Contact the IDA Pastoral Faculty Mentor Desk for guidance on course selection and standing.</p>
+          <div class="contact-btn-group">
+            <a href="https://wa.me/254707821269?text=Hello%20IDA%20Pastoral%20Mentor" target="_blank" rel="noopener noreferrer" class="btn-wa-sm" id="btnMentorWhatsApp">💬 WhatsApp Cohort Mentor</a>
+            <a href="mailto:info@ida-africa.org" class="btn-email-sm" id="btnMentorEmail">✉️ Email Mentor Desk</a>
+          </div>
+        <% } %>
+      </aside>
+    </div>
+
+    <!-- 2. Term Course Registration (Enforces Prerequisites & Standing Load Limits) -->
+    <section class="admin-surface admin-section-spaced" id="termRegistrationSection">
+      <div class="lecturer-header-row">
+        <div>
+          <h2>Term Course Registration &mdash; <%= termCode %></h2>
+          <p class="lecturer-subtitle">
+            Based on your standing (<strong><%= standing.label %></strong>), you may carry up to <strong><%= standing.maxCoursesPerTerm %> course(s)</strong> per term. Prerequisites must be completed first.
+          </p>
+        </div>
+      </div>
+
+      <div class="reg-catalog-grid" id="regCatalogGrid">
+        <% catalogCourses.forEach(course => { %>
+          <article class="reg-course-card" id="regCard-<%= course.id %>">
+            <div class="reg-course-top">
+              <span class="badge badge-purple"><%= course.code %></span>
+              <% if (course.prereqCheck.requiredCode) { %>
+                <span class="lecturer-scope-tag <%= course.prereqCheck.met ? 'lecturer-scope-course' : 'lecturer-scope-module' %>">
+                  Prereq: <%= course.prereqCheck.requiredCode %> <%= course.prereqCheck.met ? '✓' : '(Required)' %>
+                </span>
+              <% } else { %>
+                <span class="lecturer-scope-tag lecturer-scope-course">No Prerequisite</span>
+              <% } %>
+            </div>
+            <h3><%= course.title %></h3>
+            <p class="lecturer-subtitle"><%= course.description %></p>
+
+            <div class="reg-course-actions">
+              <% if (course.alreadyEnrolledExplicit) { %>
+                <a href="/courses/<%= course.id %>" class="btn btn-secondary btn-sm" id="btnRegEnrolled-<%= course.id %>">Enrolled &mdash; Open Course</a>
+              <% } else if (course.pendingRequest) { %>
+                <span class="lecturer-scope-tag lecturer-scope-module">Pending Admin Approval</span>
+              <% } else { %>
+                <form method="POST" action="/academics/register" id="regForm-<%= course.id %>">
+                  <input type="hidden" name="course_id" value="<%= course.id %>">
+                  <button type="submit" class="btn btn-primary btn-sm" id="btnRequestCourse-<%= course.id %>">
+                    Request Registration (<%= termCode %>)
+                  </button>
+                </form>
+              <% } %>
+            </div>
+          </article>
+        <% }) %>
+      </div>
+
+      <% if (myRequests && myRequests.length > 0) { %>
+        <h3 class="academics-subhead">Your Registration Requests</h3>
+        <div class="admin-table-wrap">
+          <table class="admin-table" id="myRegRequestsTable">
+            <thead>
+              <tr><th>Course</th><th>Term</th><th>Status</th><th>Submitted</th></tr>
+            </thead>
+            <tbody>
+              <% myRequests.forEach(r => { %>
+                <tr>
+                  <td><strong><%= r.course_code %></strong> &mdash; <%= r.course_title %></td>
+                  <td><%= r.term_code %></td>
+                  <td><span class="ext-status-pill ext-status-<%= r.status %>"><%= r.status %></span></td>
+                  <td><%= new Date(r.created_at).toLocaleDateString() %></td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      <% } %>
+    </section>
+
+    <!-- 3. Course Withdrawal (W) During Weeks 1–5 -->
+    <section class="admin-surface admin-section-spaced" id="courseWithdrawalSection">
+      <div class="lecturer-header-row">
+        <div>
+          <h2>Course Withdrawal (&ldquo;W&rdquo; Grade)</h2>
+          <p class="lecturer-subtitle">
+            Pastors may withdraw cleanly without GPA penalty up through the end of <strong>Week 5</strong> (currently <strong><%= termWeekInfo.statusLabel %></strong>). A <strong>&ldquo;W&rdquo;</strong> appears on the transcript with 0 GPA penalty.
+          </p>
+        </div>
+        <span class="lecturer-scope-tag <%= canWithdrawNow ? 'lecturer-scope-course' : 'lecturer-scope-module' %>">
+          <%= canWithdrawNow ? 'Withdrawal Window Open (Weeks 1–5)' : 'Week 5 Window Closed' %>
+        </span>
+      </div>
+
+      <% if (activeEnrolledCourses && activeEnrolledCourses.length > 0) { %>
+        <form method="POST" action="/academics/withdraw" class="extension-form-grid" id="withdrawCourseForm">
+          <div>
+            <label class="form-label" for="withdrawCourseSelect">Course to Withdraw From</label>
+            <select id="withdrawCourseSelect" name="course_id" class="form-input" required>
+              <% activeEnrolledCourses.forEach(c => { %>
+                <option value="<%= c.id %>"><%= c.code %> — <%= c.title %></option>
+              <% }) %>
+            </select>
+          </div>
+          <div class="extension-reason-field">
+            <label class="form-label" for="withdrawReasonInput">Pastoral Reason</label>
+            <input type="text" id="withdrawReasonInput" name="reason" class="form-input" placeholder="e.g. Heavy parish demands or family health emergency..." required>
+          </div>
+          <div class="extension-submit-wrap">
+            <button type="submit" class="btn btn-danger" id="btnSubmitWithdrawal" <%= canWithdrawNow ? '' : 'disabled' %>>
+              Withdraw with "W" Grade
+            </button>
+          </div>
+        </form>
+      <% } %>
+
+      <% if (myWithdrawals && myWithdrawals.length > 0) { %>
+        <ul class="program-checklist" id="myWithdrawalsList">
+          <% myWithdrawals.forEach(w => { %>
+            <li class="program-check-item">
+              <div><strong><%= w.course_code %></strong> &mdash; <%= w.course_title %> (<%= w.term_code %>, Week <%= w.week_number %>)</div>
+              <span class="lecturer-scope-tag lecturer-scope-module">Grade: W &bull; Withdrawn</span>
+            </li>
+          <% }) %>
+        </ul>
+      <% } %>
+    </section>
+  </main>
+
+  <%- include('partials/footer') %>
+</body>
+</html>

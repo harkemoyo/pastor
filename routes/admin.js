@@ -17,7 +17,20 @@ const {
   deleteTerm,
   updateAcademicSettings,
   computeTermWeekInfo,
-  addDaysIso
+  addDaysIso,
+  getCourseEvaluationSummary,
+  getPrograms,
+  getProgramById,
+  getStudentAcademicProfile,
+  saveStudentAcademicProfile,
+  getRegistrationRequests,
+  resolveRegistrationRequest,
+  computeAcademicStanding,
+  computeCourseGradeSummary,
+  getSubmissions,
+  getDiscussions,
+  letterToGradePoints,
+  computeLetterGrade
 } = require('../utils/lms-store');
 
 const USERS_FILE = path.join(__dirname, '../data/users.json');
@@ -869,9 +882,53 @@ router.get('/students/:studentId', requireAdmin, async (req, res) => {
     student,
     enrolments,
     courses: allCourses,
+    programs: getPrograms(),
+    academicProfile: getStudentAcademicProfile(student.username || student.student_id),
+    mentors: getUsers().filter(u => ['teacher', 'admin', 'super_admin'].includes(u.role)),
+    standing: await (async () => {
+      const uname = student.username || student.student_id;
+      let totalQ = 0;
+      let gradedC = 0;
+      let gradedCoursesCount = 0;
+      for (const c of allCourses) {
+        const subs = await getSubmissions({ course_id: c.id, student_username: uname });
+        const disc = (await getDiscussions(c.id)).filter(d => String(d.author_username || '').toLowerCase() === String(uname).toLowerCase());
+        const gs = computeCourseGradeSummary(subs, disc, c.grade_weights || null);
+        if (gs.averagePercent !== null) {
+          const gp = letterToGradePoints(computeLetterGrade(gs.averagePercent));
+          const cred = Number(c.credits) || 3;
+          if (gp !== null) {
+            totalQ += gp * cred;
+            gradedC += cred;
+            gradedCoursesCount += 1;
+          }
+        }
+      }
+      const gpa = gradedC > 0 ? (totalQ / gradedC).toFixed(2) : null;
+      return { gpa, ...computeAcademicStanding(gpa, gradedCoursesCount) };
+    })(),
     success: req.query.success || null,
     error: req.query.error || null
   });
+});
+
+// POST /admin/students/:studentId/academics - Assign program track & pastoral mentor
+router.post('/students/:studentId/academics', requireAdmin, async (req, res) => {
+  const student = await findStudent(req.params.studentId);
+  if (!student) return res.redirect('/admin/students');
+  const key = student.username || student.student_id;
+  const saved = saveStudentAcademicProfile(key, {
+    program_id: req.body.program_id,
+    mentor_username: req.body.mentor_username
+  });
+  appendActivity({
+    adminUsername: req.session.user.username,
+    adminName: req.session.user.full_name,
+    action: `Updated program (${saved ? saved.program_id : 'CERT-PM'}) & mentor for ${buildFullName(student)}`,
+    targetType: 'student',
+    targetId: key
+  });
+  res.redirect(`/admin/students/${encodeURIComponent(key)}?success=${encodeURIComponent('Academic program track & pastoral mentor updated.')}`);
 });
 
 router.post('/students/:studentId/role', requireAdmin, async (req, res) => {
@@ -1347,11 +1404,20 @@ router.get('/courses/:id', requireAdmin, (req, res) => {
     };
   });
 
+  const defaultWeights = { assignment: 25, journal: 15, discussion: 20, quiz: 15, exam: 25 };
+  const courseWeights = (course.grade_weights && typeof course.grade_weights === 'object')
+    ? { ...defaultWeights, ...course.grade_weights }
+    : defaultWeights;
+  const evaluationSummary = getCourseEvaluationSummary(course.id);
+
   res.render('admin/course-detail', {
     title: `${course.title} | Pastors LMS`,
     user: req.session.user,
     isSuperAdmin: req.session.user.role === 'super_admin',
     course,
+    allCourses: data.courses || [],
+    courseWeights,
+    evaluationSummary,
     teachers,
     courseInstructor,
     modulesWithInstructors,
@@ -1360,6 +1426,61 @@ router.get('/courses/:id', requireAdmin, (req, res) => {
     success: req.query.success || null,
     error: req.query.error || null
   });
+});
+
+// POST /admin/courses/:id/prerequisite - Set or clear course prerequisite
+router.post('/courses/:id/prerequisite', requireAdmin, (req, res) => {
+  const data = getCoursesData();
+  const course = (data.courses || []).find(item => Number(item.id) === Number(req.params.id));
+  if (!course) return res.redirect('/admin/courses');
+
+  const rawCode = String(req.body.prerequisite_code || '').trim().toUpperCase();
+  if (rawCode && rawCode === String(course.code || '').trim().toUpperCase()) {
+    return res.redirect(`/admin/courses/${course.id}?error=${encodeURIComponent('A course cannot be its own prerequisite.')}`);
+  }
+  course.prerequisite_code = rawCode || null;
+  saveCoursesData(data);
+  appendActivity({
+    adminUsername: req.session.user.username,
+    adminName: req.session.user.full_name,
+    action: rawCode ? `Set prerequisite ${rawCode} for ${course.code}` : `Cleared prerequisite for ${course.code}`,
+    targetType: 'course',
+    targetId: course.id
+  });
+  res.redirect(`/admin/courses/${course.id}?success=${encodeURIComponent(rawCode ? `Prerequisite set to ${rawCode}.` : 'Prerequisite cleared.')}`);
+});
+
+// POST /admin/courses/:id/weights - Save per-course grade category weights (must total 100%)
+router.post('/courses/:id/weights', requireAdmin, (req, res) => {
+  const data = getCoursesData();
+  const course = (data.courses || []).find(item => Number(item.id) === Number(req.params.id));
+  if (!course) return res.redirect('/admin/courses');
+
+  const fields = {
+    assignment: parseInt(req.body.weight_assignment, 10) || 0,
+    journal: parseInt(req.body.weight_journal, 10) || 0,
+    discussion: parseInt(req.body.weight_discussion, 10) || 0,
+    quiz: parseInt(req.body.weight_quiz, 10) || 0,
+    exam: parseInt(req.body.weight_exam, 10) || 0
+  };
+  const negative = Object.values(fields).some(v => v < 0);
+  const sum = Object.values(fields).reduce((a, b) => a + b, 0);
+
+  if (negative || sum !== 100) {
+    return res.redirect(`/admin/courses/${course.id}?error=${encodeURIComponent(`Grade category weights must total 100% (currently ${sum}%).`)}`);
+  }
+
+  course.grade_weights = fields;
+  saveCoursesData(data);
+  appendActivity({
+    adminUsername: req.session.user.username,
+    adminName: req.session.user.full_name,
+    action: `Updated syllabus grade weights for ${course.code} (Assign ${fields.assignment}%, Journal ${fields.journal}%, Disc ${fields.discussion}%, Quiz ${fields.quiz}%, Exam ${fields.exam}%)`,
+    targetType: 'course',
+    targetId: course.id
+  });
+
+  res.redirect(`/admin/courses/${course.id}?success=${encodeURIComponent('Course syllabus grade weights updated (total 100%).')}`);
 });
 
 function safeCourseReturnUrl(returnTo, fallbackUrl) {
@@ -1679,8 +1800,10 @@ router.post('/courses/:id/modules/:moduleId/lessons/new', requireTeacher, async 
     quiz_questions: quizQuestions,
     max_score: req.body.max_score || 100,
     pass_score: req.body.pass_score || 60,
-    max_attempts: req.body.max_attempts || 3,
+    max_attempts: req.body.max_attempts || (req.body.topic_type === 'exam' ? 1 : 3),
     time_limit_minutes: req.body.time_limit_minutes || null,
+    is_practice: req.body.is_practice === 'on' || req.body.is_practice === 'true',
+    min_progress_to_unlock: req.body.min_progress_to_unlock,
     due_date: req.body.due_date || null,
     created_by: req.session.user.username
   });
@@ -1923,6 +2046,7 @@ router.get('/enrolments', requireAdmin, (req, res) => {
     title: 'Enrolment Management | Pastors LMS',
     user: req.session.user,
     enrolments: filtered,
+    registrationRequests: getRegistrationRequests(),
     students,
     courses,
     filters: {
@@ -1930,8 +2054,37 @@ router.get('/enrolments', requireAdmin, (req, res) => {
       course_id: filterCourse,
       status: filterStatus,
       search
-    }
+    },
+    success: req.query.success || null,
+    error: req.query.error || null
   });
+});
+
+// POST /admin/enrolments/requests/:id/resolve - Approve or decline term registration request
+router.post('/enrolments/requests/:id/resolve', requireAdmin, (req, res) => {
+  const decision = req.body.decision === 'approve' ? 'approved' : (req.body.decision === 'deny' ? 'denied' : null);
+  if (!decision) {
+    return res.redirect('/admin/enrolments?error=' + encodeURIComponent('Invalid registration decision.'));
+  }
+  const resolved = resolveRegistrationRequest(req.params.id, {
+    status: decision,
+    reviewer_name: req.session.user.full_name || req.session.user.username,
+    reviewer_note: req.body.reviewer_note
+  });
+  if (!resolved) {
+    return res.redirect('/admin/enrolments?error=' + encodeURIComponent('Registration request not found.'));
+  }
+  appendActivity({
+    adminUsername: req.session.user.username,
+    adminName: req.session.user.full_name,
+    action: `${decision === 'approved' ? 'Approved' : 'Declined'} term registration for ${resolved.student_name} in ${resolved.course_code}`,
+    targetType: 'enrolment',
+    targetId: resolved.id
+  });
+  const msg = decision === 'approved'
+    ? `Approved registration and enrolled ${resolved.student_name} in ${resolved.course_code}.`
+    : `Declined registration request for ${resolved.student_name}.`;
+  res.redirect('/admin/enrolments?success=' + encodeURIComponent(msg));
 });
 
 router.post('/enrolments/new', requireAdmin, (req, res) => {

@@ -681,7 +681,19 @@ function showTopicToast(message, isError = true) {
 }
 
 function renderTopicDeadlineBanner(container, topic) {
-  if (!container || !topic || !topic.deadlineInfo) return;
+  if (!container || !topic) return;
+  if (topic.examEligibility && !topic.examEligibility.eligible) {
+    const elBanner = document.createElement('div');
+    elBanner.className = 'exam-locked-banner';
+    elBanner.innerHTML = `<strong>🔒 Final Exam Eligibility Requirement:</strong> Complete at least <strong>${Number(topic.examEligibility.requiredPercent)}%</strong> of course units &amp; activities before taking this exam (currently at <strong>${Number(topic.examEligibility.currentPercent)}%</strong>).`;
+    container.prepend(elBanner);
+    const submitQuiz = container.querySelector('#btnSubmitQuiz');
+    if (submitQuiz) {
+      submitQuiz.disabled = true;
+      submitQuiz.textContent = 'Exam Locked (Complete Coursework First)';
+    }
+  }
+  if (!topic.deadlineInfo) return;
   const info = topic.deadlineInfo;
   if (info.locked) {
     const banner = document.createElement('div');
@@ -1047,8 +1059,12 @@ function initBrightspaceInteractiveForms(targetTopic = null) {
 
         if (scoreDisplay) {
           scoreDisplay.style.display = 'inline-block';
-          const statusWord = data.passed ? 'Passed' : `Pass requires ${data.passScore || 60}%`;
-          scoreDisplay.textContent = `Recorded: ${data.correctCount}/${data.totalQuestions} (${data.percent}%) • ${statusWord} • Attempt #${data.attemptsUsed} (${data.attemptsRemaining} left)`;
+          if (data.isPractice) {
+            scoreDisplay.textContent = `Practice Score: ${data.correctCount}/${data.totalQuestions} (${data.percent}%) • Unlimited Practice (Ungraded)`;
+          } else {
+            const statusWord = data.passed ? 'Passed' : `Pass requires ${data.passScore || 60}%`;
+            scoreDisplay.textContent = `Recorded: ${data.correctCount}/${data.totalQuestions} (${data.percent}%) • ${statusWord} • Attempt #${data.attemptsUsed} (${data.attemptsRemaining} left)`;
+          }
         }
 
         fetchMyCourseSubmissions(false);
@@ -1059,8 +1075,9 @@ function initBrightspaceInteractiveForms(targetTopic = null) {
             await setTopicCompletion(selectedItem, true);
           }
         }
-        submitQuizBtn.disabled = data.attemptsRemaining <= 0;
-        submitQuizBtn.textContent = data.attemptsRemaining <= 0 ? 'Max Attempts Reached' : originalLabel;
+        const outOfAttempts = !data.isPractice && typeof data.attemptsRemaining === 'number' && data.attemptsRemaining <= 0;
+        submitQuizBtn.disabled = outOfAttempts;
+        submitQuizBtn.textContent = outOfAttempts ? 'Max Attempts Reached' : originalLabel;
       } catch {
         alert('Quiz grading requires an internet connection. Please try again when connected.');
         submitQuizBtn.disabled = false;
@@ -1116,11 +1133,14 @@ async function fetchMyCourseSubmissions(renderGradebook = false) {
         } else {
           tbody.innerHTML = s.items.map(item => `
             <tr>
-              <td><strong>${escapeUiText(item.title)}</strong></td>
+              <td>
+                <strong>${escapeUiText(item.title)}</strong>
+                ${item.integrity_flagged ? `<span class="integrity-flag-pill">⚠️ Integrity Review</span>` : ''}
+              </td>
               <td>${escapeUiText(item.type)}</td>
               <td>${item.score} / ${item.max_score} (${item.percent}%)</td>
               <td><strong>${escapeUiText(item.letter)}</strong></td>
-              <td>${escapeUiText(item.feedback || '—')}</td>
+              <td>${escapeUiText(item.feedback || '—')}${item.integrity_flagged && item.integrity_flag_reason ? ` — Flag note: ${escapeUiText(item.integrity_flag_reason)}` : ''}</td>
             </tr>
           `).join('');
         }
@@ -1252,17 +1272,49 @@ async function loadDiscussionForum() {
             </div>
             <p class="discussion-post-body">${escapeUiText(ps.content_text)}</p>
             ${ps.reviews && ps.reviews.length ? `<div class="peer-reviews-existing">${ps.reviews.map(rv => `
-              <div class="peer-review-note"><strong>${escapeUiText(rv.reviewer_name)}</strong> (${rv.rating}/5 ★): ${escapeUiText(rv.feedback)}</div>
+              <div class="peer-review-note">
+                <strong>${escapeUiText(rv.reviewer_name)}</strong>
+                (${rv.rubric_percent ? `Rubric: ${rv.rubric_percent}%` : `${rv.rating}/5 ★`}):
+                ${escapeUiText(rv.feedback)}
+              </div>
             `).join('')}</div>` : ''}
             <form class="peer-review-form" data-sub-id="${escapeUiText(ps.id)}">
-              <select class="form-input peer-rating-select" aria-label="Peer rating">
-                <option value="5">5 ★ — Strong Biblical Insight</option>
-                <option value="4">4 ★ — Encouraging & Clear</option>
-                <option value="3">3 ★ — Good Foundation</option>
-                <option value="2">2 ★ — Needs More Scripture</option>
-              </select>
-              <input type="text" class="form-input peer-feedback-input" placeholder="Share encouraging biblical feedback..." required>
-              <button type="submit" class="btn btn-primary btn-sm">Send Peer Feedback</button>
+              <div class="peer-rubric-grid">
+                <label class="peer-rubric-field">
+                  <span>Biblical Exegesis</span>
+                  <select class="form-input peer-rubric-scripture" aria-label="Biblical Exegesis rating">
+                    <option value="5">5 — Scripture-rich</option>
+                    <option value="4">4 — Clear Scriptural basis</option>
+                    <option value="3">3 — Adequate</option>
+                    <option value="2">2 — Needs more text</option>
+                    <option value="1">1 — Lacking text</option>
+                  </select>
+                </label>
+                <label class="peer-rubric-field">
+                  <span>Pastoral Application</span>
+                  <select class="form-input peer-rubric-application" aria-label="Pastoral Application rating">
+                    <option value="5">5 — Wise &amp; practical</option>
+                    <option value="4">4 — Helpful ministry fit</option>
+                    <option value="3">3 — General</option>
+                    <option value="2">2 — Needs application</option>
+                    <option value="1">1 — Off-topic</option>
+                  </select>
+                </label>
+                <label class="peer-rubric-field">
+                  <span>Clarity &amp; Shepherd Tone</span>
+                  <select class="form-input peer-rubric-clarity" aria-label="Clarity rating">
+                    <option value="5">5 — Clear &amp; gracious</option>
+                    <option value="4">4 — Well-structured</option>
+                    <option value="3">3 — Understandable</option>
+                    <option value="2">2 — Needs clarity</option>
+                    <option value="1">1 — Unclear</option>
+                  </select>
+                </label>
+              </div>
+              <div class="peer-review-submit-row">
+                <input type="text" class="form-input peer-feedback-input" placeholder="Share encouraging biblical feedback..." required>
+                <button type="submit" class="btn btn-primary btn-sm">Submit Rubric Feedback</button>
+              </div>
             </form>
           </article>
         `).join('');
@@ -1271,7 +1323,9 @@ async function loadDiscussionForum() {
           pForm.addEventListener('submit', async (ev) => {
             ev.preventDefault();
             const subId = pForm.getAttribute('data-sub-id');
-            const rating = pForm.querySelector('.peer-rating-select')?.value || '5';
+            const rScripture = pForm.querySelector('.peer-rubric-scripture')?.value || '5';
+            const rApplication = pForm.querySelector('.peer-rubric-application')?.value || '5';
+            const rClarity = pForm.querySelector('.peer-rubric-clarity')?.value || '5';
             const fbInput = pForm.querySelector('.peer-feedback-input');
             if (!fbInput || fbInput.value.trim().length < 8) {
               alert('Please write at least 8 characters of encouraging feedback.');
@@ -1280,7 +1334,12 @@ async function loadDiscussionForum() {
             const r = await fetch(`/api/courses/${course.id}/submissions/${subId}/peer-review`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ rating, feedback: fbInput.value.trim() })
+              body: JSON.stringify({
+                rubric_scripture: rScripture,
+                rubric_application: rApplication,
+                rubric_clarity: rClarity,
+                feedback: fbInput.value.trim()
+              })
             });
             const j = await r.json();
             if (!j.success) alert(j.error || 'Could not save peer review.');

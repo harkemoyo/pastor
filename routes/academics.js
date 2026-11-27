@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const { requireAuth, requireTeacher, requireAdmin } = require('../middleware/auth');
 const { supabaseAdmin } = require('../config/supabase');
-const { getTeacherAssignments } = require('../utils/instructors');
+const { getTeacherAssignments, findTeacherByUsername, formatWhatsAppDigits } = require('../utils/instructors');
 const {
   getCourseModulesWithTopics,
   getQuizDefinition
@@ -17,6 +17,7 @@ const {
   getSubmissions,
   saveSubmission,
   gradeSubmission,
+  flagSubmissionIntegrity,
   getDiscussions,
   addDiscussionPost,
   gradeDiscussionPost,
@@ -38,7 +39,19 @@ const {
   saveOrientationCompletion,
   getExtensionRequests,
   createExtensionRequest,
-  resolveExtensionRequest
+  resolveExtensionRequest,
+  hasSubmittedEvaluation,
+  saveCourseEvaluation,
+  getCourseEvaluationSummary,
+  getPrograms,
+  getProgramById,
+  computeAcademicStanding,
+  getStudentAcademicProfile,
+  checkCoursePrerequisite,
+  getRegistrationRequests,
+  createRegistrationRequest,
+  getCourseWithdrawals,
+  recordCourseWithdrawal
 } = require('../utils/lms-store');
 const {
   DEFAULT_TOKEN_FEE,
@@ -114,6 +127,26 @@ function getUserCompletionPercent(username, course) {
   return getUserCourseCompletion(username, course).percent;
 }
 
+function getUserNonExamCompletionPercent(username, course) {
+  const allProg = readLocalJson('student-progress.json', {});
+  const userKey = String(username || '').toLowerCase();
+  const userProg = (allProg[userKey] && typeof allProg[userKey] === 'object') ? allProg[userKey] : {};
+  const modulesWithTopics = getCourseModulesWithTopics(course, { includeAnswerKeys: false });
+
+  let totalNonExam = 0;
+  let completedNonExam = 0;
+
+  modulesWithTopics.forEach(mod => {
+    const modTopics = (Array.isArray(mod.topics) ? mod.topics : []).filter(t => t.type !== 'exam');
+    const savedList = Array.isArray(userProg[String(mod.id)]) ? userProg[String(mod.id)].map(String) : [];
+    totalNonExam += modTopics.length;
+    completedNonExam += modTopics.filter(t => savedList.includes(String(t.id))).length;
+  });
+
+  if (totalNonExam <= 0) return 100;
+  return Math.min(100, Math.round((completedNonExam / totalNonExam) * 100));
+}
+
 function isStaffUser(user) {
   return Boolean(user && ['admin', 'super_admin', 'teacher'].includes(user.role));
 }
@@ -145,12 +178,13 @@ router.get('/api/courses/:id/submissions', requireAuth, async (req, res) => {
     return res.status(403).json({ success: false, error: 'You are not enrolled in this course.' });
   }
   const username = req.session.user.username || req.session.user.email;
+  const course = allCourses.find(c => Number(c.id) === courseId);
   const subs = await getSubmissions({ course_id: courseId, student_username: username });
   const discussions = (await getDiscussions(courseId)).filter(
     d => String(d.author_username || '').toLowerCase() === String(username).toLowerCase()
   );
   const peerReviews = await getPeerReviews(courseId);
-  const summary = computeCourseGradeSummary(subs, discussions);
+  const summary = computeCourseGradeSummary(subs, discussions, course ? course.grade_weights : null);
 
   res.json({
     success: true,
@@ -262,8 +296,20 @@ router.post('/api/courses/:id/submissions', requireAuth, async (req, res) => {
     });
   }
 
+  // Final Exam Eligibility Rule: require minimum coursework completion % before sitting exam
+  if (quizDef.isExam && !isStaffUser(req.session.user) && Number(quizDef.minProgressToUnlock) > 0) {
+    const currentPct = getUserNonExamCompletionPercent(username, course);
+    if (currentPct < Number(quizDef.minProgressToUnlock)) {
+      return res.status(403).json({
+        success: false,
+        error: `Final Exam locked: complete at least ${quizDef.minProgressToUnlock}% of course lessons first (currently ${currentPct}%).`
+      });
+    }
+  }
+
+  const isPractice = Boolean(quizDef.isPractice && !quizDef.isExam);
   const attemptLimit = quizDef.maxAttempts;
-  if (existing.length >= attemptLimit) {
+  if (!isPractice && existing.length >= attemptLimit) {
     return res.status(400).json({
       success: false,
       error: `You have reached the maximum of ${attemptLimit} attempts for this assessment.`
@@ -275,7 +321,7 @@ router.post('/api/courses/:id/submissions', requireAuth, async (req, res) => {
   const totalQuestions = quizDef.questions.length;
   const results = {};
   const attemptsUsed = existing.length + 1;
-  const attemptsRemaining = Math.max(0, attemptLimit - attemptsUsed);
+  const attemptsRemaining = isPractice ? null : Math.max(0, attemptLimit - attemptsUsed);
 
   quizDef.questions.forEach(q => {
     const qKey = `q${q.qNum}`;
@@ -287,7 +333,7 @@ router.post('/api/courses/:id/submissions', requireAuth, async (req, res) => {
     results[qKey] = {
       correct: isCorrect,
       selected,
-      correctOption: (!quizDef.isExam || attemptsRemaining === 0) ? q.correct : undefined
+      correctOption: (isPractice || !quizDef.isExam || attemptsRemaining === 0) ? q.correct : undefined
     };
   });
 
@@ -302,20 +348,24 @@ router.post('/api/courses/:id/submissions', requireAuth, async (req, res) => {
     course_id: courseId,
     module_id: modNum,
     topic_id: String(topic_id),
-    topic_title: quizDef.topic.title || topic_title || (quizDef.isExam ? 'Graded Exam' : 'Unit Quiz'),
+    topic_title: quizDef.topic.title || topic_title || (quizDef.isExam ? 'Graded Exam' : (isPractice ? 'Practice Self-Quiz' : 'Unit Quiz')),
     submission_type: quizDef.isExam ? 'exam' : 'quiz',
+    is_practice: isPractice,
     quiz_answers: submittedAnswers,
     score: numericScore,
     max_score: numericMax,
-    graded_by: 'Auto-Graded (Server)',
-    feedback: passed
-      ? 'Passed! Well done on your biblical study.'
-      : 'Keep studying the unit readings and try again if attempts remain.',
+    graded_by: isPractice ? 'Self-Quiz (Practice)' : 'Auto-Graded (Server)',
+    feedback: isPractice
+      ? 'Practice self-check completed (unlimited tries, ungraded).'
+      : (passed
+        ? 'Passed! Well done on your biblical study.'
+        : 'Keep studying the unit readings and try again if attempts remain.'),
     attempt_number: attemptsUsed
   });
 
   res.json({
     success: true,
+    isPractice,
     submission: saved,
     score: numericScore,
     maxScore: numericMax,
@@ -344,10 +394,10 @@ router.get('/api/courses/:id/modules/:moduleId/discussions', requireAuth, async 
   }
   const posts = await getDiscussions(courseId, moduleId);
 
-  // Also include fellow pastors' written assignments in this module for optional peer feedback
+  // Include ONLY public assignment submissions for peer feedback (Learning Journals stay strictly private!)
   const username = String(req.session.user.username || '').toLowerCase();
   const moduleSubs = (await getSubmissions({ course_id: courseId, module_id: moduleId }))
-    .filter(s => (s.submission_type === 'assignment' || s.submission_type === 'journal') && s.content_text);
+    .filter(s => s.submission_type === 'assignment' && s.content_text);
   const peerReviews = await getPeerReviews(courseId);
 
   const peerSubmissions = moduleSubs
@@ -426,6 +476,12 @@ router.post('/api/courses/:id/submissions/:subId/peer-review', requireAuth, asyn
   if (!targetSub) {
     return res.status(404).json({ success: false, error: 'Submission not found.' });
   }
+  if (targetSub.submission_type === 'journal') {
+    return res.status(403).json({
+      success: false,
+      error: 'Ministry Learning Journals are private between the pastor and their instructor.'
+    });
+  }
   if (String(targetSub.student_username).toLowerCase() === String(req.session.user.username).toLowerCase()) {
     return res.status(400).json({ success: false, error: 'You cannot peer-review your own submission.' });
   }
@@ -436,6 +492,9 @@ router.post('/api/courses/:id/submissions/:subId/peer-review', requireAuth, asyn
     reviewer_username: req.session.user.username || req.session.user.email,
     reviewer_name: req.session.user.full_name || 'Fellow Pastor',
     rating,
+    rubric_scripture: req.body.rubric_scripture,
+    rubric_application: req.body.rubric_application,
+    rubric_clarity: req.body.rubric_clarity,
     feedback
   });
 
@@ -468,17 +527,32 @@ router.get('/teacher/grading', requireTeacher, async (req, res) => {
     });
   }
 
+  const peerReviewsBySub = new Map();
+  for (const cId of allowedCourseIds) {
+    const reviews = await getPeerReviews(cId);
+    reviews.forEach(rv => {
+      if (!peerReviewsBySub.has(rv.submission_id)) peerReviewsBySub.set(rv.submission_id, []);
+      peerReviewsBySub.get(rv.submission_id).push(rv);
+    });
+  }
+
   const allSubs = await getSubmissions();
   const scopedSubs = allSubs
-    .filter(s => allowedModulePairs.has(`${s.course_id}:${s.module_id}`) || (isStaffAdmin && allowedCourseIds.has(Number(s.course_id))))
+    .filter(s => !s.is_practice && (allowedModulePairs.has(`${s.course_id}:${s.module_id}`) || (isStaffAdmin && allowedCourseIds.has(Number(s.course_id)))))
     .map(s => {
       const course = allCourses.find(c => Number(c.id) === Number(s.course_id));
       const mod = course && (course.modules || []).find(m => Number(m.id) === Number(s.module_id));
+      const subReviews = peerReviewsBySub.get(s.id) || [];
+      const peerAvgPercent = subReviews.length > 0
+        ? Math.round(subReviews.reduce((sum, r) => sum + (Number(r.rubric_percent) || Math.round(((Number(r.rating) || 5) / 5) * 100)), 0) / subReviews.length)
+        : null;
       return {
         ...s,
         course_code: course ? course.code : `Course #${s.course_id}`,
         course_title: course ? course.title : '',
-        module_title: mod ? mod.title : `Module ${s.module_id}`
+        module_title: mod ? mod.title : `Module ${s.module_id}`,
+        peerReviews: subReviews,
+        peerAvgPercent
       };
     });
 
@@ -661,6 +735,24 @@ router.post('/teacher/submissions/:subId/grade', requireTeacher, async (req, res
   res.redirect('/teacher/grading?success=' + encodeURIComponent(`Graded ${updated.student_name} (${updated.score}/${updated.max_score} — ${updated.grade_letter}).`));
 });
 
+// POST /teacher/submissions/:subId/flag - Flag or clear an academic integrity concern
+router.post('/teacher/submissions/:subId/flag', requireTeacher, async (req, res) => {
+  const action = String(req.body.action || 'flag');
+  const flagged = action !== 'clear';
+  const updated = await flagSubmissionIntegrity(req.params.subId, {
+    flagged,
+    reason: req.body.flag_reason,
+    flaggedBy: req.session.user.full_name || req.session.user.username
+  });
+  if (!updated) {
+    return res.redirect('/teacher/grading?error=' + encodeURIComponent('Submission not found.'));
+  }
+  const msg = flagged
+    ? `Flagged ${updated.student_name}'s submission for academic integrity review.`
+    : `Cleared academic integrity flag on ${updated.student_name}'s submission.`;
+  res.redirect('/teacher/grading?success=' + encodeURIComponent(msg));
+});
+
 // POST /teacher/discussions/:postId/grade
 router.post('/teacher/discussions/:postId/grade', requireTeacher, async (req, res) => {
   const { score, feedback } = req.body;
@@ -724,13 +816,14 @@ async function computeTranscriptData(targetUser, selectedCourseId = 'all', saved
   let totalCredits = 0;
   let totalQualityPoints = 0;
   let gradedCredits = 0;
+  let gradedCourseCount = 0;
 
   for (const course of activeCourses) {
     const subs = await getSubmissions({ course_id: course.id, student_username: username });
     const disc = (await getDiscussions(course.id)).filter(
       d => String(d.author_username || '').toLowerCase() === String(username).toLowerCase()
     );
-    const gradeSummary = computeCourseGradeSummary(subs, disc);
+    const gradeSummary = computeCourseGradeSummary(subs, disc, course.grade_weights || null);
     const baseCompletion = getUserCompletionPercent(username, course);
     const ov = overrides[String(course.id)] || {};
 
@@ -751,20 +844,21 @@ async function computeTranscriptData(targetUser, selectedCourseId = 'all', saved
       : (averagePercent !== null ? computeLetterGrade(averagePercent) : gradeSummary.letterGrade);
 
     let gradePoints = letterToGradePoints(letterGrade);
-    if (gradePoints === null && averagePercent !== null) {
+    if (gradePoints === null && averagePercent !== null && letterGrade !== 'W') {
       gradePoints = letterToGradePoints(computeLetterGrade(averagePercent));
     }
 
     const status = (ov.status && String(ov.status).trim())
       ? String(ov.status).trim()
-      : (completionPct >= 100 ? 'Completed' : (completionPct > 0 || gradeSummary.gradedCount > 0 ? 'In Progress' : 'Enrolled'));
+      : (letterGrade === 'W' ? 'Withdrawn' : (completionPct >= 100 ? 'Completed' : (completionPct > 0 || gradeSummary.gradedCount > 0 ? 'In Progress' : 'Enrolled')));
 
     const term = (ov.term && String(ov.term).trim()) ? String(ov.term).trim() : (course.term || 'AY2027-T1');
 
     totalCredits += credits;
-    if (gradePoints !== null) {
+    if (gradePoints !== null && letterGrade !== 'W') {
       gradedCredits += credits;
       totalQualityPoints += gradePoints * credits;
+      gradedCourseCount += 1;
     }
 
     courseRecords.push({
@@ -781,9 +875,34 @@ async function computeTranscriptData(targetUser, selectedCourseId = 'all', saved
     });
   }
 
+  // Append recorded W withdrawals (0 GPA penalty)
+  const withdrawals = getCourseWithdrawals({ student_username: username });
+  withdrawals.forEach(w => {
+    if (targetCourseNum && Number(w.course_id) !== targetCourseNum) return;
+    if (courseRecords.some(r => Number(r.id) === Number(w.course_id))) return;
+    const cMeta = allCourses.find(c => Number(c.id) === Number(w.course_id));
+    const wCredits = Number(cMeta && cMeta.credits) || 3.0;
+    totalCredits += wCredits;
+    courseRecords.push({
+      id: w.course_id,
+      code: w.course_code || (cMeta ? cMeta.code : `COURSE-${w.course_id}`),
+      title: w.course_title || (cMeta ? cMeta.title : 'Course'),
+      term: w.term_code || 'AY2027-T1',
+      credits: wCredits,
+      completionPct: 0,
+      averagePercent: null,
+      letterGrade: 'W',
+      gradePoints: null,
+      status: 'Withdrawn'
+    });
+  });
+
   const cumulativeGpa = gradedCredits > 0 ? (totalQualityPoints / gradedCredits).toFixed(2) : '—';
+  const academicStanding = computeAcademicStanding(cumulativeGpa === '—' ? null : Number(cumulativeGpa), gradedCourseCount);
+  const academicProfile = getStudentAcademicProfile(username);
+  const program = getProgramById(academicProfile.program_id);
   const selectedCourseObj = targetCourseNum
-    ? enrolledCourses.find(c => Number(c.id) === targetCourseNum) || null
+    ? (enrolledCourses.find(c => Number(c.id) === targetCourseNum) || allCourses.find(c => Number(c.id) === targetCourseNum) || null)
     : null;
   const courseLabel = selectedCourseObj
     ? `${selectedCourseObj.code} — ${selectedCourseObj.title}`
@@ -798,7 +917,9 @@ async function computeTranscriptData(targetUser, selectedCourseId = 'all', saved
     courseRecords,
     totalCredits: totalCredits.toFixed(1),
     gradedCredits: gradedCredits.toFixed(1),
-    cumulativeGpa
+    cumulativeGpa,
+    academicStanding,
+    program
   };
 }
 
@@ -840,6 +961,8 @@ async function renderTranscriptForUser(targetUser, req, res, isAdminView = false
     totalCredits: computed.totalCredits,
     gradedCredits: computed.gradedCredits,
     cumulativeGpa: computed.cumulativeGpa,
+    academicStanding: computed.academicStanding,
+    program: computed.program,
     issuedDate,
     isAdminView,
     transcriptRecord: savedRecord || {
@@ -1054,11 +1177,11 @@ router.get('/courses/:id/certificate', requireAuth, async (req, res) => {
   const disc = (await getDiscussions(course.id)).filter(
     d => String(d.author_username || '').toLowerCase() === String(username).toLowerCase()
   );
-  const gradeSummary = computeCourseGradeSummary(subs, disc);
+  const gradeSummary = computeCourseGradeSummary(subs, disc, course.grade_weights || null);
 
   const courseMods = getCourseModulesWithTopics(course, { includeAnswerKeys: false });
   const hasGradedActivities = courseMods.some(mod =>
-    (mod.topics || []).some(t => ['assignment', 'journal', 'quiz', 'exam'].includes(t.type))
+    (mod.topics || []).some(t => ['assignment', 'journal', 'quiz', 'exam'].includes(t.type) && !t.isPractice)
   );
   const passingThreshold = 60;
   const hasCompletedLessons = completionPct >= 100;
@@ -1228,7 +1351,290 @@ router.post('/api/courses/:id/extension-requests', requireAuth, (req, res) => {
 });
 
 // ==========================================================================
-// 6. OFFLINE PWA FALLBACK PAGE
+// 6. ANONYMOUS END-OF-COURSE EVALUATION SURVEY
+// ==========================================================================
+router.get('/courses/:id/evaluation', requireAuth, (req, res) => {
+  const courseId = parseInt(req.params.id, 10);
+  const allCourses = getCourses();
+  const course = allCourses.find(c => Number(c.id) === courseId);
+  if (!course || !isCourseEnrolled(allCourses, courseId, req.session.user)) {
+    return res.redirect('/courses');
+  }
+  const username = req.session.user.username || req.session.user.email;
+  const alreadySubmitted = hasSubmittedEvaluation(courseId, username);
+
+  res.render('course-evaluation', {
+    title: `Course Evaluation – ${course.code} | Pastors LMS`,
+    user: req.session.user,
+    course,
+    alreadySubmitted,
+    success: req.query.success || null,
+    error: req.query.error || null
+  });
+});
+
+router.post('/courses/:id/evaluation', requireAuth, (req, res) => {
+  const courseId = parseInt(req.params.id, 10);
+  const allCourses = getCourses();
+  const course = allCourses.find(c => Number(c.id) === courseId);
+  if (!course || !isCourseEnrolled(allCourses, courseId, req.session.user)) {
+    return res.redirect('/courses');
+  }
+  const username = req.session.user.username || req.session.user.email;
+  const result = saveCourseEvaluation({
+    course_id: courseId,
+    term: course.term || 'AY2027-T1',
+    username,
+    rating_content: req.body.rating_content,
+    rating_instructor: req.body.rating_instructor,
+    rating_clarity: req.body.rating_clarity,
+    rating_ministry_impact: req.body.rating_ministry_impact,
+    comments: req.body.comments
+  });
+
+  if (result.error) {
+    return res.redirect(`/courses/${courseId}/evaluation?error=${encodeURIComponent(result.error)}`);
+  }
+  res.redirect(`/courses/${courseId}/evaluation?success=${encodeURIComponent('Asante! Your anonymous course evaluation has been recorded.')}`);
+});
+
+// ==========================================================================
+// 7. STUDENT "MY ACADEMICS" PORTAL (Program, Standing, Mentor, Registration, Withdrawal)
+// ==========================================================================
+async function buildStudentAcademicsContext(sessionUser) {
+  const username = sessionUser.username || sessionUser.email;
+  const sLower = String(sessionUser.student_id || username).toLowerCase();
+  const uLower = String(username).toLowerCase();
+  const allCourses = getCourses();
+  const activeTerm = getActiveTerm();
+  const termCode = activeTerm ? activeTerm.code : 'AY2027-T1';
+  const termWeekInfo = computeTermWeekInfo(activeTerm);
+
+  const academicProfile = getStudentAcademicProfile(username);
+  const program = getProgramById(academicProfile.program_id);
+  const allUsers = readLocalJson('users.json', []);
+  let assignedMentor = null;
+  if (academicProfile.mentor_username) {
+    const mUser = allUsers.find(u => String(u.username || '').toLowerCase() === academicProfile.mentor_username);
+    if (mUser) {
+      const waDigits = formatWhatsAppDigits(mUser.phone || '');
+      assignedMentor = {
+        username: mUser.username,
+        full_name: mUser.full_name || mUser.username,
+        role: mUser.role || 'teacher',
+        email: mUser.email || '',
+        wa_url: waDigits ? `https://wa.me/${waDigits}?text=${encodeURIComponent(`Hello ${mUser.full_name || mUser.username}, I am ${sessionUser.full_name || username} reaching out for pastoral academic mentoring.`)}` : ''
+      };
+    }
+  }
+
+  // Compute standing & passed course codes across all courses
+  let totalQualityPoints = 0;
+  let gradedCredits = 0;
+  let gradedCoursesCount = 0;
+  const passedCourseCodes = [];
+  const courseStatusByCode = {};
+
+  for (const c of allCourses) {
+    const subs = await getSubmissions({ course_id: c.id, student_username: username });
+    const disc = (await getDiscussions(c.id)).filter(
+      d => String(d.author_username || '').toLowerCase() === uLower
+    );
+    const gs = computeCourseGradeSummary(subs, disc, c.grade_weights || null);
+    const comp = getUserCompletionPercent(username, c);
+    const codeKey = String(c.code || '').trim().toUpperCase();
+
+    if (gs.averagePercent !== null) {
+      const gp = letterToGradePoints(computeLetterGrade(gs.averagePercent));
+      const credits = Number(c.credits) || 3.0;
+      if (gp !== null) {
+        totalQualityPoints += gp * credits;
+        gradedCredits += credits;
+        gradedCoursesCount += 1;
+      }
+    }
+
+    const passed = comp >= 100 || (gs.averagePercent !== null && gs.averagePercent >= 60);
+    if (passed && codeKey) {
+      passedCourseCodes.push(codeKey);
+      courseStatusByCode[codeKey] = 'Completed';
+    } else if (comp > 0 || gs.gradedCount > 0) {
+      courseStatusByCode[codeKey] = 'In Progress';
+    }
+  }
+
+  const cumulativeGpa = gradedCredits > 0 ? (totalQualityPoints / gradedCredits).toFixed(2) : null;
+  const standing = computeAcademicStanding(cumulativeGpa, gradedCoursesCount);
+
+  const myRequests = getRegistrationRequests({ student_username: username });
+  const myWithdrawals = getCourseWithdrawals({ student_username: username });
+  const withdrawnSet = new Set(myWithdrawals.filter(w => String(w.term_code || '').toUpperCase() === termCode.toUpperCase()).map(w => Number(w.course_id)));
+
+  myWithdrawals.forEach(w => {
+    const codeKey = String(w.course_code || '').trim().toUpperCase();
+    if (codeKey && !courseStatusByCode[codeKey]) courseStatusByCode[codeKey] = 'Withdrawn (W)';
+  });
+
+  const enrolments = readLocalJson('enrolments.json', []);
+  const explicitActiveIds = new Set(
+    enrolments
+      .filter(e => {
+        if (!e || e.status === 'removed' || e.status === 'dropped' || e.status === 'withdrawn') return false;
+        const eId = String(e.student_id || e.student_username || '').toLowerCase();
+        return eId === uLower || eId === sLower;
+      })
+      .map(e => Number(e.course_id))
+  );
+
+  const termPendingCount = myRequests.filter(r => String(r.term_code || '').toUpperCase() === termCode.toUpperCase() && r.status === 'pending').length;
+  const currentTermLoad = explicitActiveIds.size + termPendingCount;
+
+  const { courses: activeEnrolledCourses } = getEnrolledCoursesForUser(allCourses, sessionUser);
+
+  const catalogCourses = allCourses
+    .filter(c => c.status !== 'archived' && !c.archived)
+    .map(c => {
+      const prereqCheck = checkCoursePrerequisite(c, passedCourseCodes);
+      const pendingRequest = myRequests.some(r =>
+        Number(r.course_id) === Number(c.id) &&
+        String(r.term_code || '').toUpperCase() === termCode.toUpperCase() &&
+        r.status === 'pending'
+      );
+      const alreadyEnrolledExplicit = explicitActiveIds.has(Number(c.id));
+      const withdrawnThisTerm = withdrawnSet.has(Number(c.id));
+      return {
+        ...c,
+        prereqCheck,
+        pendingRequest,
+        alreadyEnrolledExplicit,
+        withdrawnThisTerm
+      };
+    });
+
+  const programChecklist = (program.required_codes || []).map(code => {
+    const codeUpper = String(code).trim().toUpperCase();
+    const matchedCourse = allCourses.find(c => String(c.code || '').trim().toUpperCase() === codeUpper);
+    return {
+      code: codeUpper,
+      title: matchedCourse ? matchedCourse.title : codeUpper,
+      status: courseStatusByCode[codeUpper] || 'Not Started'
+    };
+  });
+
+  const canWithdrawNow = termWeekInfo.phase === 'upcoming' || Number(termWeekInfo.currentWeek || 1) <= 5;
+
+  return {
+    activeTerm,
+    termCode,
+    termWeekInfo,
+    program,
+    programChecklist,
+    cumulativeGpa: cumulativeGpa || '—',
+    standing,
+    assignedMentor,
+    passedCourseCodes,
+    currentTermLoad,
+    canWithdrawNow,
+    activeEnrolledCourses,
+    catalogCourses,
+    myRequests,
+    myWithdrawals
+  };
+}
+
+router.get('/academics', requireAuth, async (req, res) => {
+  const ctx = await buildStudentAcademicsContext(req.session.user);
+  res.render('my-academics', {
+    title: 'My Academics & Registration | Pastors LMS',
+    user: req.session.user,
+    ...ctx,
+    success: req.query.success || null,
+    error: req.query.error || null
+  });
+});
+
+router.post('/academics/register', requireAuth, async (req, res) => {
+  const courseId = parseInt(req.body.course_id, 10);
+  const allCourses = getCourses();
+  const course = allCourses.find(c => Number(c.id) === courseId && c.status !== 'archived' && !c.archived);
+  if (!course) {
+    return res.redirect('/academics?error=' + encodeURIComponent('Selected course was not found or is archived.'));
+  }
+
+  const ctx = await buildStudentAcademicsContext(req.session.user);
+
+  const prereqCheck = checkCoursePrerequisite(course, ctx.passedCourseCodes);
+  if (!prereqCheck.met) {
+    return res.redirect('/academics?error=' + encodeURIComponent(
+      `Prerequisite required: please complete ${prereqCheck.requiredCode} before registering for ${course.code}.`
+    ));
+  }
+
+  if (ctx.currentTermLoad >= ctx.standing.maxCoursesPerTerm) {
+    return res.redirect('/academics?error=' + encodeURIComponent(
+      `Course load limit reached: your current standing (${ctx.standing.label}) allows up to ${ctx.standing.maxCoursesPerTerm} course(s) per term.`
+    ));
+  }
+
+  const username = req.session.user.username || req.session.user.email;
+  const result = createRegistrationRequest({
+    student_username: username,
+    student_id: req.session.user.student_id || username,
+    student_name: req.session.user.full_name || username,
+    course_id: course.id,
+    course_code: course.code,
+    course_title: course.title,
+    term_code: ctx.termCode
+  });
+
+  if (result.error) {
+    return res.redirect('/academics?error=' + encodeURIComponent(result.error));
+  }
+
+  res.redirect('/academics?success=' + encodeURIComponent(
+    `Registration request for ${course.code} (${ctx.termCode}) submitted for Admin approval.`
+  ));
+});
+
+router.post('/academics/withdraw', requireAuth, async (req, res) => {
+  const courseId = parseInt(req.body.course_id, 10);
+  const reason = String(req.body.reason || '').trim();
+  const course = getCourses().find(c => Number(c.id) === courseId);
+  if (!course) {
+    return res.redirect('/academics?error=' + encodeURIComponent('Selected course was not found.'));
+  }
+
+  const ctx = await buildStudentAcademicsContext(req.session.user);
+  if (!ctx.canWithdrawNow) {
+    return res.redirect('/academics?error=' + encodeURIComponent(
+      'Course withdrawal deadline (End of Week 5) has passed. Please contact the Academic Registrar for an emergency petition.'
+    ));
+  }
+
+  const username = req.session.user.username || req.session.user.email;
+  const result = recordCourseWithdrawal({
+    student_username: username,
+    student_id: req.session.user.student_id || username,
+    student_name: req.session.user.full_name || username,
+    course_id: course.id,
+    course_code: course.code,
+    course_title: course.title,
+    term_code: ctx.termCode,
+    reason,
+    week_number: ctx.termWeekInfo.currentWeek || 1
+  });
+
+  if (result.error) {
+    return res.redirect('/academics?error=' + encodeURIComponent(result.error));
+  }
+
+  res.redirect('/academics?success=' + encodeURIComponent(
+    `Withdrawn from ${course.code}. Grade "W" recorded on your transcript with no GPA penalty.`
+  ));
+});
+
+// ==========================================================================
+// 8. OFFLINE PWA FALLBACK PAGE
 // ==========================================================================
 router.get('/offline', (req, res) => {
   res.render('offline', {

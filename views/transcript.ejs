@@ -128,14 +128,14 @@
                     </td>
                     <td>
                       <select name="override_grade" class="tx-input tx-input-xs" aria-label="Letter grade for <%= row.code %>">
-                        <% ['A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D', 'F', 'P', 'IP'].forEach(g => { %>
+                        <% ['A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D', 'F', 'W', 'P', 'IP'].forEach(g => { %>
                           <option value="<%= g %>" <%= row.letterGrade === g ? 'selected' : '' %>><%= g %></option>
                         <% }) %>
                       </select>
                     </td>
                     <td>
                       <select name="override_status" class="tx-input tx-input-sm" aria-label="Status for <%= row.code %>">
-                        <% ['Completed', 'In Progress', 'Enrolled'].forEach(st => { %>
+                        <% ['Completed', 'In Progress', 'Enrolled', 'Withdrawn'].forEach(st => { %>
                           <option value="<%= st %>" <%= row.status === st ? 'selected' : '' %>><%= st %></option>
                         <% }) %>
                       </select>
@@ -292,6 +292,8 @@
           <div><span class="meta-k">Cohort</span><strong class="meta-v"><%= student.cohort || 'East Africa Pastoral Cohort' %></strong></div>
           <div><span class="meta-k">Church / Ministry</span><strong class="meta-v"><%= student.church_name || 'Local Church Ministry' %></strong></div>
           <div><span class="meta-k">Ministry Role</span><strong class="meta-v"><%= student.ministry_role || 'Pastor' %></strong></div>
+          <div><span class="meta-k">Seminary Program</span><strong class="meta-v"><%= (typeof program !== 'undefined' && program) ? program.name : 'Certificate in Pastoral Ministry' %></strong></div>
+          <div><span class="meta-k">Academic Standing</span><strong class="meta-v"><%= (typeof academicStanding !== 'undefined' && academicStanding) ? academicStanding.label : 'Good Standing' %></strong></div>
           <div><span class="meta-k">Transcript Scope</span><strong class="meta-v"><%= selectedCourseObj ? selectedCourseObj.code : 'All Enrolled Courses' %></strong></div>
         </div>
       </section>

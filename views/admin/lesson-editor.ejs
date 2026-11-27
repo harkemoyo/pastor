@@ -107,6 +107,17 @@
             <label class="form-label" for="lessonTimeLimit">Time Limit (Minutes — Exams)</label>
             <input type="number" id="lessonTimeLimit" name="time_limit_minutes" class="form-input" min="5" max="180" placeholder="e.g. 45">
           </div>
+          <div class="form-group" id="practiceQuizToggleGroup">
+            <label class="form-label" for="lessonIsPractice">Quiz Mode</label>
+            <label class="term-active-checkbox" for="lessonIsPractice">
+              <input type="checkbox" id="lessonIsPractice" name="is_practice">
+              <span>Practice Self-Quiz (Unlimited • Ungraded)</span>
+            </label>
+          </div>
+          <div class="form-group" id="examMinProgressGroup">
+            <label class="form-label" for="lessonMinProgress">Min Coursework % to Unlock Exam</label>
+            <input type="number" id="lessonMinProgress" name="min_progress_to_unlock" class="form-input" value="70" min="0" max="100">
+          </div>
         </div>
 
         <div class="form-group">

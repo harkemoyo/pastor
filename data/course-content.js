@@ -656,16 +656,21 @@ function buildCustomLessonHtml(lesson) {
   const bodyHtml = lesson.content_html || '';
 
   let html = '';
-  if (lesson.due_date || lesson.max_score) {
+  if (lesson.due_date || lesson.max_score || lesson.is_practice || lesson.min_progress_to_unlock) {
     html += `<div class="assignment-header-meta">`;
     if (lesson.due_date) html += `<span class="due-badge">📅 Due: ${escapeHtml(lesson.due_date)}</span>`;
-    if (['assignment', 'journal', 'quiz', 'exam'].includes(lesson.topic_type)) {
+    if (lesson.topic_type === 'quiz' && lesson.is_practice) {
+      html += `<span class="due-badge">Practice Self-Quiz (Unlimited Attempts • Ungraded)</span>`;
+    } else if (['assignment', 'journal', 'quiz', 'exam'].includes(lesson.topic_type)) {
       html += `<span class="points-badge">Graded: ${Number(lesson.max_score) || 100} Points</span>`;
     }
     if (lesson.topic_type === 'exam' && lesson.time_limit_minutes) {
       html += `<span class="due-badge">⏱️ Time Limit: ${Number(lesson.time_limit_minutes)} min</span>`;
     }
-    if ((lesson.topic_type === 'quiz' || lesson.topic_type === 'exam') && lesson.max_attempts) {
+    if (lesson.topic_type === 'exam' && Number(lesson.min_progress_to_unlock) > 0) {
+      html += `<span class="points-badge">Requires ${Number(lesson.min_progress_to_unlock)}% Coursework</span>`;
+    }
+    if ((lesson.topic_type === 'quiz' && !lesson.is_practice || lesson.topic_type === 'exam') && lesson.max_attempts) {
       html += `<span class="points-badge">Max Attempts: ${Number(lesson.max_attempts)}</span>`;
     }
     html += `</div>`;
@@ -679,9 +684,13 @@ function buildCustomLessonHtml(lesson) {
 
   if (lesson.topic_type === 'assignment' || lesson.topic_type === 'journal') {
     const label = lesson.topic_type === 'journal' ? 'Your Learning Journal Entry' : 'Your Written Submission';
+    const privacyBanner = lesson.topic_type === 'journal'
+      ? `<div class="journal-privacy-note">🔒 <strong>Private Ministry Journal:</strong> Your reflection is strictly private between you and your assigned instructor. Classmates cannot see your journal entries.</div>`
+      : '';
     html += `
       <div class="assignment-submission-box" data-submission-type="${lesson.topic_type}" data-max-score="${Number(lesson.max_score) || 100}">
         <h4>✍️ ${label}</h4>
+        ${privacyBanner}
         <textarea id="assignmentInput" class="assignment-textarea" rows="7" placeholder="Type your pastoral reflection or assignment response here..."></textarea>
         ${INTEGRITY_PLEDGE_HTML}
         <div class="assignment-actions-row">
@@ -693,10 +702,12 @@ function buildCustomLessonHtml(lesson) {
   } else if (lesson.topic_type === 'quiz' || lesson.topic_type === 'exam') {
     const questions = Array.isArray(lesson.quiz_questions) ? lesson.quiz_questions : [];
     const timerAttr = lesson.time_limit_minutes ? `data-time-limit="${Number(lesson.time_limit_minutes)}"` : '';
-    const maxAttemptsAttr = `data-max-attempts="${Number(lesson.max_attempts) || 3}"`;
+    const isPractice = Boolean(lesson.topic_type === 'quiz' && lesson.is_practice);
+    const maxAttemptsAttr = isPractice ? '' : `data-max-attempts="${Number(lesson.max_attempts) || (lesson.topic_type === 'exam' ? 1 : 3)}"`;
+    const practiceAttr = isPractice ? `data-is-practice="true"` : '';
     const passAttr = `data-pass-score="${Number(lesson.pass_score) || 60}"`;
     const maxScoreAttr = `data-max-score="${Number(lesson.max_score) || 100}"`;
-    html += `<div class="graded-quiz-wrapper" data-quiz-type="${lesson.topic_type}" ${timerAttr} ${maxAttemptsAttr} ${passAttr} ${maxScoreAttr}>`;
+    html += `<div class="graded-quiz-wrapper" data-quiz-type="${lesson.topic_type}" ${practiceAttr} ${timerAttr} ${maxAttemptsAttr} ${passAttr} ${maxScoreAttr}>`;
     if (lesson.time_limit_minutes) {
       html += `<div class="quiz-timer-bar" id="quizTimerBar">⏱️ Time Remaining: <strong id="quizTimerDisplay">${Number(lesson.time_limit_minutes)}:00</strong></div>`;
     }
@@ -717,8 +728,11 @@ function buildCustomLessonHtml(lesson) {
         html += `<div class="quiz-feedback" id="feedback-q${qNum}"></div>`;
         html += `</div>`;
       });
+      const btnText = lesson.topic_type === 'exam'
+        ? 'Submit Final Exam'
+        : (isPractice ? 'Check Practice Answers' : 'Submit Graded Quiz');
       html += `<div class="quiz-submit-row">
-        <button type="button" class="btn btn-primary" id="btnSubmitQuiz">${lesson.topic_type === 'exam' ? 'Submit Final Exam' : 'Submit Graded Quiz'}</button>
+        <button type="button" class="btn btn-primary" id="btnSubmitQuiz">${btnText}</button>
         <span id="quizScoreDisplay" class="quiz-score-badge" style="display:none;"></span>
       </div>`;
     }
@@ -916,8 +930,10 @@ function getCourseModulesWithTopics(course, options = {}) {
         bannerTitle: lesson.banner_title || lesson.title,
         maxScore: lesson.max_score || 100,
         passScore: lesson.pass_score || 60,
-        maxAttempts: lesson.max_attempts || 3,
+        maxAttempts: lesson.max_attempts || (lesson.topic_type === 'exam' ? 1 : 3),
         timeLimitMinutes: lesson.time_limit_minutes || null,
+        isPractice: Boolean(lesson.topic_type === 'quiz' && lesson.is_practice),
+        minProgressToUnlock: Number(lesson.min_progress_to_unlock) >= 0 ? Number(lesson.min_progress_to_unlock) : (lesson.topic_type === 'exam' ? 70 : 0),
         isCustom: true,
         quizQuestions: Array.isArray(lesson.quiz_questions) ? lesson.quiz_questions : [],
         contentHtml: buildCustomLessonHtml(lesson)
@@ -991,9 +1007,11 @@ function getQuizDefinition(course, moduleId, topicId) {
     questions,
     maxScore: Number(topic.maxScore) > 0 ? Number(topic.maxScore) : 100,
     passScore: Number(topic.passScore) > 0 ? Number(topic.passScore) : 60,
-    maxAttempts: Number(topic.maxAttempts) > 0 ? Number(topic.maxAttempts) : (topic.isCustom ? 3 : 5),
+    maxAttempts: Number(topic.maxAttempts) > 0 ? Number(topic.maxAttempts) : (topic.type === 'exam' ? 1 : (topic.isCustom ? 3 : 5)),
     timeLimitMinutes: topic.timeLimitMinutes || null,
     dueDateIso: topic.dueDateIso || null,
+    isPractice: Boolean(topic.isPractice),
+    minProgressToUnlock: Number(topic.minProgressToUnlock) || 0,
     isExam: topic.type === 'exam'
   };
 }

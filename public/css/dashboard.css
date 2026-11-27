@@ -1639,3 +1639,147 @@
   }
 }
 
+/* ==========================================================================
+   Phase 4: My Academics Portal, Academic Standing, Mentors & Registration
+   ========================================================================== */
+.academics-page {
+  max-width: 1180px;
+}
+
+.academics-top-grid {
+  display: grid;
+  grid-template-columns: 1.55fr 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+.academics-metrics-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 14px 0 18px;
+}
+
+.metric-big {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: #192F47;
+  margin-top: 4px;
+}
+
+.academics-subhead {
+  margin: 18px 0 10px;
+  font-size: 1.04rem;
+  color: #192F47;
+}
+
+.standing-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 13px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.standing-honors {
+  background: #E3EAF3;
+  color: #192F47;
+  border: 1.5px solid #192F47;
+}
+
+.standing-good {
+  background: #DCFCE7;
+  color: #14532D;
+  border: 1px solid #86EFAC;
+}
+
+.standing-warning {
+  background: #F4F0E7;
+  color: #670C21;
+  border: 1.5px solid #D9C7AA;
+}
+
+.standing-probation {
+  background: #FEE2E2;
+  color: #991B1B;
+  border: 1.5px solid #FCA5A5;
+}
+
+.program-checklist {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.program-check-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: #FAF8F3;
+  border: 1px solid #DFD5C3;
+}
+
+.program-check-item.is-complete {
+  background: #F0F9F5;
+  border-color: #B8E4D0;
+}
+
+.mentor-card h2 {
+  margin: 8px 0 4px;
+  color: #0B192C;
+  font-size: 1.3rem;
+}
+
+.reg-catalog-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+  margin-top: 12px;
+}
+
+.reg-course-card {
+  background: #FAF8F3;
+  border: 1.5px solid #DFD5C3;
+  border-radius: 12px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.reg-course-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.reg-course-card h3 {
+  margin: 0;
+  font-size: 1.08rem;
+  color: #0B192C;
+}
+
+.reg-course-actions {
+  margin-top: auto;
+  padding-top: 6px;
+}
+
+@media (max-width: 900px) {
+  .academics-top-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .academics-metrics-row {
+    grid-template-columns: 1fr;
+  }
+}
+
